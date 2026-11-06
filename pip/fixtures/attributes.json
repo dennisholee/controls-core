@@ -1,0 +1,39 @@
+{
+  "resources": {
+    "account": {
+      "A123": {
+        "ownerId": "u-1",
+        "region": "US",
+        "status": "active",
+        "accountNumber": "1234567890",
+        "ssn": "111-22-3333",
+        "holder": { "email": "jane.doe@example.com" }
+      },
+      "A456": {
+        "ownerId": "u-2",
+        "region": "EU",
+        "status": "active",
+        "accountNumber": "9876543210",
+        "ssn": "444-55-6666",
+        "holder": { "email": "john.roe@example.com" }
+      }
+    },
+    "payment": {
+      "P-9001": {
+        "ownerId": "u-1",
+        "status": "accepted"
+      }
+    }
+  },
+  "classifications": {
+    "account": {
+      "accountNumber": "pii.partial",
+      "ssn": "pii.locked",
+      "holder.email": "pii.partial"
+    },
+    "payment": {
+      "pan": "pii.locked",
+      "cvv": "pii.locked"
+    }
+  }
+}

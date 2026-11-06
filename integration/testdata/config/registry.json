@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "defaultUnregistered": "deny",
+  "endpoints": [
+    {
+      "id": "get-account",
+      "method": "GET",
+      "path": "/accounts/{accountId}",
+      "resourceType": "account",
+      "action": "read",
+      "resourceId": { "from": "path", "name": "accountId" },
+      "resourceSource": "pip",
+      "attributes": ["ownerId", "region", "status"],
+      "maskPolicy": "journey.account.read",
+      "maskErrors": true,
+      "freshness": "cached",
+      "selfDescribing": false
+    },
+    {
+      "id": "create-payment",
+      "method": "POST",
+      "path": "/payments",
+      "resourceType": "payment",
+      "action": "write",
+      "resourceId": { "from": "body", "path": "$._id" },
+      "resourceSource": "body",
+      "attributes": [],
+      "maskPolicy": "journey.payment.write",
+      "maskErrors": true,
+      "freshness": "fresh",
+      "selfDescribing": true
+    }
+  ]
+}

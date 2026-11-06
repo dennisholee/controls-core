@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sidecar/**"
+      - "pip/**"
+      - "internal/**"
+      - "integration/**"
+      - "contracts/**"
+      - "go.mod"
+      - "Makefile"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "sidecar/**"
+      - "pip/**"
+      - "internal/**"
+      - "integration/**"
+      - "contracts/**"
+      - "go.mod"
+      - "Makefile"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache: true
+      - name: gofmt
+        run: make fmt-check
+      - name: vet
+        run: make vet
+      - name: test
+        run: make test
+      - name: build
+        run: make build
+      - name: validate contracts
+        run: |
+          python3 - <<'PY'
+          import json, glob, sys
+          for path in glob.glob("contracts/*.json"):
+              json.load(open(path))
+              print("ok", path)
+          PY

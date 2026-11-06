@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://controls.example.com/schemas/registry.schema.json",
+  "title": "Controls endpoint registry",
+  "description": "Binds HTTP routes to resource types, identity locations, masking policies and resource-attribute sources. Resource type and identity authority comes from this registry, never from the request payload.",
+  "type": "object",
+  "required": ["version", "endpoints"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "defaultUnregistered": {
+      "enum": ["deny", "allow"],
+      "default": "deny",
+      "description": "Behaviour for routes that match no registry entry. Deny is the required production setting."
+    },
+    "endpoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/endpoint" }
+    }
+  },
+  "$defs": {
+    "endpoint": {
+      "type": "object",
+      "required": ["id", "method", "path", "resourceType", "resourceId"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Stable identifier used in decision logs and metrics."
+        },
+        "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] },
+        "path": {
+          "type": "string",
+          "pattern": "^/",
+          "description": "Exact segment-wise path template. '{name}' captures one segment. Regex and wildcards are not permitted."
+        },
+        "resourceType": { "type": "string", "minLength": 1 },
+        "action": {
+          "enum": ["read", "write", "delete"],
+          "description": "Defaults from the HTTP method when omitted."
+        },
+        "resourceId": { "$ref": "#/$defs/ref" },
+        "resourceSource": {
+          "enum": ["pip", "body", "both"],
+          "default": "pip",
+          "description": "Where resource attributes come from. pip = Attribute Service; body = request payload; both = payload overlaid with PIP attributes."
+        },
+        "attributes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "description": "Field projection requested from the PIP. Never request fields the policy does not use."
+        },
+        "maskPolicy": {
+          "type": "string",
+          "description": "Key into the mask-policies document."
+        },
+        "maskErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Apply masking to error responses as well."
+        },
+        "freshness": {
+          "enum": ["cached", "fresh", "deny-on-stale"],
+          "default": "cached"
+        },
+        "selfDescribing": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, payload _type/_id are required to match this entry or the request is rejected."
+        }
+      }
+    },
+    "ref": {
+      "type": "object",
+      "required": ["from"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "enum": ["path", "body"] },
+        "name": { "type": "string", "minLength": 1 },
+        "path": {
+          "type": "string",
+          "pattern": "^\\$\\.",
+          "description": "Dot path into the JSON body, e.g. $.debitAccount.id."
+        }
+      },
+      "if": { "properties": { "from": { "const": "path" } } },
+      "then": { "required": ["name"] },
+      "else": { "required": ["path"] }
+    }
+  }
+}

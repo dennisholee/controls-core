@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "policies": {
+    "journey.account.read": {
+      "default": "none",
+      "fields": {
+        "accountNumber": { "mode": "partial", "keepSuffix": 4 },
+        "holder.email": { "mode": "partial", "keepPrefix": 1, "preserveDomain": true },
+        "ssn": { "mode": "full" }
+      }
+    },
+    "journey.payment.write": {
+      "default": "none",
+      "rejectFields": ["pan", "cvv"],
+      "fields": {
+        "pan": { "mode": "full" },
+        "cvv": { "mode": "full" }
+      }
+    }
+  }
+}

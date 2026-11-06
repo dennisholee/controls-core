@@ -1,0 +1,40 @@
+{
+  "version": "1.0",
+  "defaultEffect": "deny",
+  "rules": [
+    {
+      "id": "deny.sanctioned.subject",
+      "effect": "deny",
+      "resourceType": "*",
+      "action": "*",
+      "when": {
+        "field": "subject.claims.status",
+        "op": "eq",
+        "value": "sanctioned"
+      }
+    },
+    {
+      "id": "account.read.owner-or-region",
+      "effect": "allow",
+      "resourceType": "account",
+      "action": "read",
+      "when": {
+        "any": [
+          { "field": "subject.sub", "op": "eq", "value": "$resource.ownerId" },
+          { "field": "subject.claims.region", "op": "eq", "value": "$resource.region" }
+        ]
+      }
+    },
+    {
+      "id": "payment.write.owner",
+      "effect": "allow",
+      "resourceType": "payment",
+      "action": "write",
+      "when": {
+        "field": "subject.sub",
+        "op": "eq",
+        "value": "$resource.ownerId"
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://controls.example.com/schemas/mask-policies.schema.json",
+  "title": "Controls mask policies",
+  "description": "Field-level masking policies applied to responses. Locked fields (ssn, pan, cvv, cardNumber) must use full masking.",
+  "type": "object",
+  "required": ["version", "policies"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "policies": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/policy" }
+    }
+  },
+  "$defs": {
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": {
+          "enum": ["none", "full"],
+          "default": "none",
+          "description": "Mode for leaf fields not explicitly listed."
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/field" }
+        },
+        "rejectFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true,
+          "description": "Request body fields that cause a 403 when present (write paths)."
+        }
+      }
+    },
+    "field": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["none", "full", "partial"] },
+        "keepPrefix": { "type": "integer", "minimum": 0 },
+        "keepSuffix": { "type": "integer", "minimum": 0 },
+        "preserveDomain": {
+          "type": "boolean",
+          "description": "For email addresses: mask the local part and keep @domain."
+        },
+        "keep": { "enum": ["year"] }
+      },
+      "if": { "properties": { "mode": { "const": "partial" } } },
+      "then": {
+        "anyOf": [
+          { "required": ["keepPrefix"] },
+          { "required": ["keepSuffix"] },
+          { "required": ["preserveDomain"] },
+          { "required": ["keep"] }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,165 @@
+openapi: 3.0.3
+info:
+  title: Policy Information Point API
+  version: "1.0"
+  description: |
+    The PIP is a data service for the controls sidecar. It returns resource
+    attributes from read replicas and field classification metadata. It does not
+    make authorization decisions and must not be used as a PDP.
+
+    Transport: HTTP/1.1 with keep-alive or HTTP/2. Authentication: mTLS with a
+    dedicated workload identity. The PIP never calls back through the sidecar.
+servers:
+  - url: http://pip.controls.svc:8082
+tags:
+  - name: attributes
+  - name: classification
+paths:
+  /v1/attributes:batch:
+    post:
+      operationId: resolveAttributes
+      tags: [attributes]
+      summary: Resolve resource attributes for one or more resources
+      description: |
+        Field projection is mandatory for policy evaluation. The sidecar asks
+        only for fields the policy uses. Implementations must use curated,
+        parameterized queries; ad-hoc SQL or path-to-SQL translation from the
+        sidecar is prohibited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchRequest"
+            example:
+              requests:
+                - type: account
+                  id: A123
+                  fields: [ownerId, region, status]
+      responses:
+        "200":
+          description: Results in request order. Missing resources return found=false rather than 404.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /v1/classification/{resourceType}:
+    get:
+      operationId: getClassification
+      tags: [classification]
+      summary: Field classification metadata for a resource type
+      description: Long-lived (hours). Used for masking defaults and the fail-safe mask-all-PII path.
+      parameters:
+        - name: resourceType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Classification map
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Classification"
+        "404":
+          description: Unknown resource type
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /healthz:
+    get:
+      operationId: health
+      summary: Liveness
+      responses:
+        "200":
+          description: ok
+components:
+  schemas:
+    BatchRequest:
+      type: object
+      required: [requests]
+      additionalProperties: false
+      properties:
+        requests:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/Ref"
+    Ref:
+      type: object
+      required: [type, id]
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        fields:
+          type: array
+          items:
+            type: string
+          description: Projection. Empty means all fields (discouraged).
+    Attribute:
+      type: object
+      required: [type, id, found, attributes]
+      properties:
+        type:
+          type: string
+        id:
+          type: string
+        found:
+          type: boolean
+        attributes:
+          type: object
+          additionalProperties: true
+        version:
+          type: string
+          description: Monotonic version used for cache invalidation.
+        ttlSeconds:
+          type: integer
+          minimum: 0
+          description: Cache TTL hint. The sidecar clamps this to its configured maximum.
+    BatchResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attribute"
+    Classification:
+      type: object
+      required: [resourceType, fields]
+      properties:
+        resourceType:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          description: Field path -> classification tag (e.g. pii.partial, pii.locked).
+        ttlSeconds:
+          type: integer
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Lookup failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"

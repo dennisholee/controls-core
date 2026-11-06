@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://controls.example.com/schemas/decision-log.schema.json",
+  "title": "Controls decision log entry",
+  "description": "One line per enforcement decision. Subject and resource identifiers are hashed; payloads are never logged.",
+  "type": "object",
+  "required": ["ts", "requestId", "endpointId", "decision", "reason", "policyVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": { "type": "string", "format": "date-time" },
+    "requestId": { "type": "string", "minLength": 1 },
+    "endpointId": { "type": "string" },
+    "subjectHash": { "type": "string" },
+    "resourceType": { "type": "string" },
+    "resourceIdHash": { "type": "string" },
+    "action": { "enum": ["read", "write", "delete"] },
+    "decision": { "enum": ["allow", "deny"] },
+    "reason": { "type": "string" },
+    "policyVersion": { "type": "string" },
+    "bundleVersion": { "type": "string" },
+    "status": { "type": "integer" },
+    "latencyMs": { "type": "number", "minimum": 0 },
+    "pip": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cache": { "enum": ["hit", "miss", "bypass", "unavailable"] },
+        "latencyMs": { "type": "number" }
+      }
+    },
+    "dqViolations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["ruleId", "field"],
+        "additionalProperties": false,
+        "properties": {
+          "ruleId": { "type": "string" },
+          "field": { "type": "string" },
+          "blocking": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
