@@ -1,0 +1,10 @@
+{
+  "resources": {
+    "payment": {
+      "P-9001": {"ownerId": "u-1", "status": "accepted"}
+    }
+  },
+  "classifications": {
+    "payment": {"pan": "pii.locked", "cvv": "pii.locked"}
+  }
+}

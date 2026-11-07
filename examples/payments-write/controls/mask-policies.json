@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "policies": {
+    "payment.write": {
+      "default": "none",
+      "rejectFields": ["pan", "cvv"],
+      "fields": {
+        "pan": {"mode": "full"},
+        "cvv": {"mode": "full"}
+      }
+    }
+  }
+}

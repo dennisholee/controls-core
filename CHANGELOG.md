@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.30.0] — 2026-11-07
+
+### Added
+
+- `examples/payments-write`: self-contained write sample covering owner
+  authorization, blocking DQ (required/positive/currency) and rejected PAN
+  fields, with contract tests asserting the upstream is never reached.
+
 ## [0.29.0] — 2026-11-07
 
 ### Added

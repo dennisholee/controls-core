@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "defaultEffect": "deny",
+  "rules": [
+    {
+      "id": "payment.write.owner",
+      "effect": "allow",
+      "resourceType": "payment",
+      "action": "write",
+      "when": {"field": "subject.sub", "op": "eq", "value": "$resource.ownerId"}
+    }
+  ]
+}

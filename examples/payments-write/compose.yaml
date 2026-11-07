@@ -1,0 +1,24 @@
+name: controls-example-payments
+services:
+  app:
+    image: payments-write-app:dev
+    expose:
+      - "8080"
+  pip:
+    image: payments-write-pip:dev
+    expose:
+      - "8082"
+  sidecar:
+    image: controls-sidecar:dev
+    ports:
+      - "18001:8080"
+    environment:
+      PIP_URL: http://pip:8082
+      CONTROLS_AUDIT_SALT: sample-salt
+      SERVICE_NAME: payments
+    volumes:
+      - ./controls:/etc/controls/bundle:ro
+      - ./envoy/envoy.yaml:/etc/controls/envoy.yaml:ro
+    depends_on:
+      - app
+      - pip

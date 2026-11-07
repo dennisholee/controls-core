@@ -89,6 +89,7 @@ demo:
 
 examples:
 	$(MAKE) -C examples/accounts-read test
+	$(MAKE) -C examples/payments-write test
 
 steward:
 	$(GO) run ./tools/steward -root .

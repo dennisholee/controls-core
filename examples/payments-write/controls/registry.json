@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "defaultUnregistered": "deny",
+  "endpoints": [
+    {
+      "id": "create-payment",
+      "method": "POST",
+      "path": "/payments",
+      "resourceType": "payment",
+      "action": "write",
+      "resourceId": {"from": "body", "path": "$._id"},
+      "resourceSource": "pip",
+      "attributes": ["ownerId", "status"],
+      "maskPolicy": "payment.write",
+      "maskErrors": true,
+      "freshness": "cached",
+      "selfDescribing": true
+    }
+  ]
+}

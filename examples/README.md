@@ -8,7 +8,7 @@ sidecar themselves.
 | Sample | Demonstrates | Status |
 |---|---|---|
 | [accounts-read](accounts-read/) | route identity, full/partial masking, deny paths | implemented |
-| payments-write | DQ, rejected fields, write authorization | planned |
+| [payments-write](payments-write/) | DQ, rejected fields, write authorization | implemented |
 | spring-accounts | Spring Boot app behind the sidecar | planned |
 | mtls-caller | PIP mTLS + caller/field authorization | planned |
 | pip-outage | fail-closed and stale/lag behavior | planned |
