@@ -3,6 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.36.0] — 2026-11-07
+
+### Added
+
+- `openapi-registry` derives a controls registry from OpenAPI 3
+  `x-resource-*` annotations. The Spring sample generates its registry from
+  `openapi.yaml`; `make test` fails on drift before running the behavioural
+  tests.
+
 ## [0.35.0] — 2026-11-07
 
 ### Changed

@@ -14,11 +14,13 @@ paths:
   /accounts/{accountId}:
     get:
       tags: [accounts]
-      operationId: getAccount
+      operationId: get-account
       summary: Read an account
       description: The sidecar authorizes the owner and masks sensitive fields.
       x-resource-type: account
       x-resource-id: accountId
+      x-attributes: [ownerId, region, status]
+      x-mask-errors: true
       x-mask-policy: account.read
       x-resource-source: pip
       parameters:
@@ -44,11 +46,14 @@ paths:
   /payments:
     post:
       tags: [payments]
-      operationId: createPayment
+      operationId: create-payment
       summary: Create a payment
       description: DQ and rejected-field checks run before the upstream is called.
       x-resource-type: payment
       x-resource-id: $._id
+      x-attributes: [ownerId, status]
+      x-self-describing: true
+      x-mask-errors: true
       x-mask-policy: payment.write
       x-resource-source: pip
       requestBody:

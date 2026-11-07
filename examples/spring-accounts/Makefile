@@ -5,7 +5,7 @@ DOCKER_BUILDKIT ?= 0
 GOARCH ?= $(shell go env GOARCH)
 TMP := $(abspath $(ROOT)/.tmp/sample)
 
-.PHONY: gate up test down
+.PHONY: registry gate up test down
 
 up:
 	mvn -o -q -DskipTests package
@@ -17,7 +17,15 @@ up:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --build-arg PIP_BIN=.tmp/sample/pip -f pip/Dockerfile -t spring-accounts-pip:dev $(ROOT)
 	docker compose -f compose.yaml up -d
 
+registry:
+	cd $(ROOT) && $(GO) run ./tools/openapi-registry \
+		-openapi examples/spring-accounts/openapi.yaml \
+		-out examples/spring-accounts/controls/registry.json
+
 gate:
+	cd $(ROOT) && $(GO) run ./tools/openapi-registry -check \
+		-openapi examples/spring-accounts/openapi.yaml \
+		-out examples/spring-accounts/controls/registry.json
 	cd $(ROOT) && $(GO) run ./tools/openapi-diff \
 		-openapi examples/spring-accounts/openapi.yaml \
 		-registry examples/spring-accounts/controls/registry.json

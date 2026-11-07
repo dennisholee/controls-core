@@ -23,9 +23,13 @@ sidecar themselves.
    fail when the sidecar contract changes.
 4. Add the sample to the CI `examples` matrix and to the table above.
 
-`accounts-read` also demonstrates the OpenAPI ↔ registry gate: operation
-annotations (`x-resource-type`, `x-resource-id`, `x-mask-policy`,
-`x-resource-source`) are compared against the registry before the sample runs.
+`accounts-read` demonstrates the OpenAPI ↔ registry gate: operation annotations
+(`x-resource-type`, `x-resource-id`, `x-mask-policy`, `x-resource-source`) are
+compared against the registry before the sample runs.
+
+`spring-accounts` goes further: the registry is **generated** from
+`openapi.yaml` with `openapi-registry`, and `make test` fails when the committed
+registry drifts from the contract.
 
 Run one sample:
 
