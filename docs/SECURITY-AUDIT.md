@@ -44,7 +44,8 @@ optional Istio `PeerAuthentication: STRICT` plus an `AuthorizationPolicy`
 limited to listed service-account principals. Application-level mutual TLS is
 also available (`pip -tls-cert/-tls-key/-client-ca` and sidecar
 `-pip-ca/-pip-cert/-pip-key`). The finding remains open until one of these is
-installed and verified; per-caller field authorization is still a follow-up.
+installed and verified. Per-caller field authorization is now available
+through `allowedCallers` / `fieldCallers` using the mTLS identity.
 
 ### C2 — Identity headers are trusted without verification at the sidecar
 Evidence: [`sidecar/extproc/adapter.go:231`](../sidecar/extproc/adapter.go#L231)

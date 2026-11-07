@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -60,17 +61,18 @@ func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 	return s
 }
 
-// Handler returns the HTTP handler, with the concurrency limit applied when
-// configured.
+// Handler returns the HTTP handler, with caller identity and the concurrency
+// limit applied when configured.
 func (s *Server) Handler() http.Handler {
+	base := callerMiddleware(s.mux)
 	if s.limit == nil {
-		return s.mux
+		return base
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case s.limit <- struct{}{}:
 			defer func() { <-s.limit }()
-			s.mux.ServeHTTP(w, r)
+			base.ServeHTTP(w, r)
 		default:
 			if s.reg != nil {
 				s.reg.Inc("pip_rejected_total", "PIP requests rejected before processing.",
@@ -105,6 +107,11 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	results := make([]pipclient.Attribute, 0, len(req.Requests))
 	for _, ref := range req.Requests {
 		res, err := s.repo.Get(r.Context(), ref.Type, ref.ID, ref.Fields)
+		if errors.Is(err, ErrForbidden) {
+			s.recordError("attributes")
+			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
+			return
+		}
 		if err != nil {
 			s.log.Error("pip lookup failed", "type", ref.Type, "id", ref.ID, "err", err)
 			s.recordError("attributes")

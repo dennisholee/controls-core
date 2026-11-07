@@ -203,3 +203,29 @@ func TestConcurrencyLimit(t *testing.T) {
 	}
 	close(repo.release)
 }
+
+type forbiddenRepo struct{}
+
+func (forbiddenRepo) Get(context.Context, string, string, []string) (Resource, error) {
+	return Resource{}, ErrForbidden
+}
+func (forbiddenRepo) Classification(context.Context, string) (map[string]string, bool, error) {
+	return nil, false, nil
+}
+
+func TestForbiddenCallerMapsTo403(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(forbiddenRepo{}, log).Handler())
+	t.Cleanup(srv.Close)
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+	}})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}

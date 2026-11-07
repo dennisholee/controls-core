@@ -2,8 +2,8 @@ apiVersion: v2
 name: controls-plane
 description: Data-level entitlements and DQ controls plane (PIP, network policies, mTLS)
 type: application
-version: 0.5.0
-appVersion: "0.15.0"
+version: 0.6.0
+appVersion: "0.16.0"
 keywords:
   - authorization
   - data-quality

@@ -33,6 +33,10 @@ Two repositories implement the data port:
         "accountNumber": "pii.partial",
         "ssn": "pii.locked"
       },
+      "allowedCallers": ["spiffe://example/ns/app/sa/accounts"],
+      "fieldCallers": {
+        "ssn": ["spiffe://example/ns/app/sa/pii-reader"]
+      },
       "lagHeader": "X-Replica-Lag-Seconds",
       "caFile": "/etc/controls-tls/ca.pem",
       "certFile": "/etc/controls-tls/client.pem",
@@ -50,6 +54,11 @@ Two repositories implement the data port:
   name when the certificate does not match the host.
 - `fields` is a hard allowlist: the PIP will never return a field outside it,
   even if the caller asks.
+- `allowedCallers` restricts a source to specific client-certificate
+  identities (URI SAN preferred, then DNS SAN, then CN). `fieldCallers`
+  restricts individual fields further. With mTLS enabled, a caller outside the
+  list gets `403`; without mTLS there is no identity, so a non-empty list
+  denies everyone (fail closed).
 - Upstream responses are capped at 1 MiB; a larger body fails closed.
 - `404` means `found: false`; any other non-200 or decode error fails closed.
 - `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`; if the

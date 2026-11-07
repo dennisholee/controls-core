@@ -40,6 +40,10 @@ type Source struct {
 	Classification map[string]string `json:"classification"`
 	LagHeader      string            `json:"lagHeader"`
 	VersionHeader  string            `json:"versionHeader"`
+	// Caller authorization. Identities come from the PIP client certificate
+	// (URI SAN, DNS SAN or CN). Empty lists mean "any authenticated caller".
+	AllowedCallers []string            `json:"allowedCallers"`
+	FieldCallers   map[string][]string `json:"fieldCallers"`
 	// TLS options for mTLS to the attribute API. All paths are operator-owned.
 	CAFile     string `json:"caFile"`
 	CertFile   string `json:"certFile"`
@@ -55,6 +59,8 @@ type source struct {
 	classes       map[string]string
 	lagHeader     string
 	versionHeader string
+	allowed       map[string]bool
+	fieldAuth     map[string]map[string]bool
 }
 
 // Repo implements server.Repository over HTTP attribute APIs.
@@ -129,6 +135,27 @@ func build(typ string, src Source) (*source, error) {
 	if lagHeader == "" {
 		lagHeader = "X-Replica-Lag-Seconds"
 	}
+	allowedCallers := map[string]bool{}
+	for _, c := range src.AllowedCallers {
+		if c == "" {
+			return nil, fmt.Errorf("empty allowedCallers entry")
+		}
+		allowedCallers[c] = true
+	}
+	fieldAuth := map[string]map[string]bool{}
+	for field, callers := range src.FieldCallers {
+		if !fields[field] {
+			return nil, fmt.Errorf("fieldCallers references unknown field %q", field)
+		}
+		set := map[string]bool{}
+		for _, c := range callers {
+			if c == "" {
+				return nil, fmt.Errorf("empty caller for field %q", field)
+			}
+			set[c] = true
+		}
+		fieldAuth[field] = set
+	}
 	versionHeader := src.VersionHeader
 	if versionHeader == "" {
 		versionHeader = "X-Resource-Version"
@@ -150,6 +177,8 @@ func build(typ string, src Source) (*source, error) {
 		classes:       src.Classification,
 		lagHeader:     lagHeader,
 		versionHeader: versionHeader,
+		allowed:       allowedCallers,
+		fieldAuth:     fieldAuth,
 	}, nil
 }
 
@@ -205,6 +234,15 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 	s, ok := r.sources[typ]
 	if !ok {
 		return server.Resource{Found: false}, nil
+	}
+	caller := server.CallerFromContext(ctx)
+	if len(s.allowed) > 0 && !s.allowed[caller] {
+		return server.Resource{}, server.ErrForbidden
+	}
+	for _, f := range fields {
+		if callers, ok := s.fieldAuth[f]; ok && !callers[caller] {
+			return server.Resource{}, server.ErrForbidden
+		}
 	}
 	endpoint := strings.ReplaceAll(s.url, "{id}", url.PathEscape(id))
 	reqCtx, cancel := context.WithTimeout(ctx, s.client.Timeout)

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -16,6 +17,10 @@ type Repository interface {
 	Get(ctx context.Context, resourceType, id string, fields []string) (Resource, error)
 	Classification(ctx context.Context, resourceType string) (map[string]string, bool, error)
 }
+
+// ErrForbidden means the authenticated caller may not read the requested
+// resource or field.
+var ErrForbidden = errors.New("caller not authorized")
 
 // Resource is one resolved attribute set. LagSeconds is the replica lag
 // reported by the source (zero when unknown).

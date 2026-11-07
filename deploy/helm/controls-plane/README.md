@@ -49,7 +49,9 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 - Set `sidecar.bundlePublicKeySecret` so the sidecar can verify bundles.
 - `pip.egress.databaseCIDRs` must list the read replicas.
 - For application mTLS set `pip.tls.enabled` and `pip.tls.secretName`, and
-  configure the sidecar client with `sidecar.pipTLS` material.
+  configure the sidecar client with `sidecar.pipTLS` material. Once mTLS is
+  on, use `allowedCallers`/`fieldCallers` in the PIP source document to scope
+  each sidecar identity to the fields it needs.
 
 ## Caveats
 

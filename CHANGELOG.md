@@ -3,6 +3,16 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.16.0] — 2026-11-07
+
+### Added
+
+- Per-caller and per-field authorization for HTTP attribute sources:
+  `allowedCallers` restricts a source to client-certificate identities
+  (SPIFFE URI SAN, DNS SAN or CN); `fieldCallers` restricts individual fields.
+  Forbidden requests return 403 and increment the error metric. Without mTLS,
+  a non-empty allowlist fails closed.
+
 ## [0.15.0] — 2026-11-07
 
 ### Added

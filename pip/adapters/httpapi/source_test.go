@@ -3,12 +3,15 @@ package httpapi
 import (
 	"context"
 	"encoding/pem"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"example.com/controls/core/pip/server"
 )
 
 func writeConfig(t *testing.T, body string) string {
@@ -164,5 +167,40 @@ func TestRejectsIDInHost(t *testing.T) {
 	}}}`)
 	if _, err := Load(cfg); err == nil {
 		t.Fatal("expected host interpolation error")
+	}
+}
+
+func TestCallerAuthorization(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"ownerId":"u-1","ssn":"111"}`))
+	}))
+	defer upstream.Close()
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"`+upstream.URL+`/{id}",
+	  "fields":["ownerId","ssn"],
+	  "allowedCallers":["spiffe://example/app/sa/reader","spiffe://example/app/sa/pii-reader"],
+	  "fieldCallers":{"ssn":["spiffe://example/app/sa/pii-reader"]}
+	}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := server.WithCaller(context.Background(), "spiffe://example/app/sa/reader")
+	if _, err := repo.Get(reader, "account", "A1", []string{"ownerId"}); err != nil {
+		t.Fatalf("allowed caller: %v", err)
+	}
+	if _, err := repo.Get(reader, "account", "A1", []string{"ssn"}); !errors.Is(err, server.ErrForbidden) {
+		t.Fatalf("expected field forgiveness, got %v", err)
+	}
+	pii := server.WithCaller(context.Background(), "spiffe://example/app/sa/pii-reader")
+	if _, err := repo.Get(pii, "account", "A1", []string{"ssn"}); err != nil {
+		t.Fatalf("pii reader: %v", err)
+	}
+	other := server.WithCaller(context.Background(), "spiffe://example/app/sa/other")
+	if _, err := repo.Get(other, "account", "A1", []string{"ownerId"}); !errors.Is(err, server.ErrForbidden) {
+		t.Fatalf("expected caller forgiveness, got %v", err)
+	}
+	if _, err := repo.Get(context.Background(), "account", "A1", []string{"ownerId"}); !errors.Is(err, server.ErrForbidden) {
+		t.Fatalf("missing caller should be forbidden, got %v", err)
 	}
 }

@@ -73,7 +73,8 @@ controls for both, but they are only effective once installed and verified in
 the target cluster.
 Deployments must not expose the PIP or the sidecar listener outside the trusted
 network until those are resolved. The PIP now supports application mTLS
-(`-tls-cert`, `-tls-key`, `-client-ca`), independent of the mesh. Bundle signature verification is implemented
+(`-tls-cert`, `-tls-key`, `-client-ca`), independent of the mesh, and can
+restrict sources/fields to specific certificate identities. Bundle signature verification is implemented
 but only active when `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) is set;
 production must set it.
 
