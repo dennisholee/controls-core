@@ -20,6 +20,19 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.24.0] — 2026-11-07
+
+### Security
+
+- Policy comparisons are type-strict: strings are no longer parsed as
+  numbers, and string/bool/null are not coerced via `fmt.Sprint`. A
+  body-sourced `"true"` or `"5000"` no longer satisfies a typed rule.
+
+### Fixed
+
+- Masking decodes response bodies with `json.Number`, preserving large
+  integers and decimal formatting through the mask/re-encode path.
+
 ## [0.23.0] — 2026-11-07
 
 ### Added

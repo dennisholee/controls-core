@@ -58,3 +58,18 @@ func TestWrongActionDoesNotMatch(t *testing.T) {
 		t.Fatalf("expected default deny: %+v", res)
 	}
 }
+
+func TestStrictTypeComparison(t *testing.T) {
+	if equal("5000", float64(5000)) {
+		t.Fatal("string must not equal number")
+	}
+	if equal("true", true) {
+		t.Fatal("string must not equal bool")
+	}
+	if !equal("5000", "5000") || !equal(true, true) || !equal(nil, nil) {
+		t.Fatal("same-type equality failed")
+	}
+	if _, ok := toFloat("5000"); ok {
+		t.Fatal("strings must not be parsed as numbers")
+	}
+}

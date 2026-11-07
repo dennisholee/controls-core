@@ -228,11 +228,20 @@ func compare(actual any, op string, want any) bool {
 
 func equal(a, b any) bool {
 	if af, ok := toFloat(a); ok {
-		if bf, ok := toFloat(b); ok {
-			return af == bf
-		}
+		bf, ok := toFloat(b)
+		return ok && af == bf
 	}
-	return fmt.Sprint(a) == fmt.Sprint(b)
+	switch av := a.(type) {
+	case string:
+		bv, ok := b.(string)
+		return ok && av == bv
+	case bool:
+		bv, ok := b.(bool)
+		return ok && av == bv
+	case nil:
+		return b == nil
+	}
+	return false
 }
 
 func toFloat(v any) (float64, bool) {
@@ -247,9 +256,6 @@ func toFloat(v any) (float64, bool) {
 		return float64(n), true
 	case json.Number:
 		f, err := strconv.ParseFloat(string(n), 64)
-		return f, err == nil
-	case string:
-		f, err := strconv.ParseFloat(n, 64)
 		return f, err == nil
 	}
 	return 0, false

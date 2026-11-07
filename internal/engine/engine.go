@@ -335,7 +335,9 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 		return body, nil
 	}
 	var doc map[string]any
-	if err := json.Unmarshal(body, &doc); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	if err := dec.Decode(&doc); err != nil {
 		if ep.AllowNonJSON {
 			return body, nil
 		}
