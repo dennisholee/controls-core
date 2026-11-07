@@ -144,7 +144,7 @@
 <text x="1250" y="828" class="card" text-anchor="start" >not found</text>
 <text x="1250" y="848" class="small" text-anchor="start" >PIP says resource missing</text>
 <text x="60" y="950" class="h2" text-anchor="start" >3 · Configuration &amp; bundle pipeline</text>
-<text x="60" y="978" class="body" text-anchor="start" >OpenAPI annotations derive the registry; delivery policy and DQ are merged, validated and signed.</text>
+<text x="60" y="978" class="body" text-anchor="start" >OpenAPI annotations derive the registry; delivery policy and DQ are merged, validated and signed. OPA Rego stays external.</text>
 <rect x="60" y="1010" width="450" height="300" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="82" y="1042" class="h3" text-anchor="start" >Service contract</text>
 <rect x="82" y="1060" width="406" height="120" rx="12" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5" />
@@ -182,20 +182,25 @@
 <text x="1070" y="1238" class="small" text-anchor="start" >Ed25519 signature · digest recomputed by sidecar</text>
 <rect x="1052" y="1262" width="466" height="36" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5" />
 <text x="1285" y="1286" class="badge" text-anchor="middle" style="fill:#5b21b6">immutable · versioned · pinned by digest</text>
+<path d="M488 1242 H540 V1253 H562" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
+<text x="498" y="1232" class="small" text-anchor="start" >merge</text>
+<path d="M968 1253 H1010 V1165 H1052" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
+<text x="980" y="1184" class="small" text-anchor="start" >sign</text>
 <rect x="60" y="1335" width="1480" height="72" rx="16" fill="#0f172a" stroke="#0f172a" stroke-width="1.5" />
 <text x="84" y="1362" class="card" text-anchor="start" style="fill:#ffffff">Jenkins pipeline</text>
 <text x="84" y="1386" class="body" text-anchor="start" style="fill:#cbd5e1">render → openapi-diff → controls-check → conformance → sign → publish bundle@digest</text>
 <text x="60" y="1442" class="card" text-anchor="start" >Runtime configuration</text>
+<text x="60" y="1508" class="small" text-anchor="start" >* required in production · OPA_URL optional · PIP TLS optional</text>
 <rect x="60" y="1458" width="78.4" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="74" y="1480" class="chip" text-anchor="start" >PIP_URL</text>
+<text x="74" y="1480" class="chip" text-anchor="start" >PIP_URL *</text>
 <rect x="150.4" y="1458" width="78.4" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
 <text x="164.4" y="1480" class="chip" text-anchor="start" >OPA_URL</text>
 <rect x="240.8" y="1458" width="215.20000000000002" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="254.8" y="1480" class="chip" text-anchor="start" >CONTROLS_IDENTITY_HMAC_KEY</text>
+<text x="254.8" y="1480" class="chip" text-anchor="start" >CONTROLS_IDENTITY_HMAC_KEY *</text>
 <rect x="468.0" y="1458" width="164.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="482.0" y="1480" class="chip" text-anchor="start" >CONTROLS_AUDIT_SALT</text>
+<text x="482.0" y="1480" class="chip" text-anchor="start" >CONTROLS_AUDIT_SALT *</text>
 <rect x="644.8" y="1458" width="128.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="658.8" y="1480" class="chip" text-anchor="start" >-bundle-pubkey</text>
+<text x="658.8" y="1480" class="chip" text-anchor="start" >-bundle-pubkey *</text>
 <rect x="785.5999999999999" y="1458" width="164.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
 <text x="799.5999999999999" y="1480" class="chip" text-anchor="start" >PIP_CA / CERT / KEY</text>
 <text x="60" y="1540" class="h2" text-anchor="start" >4 · Security, integrity and failure modes</text>
