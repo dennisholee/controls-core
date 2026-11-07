@@ -3,6 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.34.0] — 2026-11-07
+
+### Added
+
+- `examples/spring-accounts` now covers entitlement (account read, payment
+  write), response masking, blocking payment DQ and rejected PAN fields, with
+  an OpenAPI 3 contract whose `x-resource-*` annotations are enforced by the
+  gate.
+
 ## [0.33.0] — 2026-11-07
 
 ### Added

@@ -1,1 +1,28 @@
-{"version": "1.0", "rules": []}
+{
+  "version": "1.0",
+  "rules": [
+    {
+      "id": "payment.amount.required",
+      "resourceType": "payment",
+      "field": "amount",
+      "required": true,
+      "blocking": true
+    },
+    {
+      "id": "payment.amount.positive",
+      "resourceType": "payment",
+      "field": "amount",
+      "op": "gt",
+      "value": 0,
+      "blocking": true
+    },
+    {
+      "id": "payment.currency.format",
+      "resourceType": "payment",
+      "field": "currency",
+      "op": "pattern",
+      "pattern": "^[A-Z]{3}$",
+      "blocking": true
+    }
+  ]
+}

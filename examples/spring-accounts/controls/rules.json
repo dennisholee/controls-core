@@ -7,7 +7,22 @@
       "effect": "allow",
       "resourceType": "account",
       "action": "read",
-      "when": {"field": "subject.sub", "op": "eq", "value": "$resource.ownerId"}
+      "when": {
+        "field": "subject.sub",
+        "op": "eq",
+        "value": "$resource.ownerId"
+      }
+    },
+    {
+      "id": "payment.write.owner",
+      "effect": "allow",
+      "resourceType": "payment",
+      "action": "write",
+      "when": {
+        "field": "subject.sub",
+        "op": "eq",
+        "value": "$resource.ownerId"
+      }
     }
   ]
 }

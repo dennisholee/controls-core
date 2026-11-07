@@ -17,6 +17,21 @@
           "mode": "full"
         }
       }
+    },
+    "payment.write": {
+      "default": "none",
+      "rejectFields": [
+        "pan",
+        "cvv"
+      ],
+      "fields": {
+        "pan": {
+          "mode": "full"
+        },
+        "cvv": {
+          "mode": "full"
+        }
+      }
     }
   }
 }

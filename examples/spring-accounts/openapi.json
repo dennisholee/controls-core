@@ -1,0 +1,24 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "spring-accounts sample", "version": "1.0.0"},
+  "paths": {
+    "/accounts/{accountId}": {
+      "get": {
+        "x-resource-type": "account",
+        "x-resource-id": "accountId",
+        "x-mask-policy": "account.read",
+        "x-resource-source": "pip",
+        "responses": {"200": {"description": "masked account"}}
+      }
+    },
+    "/payments": {
+      "post": {
+        "x-resource-type": "payment",
+        "x-resource-id": "$._id",
+        "x-mask-policy": "payment.write",
+        "x-resource-source": "pip",
+        "responses": {"201": {"description": "payment accepted"}}
+      }
+    }
+  }
+}

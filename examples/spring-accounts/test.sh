@@ -36,3 +36,19 @@ case "$published" in
 esac
 
 echo "SAMPLE OK: masked allow, 403 deny, 403 unauthenticated, upstream not published"
+
+# Payment write: entitlement + DQ + rejected fields.
+post() { curl -s -o /tmp/spring-payment.$$ -w '%{http_code}' -H 'content-type: application/json' -H "x-subject: $1" -d "$2" "$BASE/payments"; }
+pbody() { cat /tmp/spring-payment.$$; rm -f /tmp/spring-payment.$$; }
+code=$(post u-1 '{"_type":"payment","_id":"P-9001","amount":10,"currency":"USD"}')
+[ "$code" = "201" ] || { pbody; fail "valid payment got $code"; }
+code=$(post u-2 '{"_type":"payment","_id":"P-9001","amount":10,"currency":"USD"}')
+[ "$code" = "403" ] || { pbody; fail "non-owner got $code"; }
+code=$(post u-1 '{"_type":"payment","_id":"P-9001","amount":-1,"currency":"USD"}')
+[ "$code" = "403" ] || { pbody; fail "negative amount got $code"; }
+pbody | grep -q 'dq_blocking:payment.amount.positive' || fail "wrong DQ reason"
+code=$(post u-1 '{"_type":"payment","_id":"P-9001","amount":10,"currency":"USD","pan":"4111111111111111"}')
+[ "$code" = "403" ] || { pbody; fail "PAN got $code"; }
+pbody | grep -q 'rejected_field:pan' || fail "wrong PAN reason"
+
+echo "SAMPLE OK: entitlement + DQ + OpenAPI gate"

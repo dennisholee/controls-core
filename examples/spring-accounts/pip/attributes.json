@@ -1,10 +1,28 @@
 {
   "resources": {
     "account": {
-      "A123": {"ownerId": "u-1", "region": "US", "status": "active"}
+      "A123": {
+        "ownerId": "u-1",
+        "region": "US",
+        "status": "active"
+      }
+    },
+    "payment": {
+      "P-9001": {
+        "ownerId": "u-1",
+        "status": "accepted"
+      }
     }
   },
   "classifications": {
-    "account": {"ssn": "pii.locked", "accountNumber": "pii.partial", "holder.email": "pii.partial"}
+    "account": {
+      "ssn": "pii.locked",
+      "accountNumber": "pii.partial",
+      "holder.email": "pii.partial"
+    },
+    "payment": {
+      "pan": "pii.locked",
+      "cvv": "pii.locked"
+    }
   }
 }

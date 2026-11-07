@@ -1,7 +1,9 @@
 # Sample: Spring Boot account read
 
-A Spring Boot service behind the sidecar. The application is unchanged; the
-sidecar authorizes the read and masks the response.
+A Spring Boot service behind the sidecar. The application owns the routes; the
+sidecar authorizes account reads, masks the response, and enforces payment DQ
+and rejected fields on writes. `openapi.json` carries the registry-binding
+annotations and is checked by `make test`.
 
 Smallest end-to-end sample:
 
