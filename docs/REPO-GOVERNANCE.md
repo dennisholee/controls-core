@@ -28,8 +28,8 @@ judgment calls. Run `make steward` locally before a large change.
   `RUNBOOK.md`, `CHANGELOG.md`, `docs/agents/README.md`.
 - Every ADR file is linked from `docs/adr/README.md`.
 - Relative links in Markdown must resolve.
-- Recommended but not yet present: `CONTRIBUTING.md`, `CODEOWNERS`, `LICENSE`.
-  These are human decisions; the steward only flags them.
+- `CONTRIBUTING.md` defines the workflow. `CODEOWNERS` and `LICENSE` are still
+  missing and are maintainer decisions; the steward only flags them.
 
 ## Versioning contract
 

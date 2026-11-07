@@ -167,6 +167,6 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 | Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
 | PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
 | Classification tag completeness | Untagged sensitive fields are not masked by the fallback | Catalog review + classification coverage check before pilot |
-| No OPA adapter | Rego shops cannot reuse policies | Add behind `policy.Evaluator` if needed |
-| Jenkins job not yet created | Reference Jenkinsfile and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
+| OPA policies live outside the signed bundle | Policy changes are not covered by bundle signing | Keep OPA under its own change control, or move rules into the bundle |
+| Jenkins job adoption | Reference jobs and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
 | Audit sink/retention unmanaged by core | Platform must ship stdout and enforce retention | Hand over scrape/log config with the pilot |

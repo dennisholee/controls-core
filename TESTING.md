@@ -18,10 +18,11 @@ manual review step.
 | Conformance | Rendered bundle satisfies delivery fixtures | `internal/conformance`, `tools/conformance` |
 | Audit/metrics | Hashing, sampling, metric rendering and hook emission | `internal/audit`, `internal/metrics` |
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
-| Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
+| Performance | p99 overhead and CPU per 1k RPS | `integration/bench_test.go`, `hack/loadtest`, `make loadtest` |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
 | Reload | Poll/SIGHUP swap, last-known-good on invalid bundle | `config.Fingerprint`, adapter provider test, manual smoke |
 | Smoke | Real Envoy → ext_proc → engine → app | `hack/envoy-smoke.sh`, `make smoke` |
+| Manual / exploratory | Decision, masking and DQ visible through HTTP without Envoy | `sidecar/testapi`, [docs/TEST-API.md](docs/TEST-API.md) |
 
 ## 2. Running
 
@@ -31,10 +32,16 @@ make acceptance  # BDD scenarios against the in-process engine, verbose
 make vet         # go vet ./...
 make fmt-check   # gofmt check on tracked files
 make bench       # integration benchmarks
+make api         # HTTP test API on 127.0.0.1:8081, console at /docs
 ```
 
 The integration suite starts an in-process PIP over the fixture
 `pip/fixtures/attributes.json`; no infrastructure is required.
+
+`make api` is the interactive counterpart: the same engine behind
+`POST /v1/process` and `POST /v1/test`. It is useful for reproducing a failing
+fixture or checking a masking change by hand; it does not replace the automated
+gates. See [docs/TEST-API.md](docs/TEST-API.md).
 
 ## 3. Fixture format
 

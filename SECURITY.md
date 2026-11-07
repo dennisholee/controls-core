@@ -17,12 +17,12 @@ decision-log path.
 |---|---|---|---|---|
 | T1 | Caller selects its own policy | Client sends `_type`/`_id` that the sidecar trusts | Type and identity bound to the route; payload cross-checked; mismatch ⇒ 403 + metric | None if registry is correct |
 | T2 | Unconfigured route bypasses controls | New endpoint ships without registry entry | `defaultUnregistered: deny`; OpenAPI diff gate; route-coverage test | Gate must actually run |
-| T3 | Identity spoofing | Client supplies `x-subject` / claim headers | Gateway strips client values and injects verified ones; sidecar accepts only from trusted gateway/sidecar chain | Depends on gateway config |
-| T4 | PIP becomes a data-exfiltration API | Caller-influenced queries, over-broad projections | mTLS workload identity; fixed, parameterized queries per domain; field projection; no ad-hoc SQL; per-domain read grants; rate limits | Query review discipline |
+| T3 | Identity spoofing | Client supplies `x-subject` / claim headers | Gateway signs `x-controls-identity`; sidecar verifies HMAC and freshness when `CONTROLS_IDENTITY_HMAC_KEY` is set, and ignores raw headers | Raw-header mode remains for development only |
+| T4 | PIP becomes a data-exfiltration API | Caller-influenced queries, over-broad projections | mTLS + caller/field authorization; fixed, parameterized queries per domain; field projection; rate limits and concurrency caps | mTLS/allowlists must be enabled in production |
 | T5 | PII in logs | Payload or attributes logged | Decision log stores hashes and rule ids only; no payloads; sampled allows | App logs remain out of scope |
 | T6 | Bundle tampering | Modified policy/config in transit or registry | Signed bundle, digest pinning, least-privilege registry, review | Key management |
 | T7 | Stale or poisoned cache | Cross-tenant key collisions, long TTL | Tenant-scoped cache keys; TTL; invalidation on version bump; fail closed | Replica lag window |
-| T8 | Sensitive error bodies | Exceptions echo PII | `maskErrors: true` by default | Non-JSON errors |
+| T8 | Sensitive error bodies | Exceptions echo PII | `maskErrors: true` by default; missing policy fails closed; non-JSON guarded | Explicit `maskErrors: false` |
 | T9 | Bypass via non-JSON / streaming / compression | Content negotiation tricks | JSON-only masking; strip `Accept-Encoding`; SSE routes explicitly excluded and audited | Explicit bypass list |
 | T10 | Over-privileged read replicas | PIP connection can write or read unrelated schemas | Read-only credentials, per-domain views/grants | DBA review |
 | T11 | Supply chain | Malicious dependency or image | Stdlib-only reference; SBOM and signed images in CI; pinned digests | Build platform |
@@ -36,8 +36,10 @@ client ── untrusted ──▶ gateway ── verified identity ──▶ sid
                                       └── JSON response masking ──▶ client
 ```
 
-- The sidecar **never** accepts identity from the request body or from an
-  untrusted header. It relies on the gateway-sidecar trust chain.
+- The sidecar accepts identity from the request body only for resource
+  self-description (never for the subject). With
+  `CONTROLS_IDENTITY_HMAC_KEY`, it requires the gateway-signed envelope; without
+  it, raw headers are a development-only fallback.
 - The PIP **never** calls back through the sidecar. It has its own workload
   identity and its own database credentials.
 - Service-to-service traffic is authenticated with mTLS; the PIP API is not
