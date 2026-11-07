@@ -3,6 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.37.0] — 2026-11-07
+
+### Added
+
+- `examples/spring-accounts` includes `RegistryContractTest`: a pure-Java
+  Maven test that compares the committed registry with the OpenAPI
+  annotations. `mvn verify` catches drift without Go, Node or Docker; registry
+  generation remains a pipeline step.
+
 ## [0.36.0] — 2026-11-07
 
 ### Added

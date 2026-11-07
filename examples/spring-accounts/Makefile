@@ -23,6 +23,7 @@ registry:
 		-out examples/spring-accounts/controls/registry.json
 
 gate:
+	mvn -o -q test
 	cd $(ROOT) && $(GO) run ./tools/openapi-registry -check \
 		-openapi examples/spring-accounts/openapi.yaml \
 		-out examples/spring-accounts/controls/registry.json
