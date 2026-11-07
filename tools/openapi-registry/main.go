@@ -16,6 +16,7 @@ import (
 func main() {
 	openapiPath := flag.String("openapi", "", "OpenAPI 3 JSON or YAML document")
 	outPath := flag.String("out", "", "registry output (empty = stdout)")
+	service := flag.String("service", "", "service name stamped on generated endpoints")
 	check := flag.Bool("check", false, "fail if -out differs from the generated registry")
 	flag.Parse()
 	if *openapiPath == "" {
@@ -27,7 +28,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
 	}
-	reg, err := openapiregistry.Generate(*doc)
+	reg, err := openapiregistry.Generate(*doc, *service)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)

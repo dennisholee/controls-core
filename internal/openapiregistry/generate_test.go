@@ -24,7 +24,7 @@ func TestGenerate(t *testing.T) {
 			"x-self-describing":true
 		}`)},
 	}}
-	reg, err := Generate(doc)
+	reg, err := Generate(doc, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestGenerateRequiresBindings(t *testing.T) {
 	doc := openapidiff.Document{Paths: map[string]map[string]json.RawMessage{
 		"/x": {"get": json.RawMessage(`{"x-resource-type":"x"}`)},
 	}}
-	if _, err := Generate(doc); err == nil {
+	if _, err := Generate(doc, ""); err == nil {
 		t.Fatal("expected missing binding error")
 	}
 }

@@ -35,7 +35,7 @@ var methods = map[string]bool{
 // Generate builds a registry from all annotated operations. Unannotated
 // operations are skipped unless x-controls-ignore is set; annotated
 // operations missing required bindings fail.
-func Generate(doc openapidiff.Document) (config.Registry, error) {
+func Generate(doc openapidiff.Document, service string) (config.Registry, error) {
 	reg := config.Registry{Version: "1.0", DefaultUnregistered: "deny"}
 	for path, item := range doc.Paths {
 		for method, raw := range item {
@@ -87,6 +87,7 @@ func Generate(doc openapidiff.Document) (config.Registry, error) {
 			}
 			ep := config.Endpoint{
 				ID:                  id,
+				Service:             service,
 				Method:              strings.ToUpper(m),
 				Path:                path,
 				ResourceType:        op.ResourceType,

@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.38.2] — 2026-11-07
+
+### Fixed
+
+- `openapi-registry -service` stamps the service name on generated endpoints, so
+  the output satisfies the delivery registry convention used by
+  `controls-rules` and bundle filtering.
+
 ## [0.38.1] — 2026-11-07
 
 ### Fixed
