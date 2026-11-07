@@ -112,6 +112,8 @@ Resource creation with a self-describing payload:
 3. **OpenAPI diff**: every operation in the service's OpenAPI document has a
    registry entry, and every registry entry maps to a documented operation.
    This is the gate that prevents an unconfigured route from shipping.
+   Reference implementation: `tools/openapi-diff -openapi <json> -registry <json>`
+   (JSON input; convert YAML in the pipeline).
 4. **Fixture tests**: a request/response sample per endpoint, including a
    `_type` mismatch case, must produce the expected decision.
 

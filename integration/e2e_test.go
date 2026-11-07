@@ -14,7 +14,7 @@ import (
 	"example.com/controls/core/pip/server"
 )
 
-func newEngine(t *testing.T) (*engine.Engine, *httptest.Server) {
+func newEngine(t testing.TB) (*engine.Engine, *httptest.Server) {
 	t.Helper()
 	repo, err := server.LoadMemoryRepo("../pip/fixtures/attributes.json")
 	if err != nil {

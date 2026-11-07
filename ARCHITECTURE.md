@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.1.0`.
+Status: reference implementation `v0.2.0`.
 
 ## 1. Context and constraints
 
@@ -38,7 +38,10 @@ Status: reference implementation `v0.1.0`.
 | DQ | `internal/dq` | Multi-state validation; blocking only when configured |
 | PIP client | `internal/pipclient` | HTTP, projection, TTL cache, coalescing, breaker, fail-closed |
 | PIP server | `pip/server` | Batch/classification API over a read-only Repository |
-| Harness | `sidecar/cmd/sidecar` | HTTP harness used by tests; production adapter is ext_proc |
+| ext_proc adapter | `sidecar/extproc` | Envoy transport: header extraction, buffering, immediate responses, body mutation |
+| Harness | `sidecar/cmd/sidecar` | HTTP harness used locally and in integration tests |
+| OpenAPI gate | `internal/openapidiff`, `tools/openapi-diff` | Registry ↔ OpenAPI coverage check |
+| Benchmark | `integration/bench_test.go` | Decision/mask overhead regression signal |
 
 ## 3. Request flow
 
@@ -75,6 +78,11 @@ At 1,000 RPS/pod with 4 KB p99:
 CPU: roughly 0.1–0.3 vCPU per 1,000 RPS for the sidecar. At 5 pods, budget ~2
 vCPU and ~250 MB across the fleet for controls.
 
+Measured engine-only (Apple M2, Go 1.27, `make bench`): ~7 µs per decision
+without PIP, ~1.5 µs per read on a warm cache, ~11 µs to mask a 4 KB document.
+These exclude the Envoy ext_proc hop (~0.3–1 ms), which is the dominant term.
+The regression gate is the benchmark trend plus the p99 budget above.
+
 Cache requirements: hit rate >95% steady state; miss storm protection via
 per-key coalescing; TTL 30–60 s for attributes, hours for classification. The
 cache is keyed by type, id and field projection.
@@ -102,19 +110,24 @@ cache is keyed by type, id and field projection.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 
-## 7. ext_proc adapter (next increment)
+## 7. ext_proc adapter
 
-Envoy configuration to be added under `sidecar/envoy/`:
+Implemented in `sidecar/extproc`; Envoy configuration lives in
+[`sidecar/envoy/`](sidecar/envoy/README.md).
 
-- `ext_proc` with `request_body_mode: BUFFERED`, `response_body_mode: BUFFERED`.
-  At 4 KB p99 this is simpler and more debuggable than streamed modes.
-- Request phase: map HTTP request → `engine.Request`; call `ProcessRequest`;
-  return `ImmediateResponse` (403/503) or continue.
-- Response phase: call `MaskResponse`; return the mutated body with corrected
-  content length.
-- **Disable compression** for JSON routes (`Accept-Encoding` stripped) to avoid
-  decompress/recompress cost; 4 KB does not benefit from gzip.
-- Explicitly bypass SSE/streaming endpoints and audit the bypass.
+- One gRPC stream per HTTP request. `request_body_mode` and
+  `response_body_mode` are `BUFFERED`; the adapter tolerates chunked bodies but
+  is optimised for the single-message case.
+- Request phase: collect `:method`, `:path`, identity headers and body; call
+  `engine.ProcessRequest`; send an `ImmediateResponse` (403/404/503) or continue.
+- Response phase: collect the body; call `engine.MaskResponse`; return a body
+  mutation when the output changed, otherwise continue.
+- `failure_mode_allow: false` in Envoy, so an adapter outage fails closed.
+- Bodies are capped at `-max-body-bytes` (default 1 MiB). Oversize request bodies
+  get 413; an oversize response that requires masking gets 500 rather than
+  leaking unmasked data.
+- Compression is stripped for JSON routes; SSE/streaming routes must be excluded
+  and audited.
 - `ext_authz` remains available for coarse checks but is expected to be a no-op
   while the gateway owns route authz.
 
@@ -122,9 +135,9 @@ Envoy configuration to be added under `sidecar/envoy/`:
 
 | Gap | Impact | Plan |
 |---|---|---|
-| ext_proc adapter not implemented | Harness only; not deployable to Envoy yet | Next increment |
+| No live Envoy integration test | Adapter is tested against a fake stream, not a running Envoy | Add an Envoy + ext_proc smoke test in CI |
 | `freshness` validated but not enforced | Stale reads possible on `fresh` journeys | PIP lag metrics + enforcement |
 | Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
-| Registry/OpenAPI diff gate not in CI | Unconfigured routes possible | Add gate to delivery pipeline |
+| OpenAPI gate not wired into the delivery pipeline | Tool exists; an unconfigured route can still ship | Add `tools/openapi-diff` to the rules pipeline |
 | Decision log emitted to stdout only | No audit sink yet | OTel → collector |

@@ -1,0 +1,289 @@
+// Package extproc adapts the controls engine to Envoy's External Processing
+// filter (ext_proc).
+//
+// Envoy sends a bidirectional stream for each HTTP request: request headers,
+// request body, response headers, response body. With BUFFERED body modes each
+// body arrives in a single message, but this adapter tolerates chunking.
+//
+// The adapter owns transport concerns only: header extraction, buffering,
+// immediate responses and body mutation. Decisions and masking remain in
+// internal/engine.
+package extproc
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"log/slog"
+	"strings"
+
+	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
+	extprocv3 "github.com/envoyproxy/go-control-plane/envoy/service/ext_proc/v3"
+	typev3 "github.com/envoyproxy/go-control-plane/envoy/type/v3"
+
+	"example.com/controls/core/internal/config"
+	"example.com/controls/core/internal/engine"
+)
+
+// DefaultMaxBody bounds buffering per request and response.
+const DefaultMaxBody = 1 << 20 // 1 MiB
+
+// Config configures the adapter.
+type Config struct {
+	Engine       *engine.Engine
+	Log          *slog.Logger
+	MaxBodyBytes int
+}
+
+// Adapter implements the ext_proc ExternalProcessor service.
+type Adapter struct {
+	extprocv3.UnimplementedExternalProcessorServer
+	engine *engine.Engine
+	log    *slog.Logger
+	max    int
+}
+
+// New builds an adapter.
+func New(cfg Config) *Adapter {
+	if cfg.MaxBodyBytes <= 0 {
+		cfg.MaxBodyBytes = DefaultMaxBody
+	}
+	if cfg.Log == nil {
+		cfg.Log = slog.Default()
+	}
+	return &Adapter{engine: cfg.Engine, log: cfg.Log, max: cfg.MaxBodyBytes}
+}
+
+// stream is the subset of the gRPC stream the adapter needs (mockable).
+type stream interface {
+	Context() context.Context
+	Recv() (*extprocv3.ProcessingRequest, error)
+	Send(*extprocv3.ProcessingResponse) error
+}
+
+// Process implements the gRPC method.
+func (a *Adapter) Process(s extprocv3.ExternalProcessor_ProcessServer) error {
+	return a.Handle(s)
+}
+
+// Handle runs the per-request message loop.
+func (a *Adapter) Handle(s stream) error {
+	st := &state{headers: map[string]string{}}
+	for {
+		msg, err := s.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		resp, done, err := a.handleMessage(s.Context(), st, msg)
+		if err != nil {
+			return err
+		}
+		if resp != nil {
+			if err := s.Send(resp); err != nil {
+				return err
+			}
+		}
+		if done {
+			return nil
+		}
+	}
+}
+
+type state struct {
+	method   string
+	path     string
+	headers  map[string]string
+	reqBody  []byte
+	status   int
+	respBody []byte
+	endpoint *config.Endpoint
+}
+
+func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.ProcessingRequest) (*extprocv3.ProcessingResponse, bool, error) {
+	switch req := msg.GetRequest().(type) {
+	case *extprocv3.ProcessingRequest_RequestHeaders:
+		for _, h := range req.RequestHeaders.GetHeaders().GetHeaders() {
+			key := strings.ToLower(h.GetKey())
+			value := h.GetValue()
+			st.headers[key] = value
+		}
+		st.method = st.headers[":method"]
+		st.path = st.headers[":path"]
+		return continueRequestHeaders(), false, nil
+
+	case *extprocv3.ProcessingRequest_RequestBody:
+		st.reqBody = append(st.reqBody, req.RequestBody.GetBody()...)
+		if len(st.reqBody) > a.max {
+			return a.immediate(typev3.StatusCode_PayloadTooLarge, "request_body_too_large"), true, nil
+		}
+		if !req.RequestBody.GetEndOfStream() {
+			return continueRequestBody(), false, nil
+		}
+		res := a.engine.ProcessRequest(ctx, engine.Request{
+			Method:  st.method,
+			Path:    st.path,
+			Body:    st.reqBody,
+			Subject: subjectFromHeaders(st.headers),
+		})
+		st.endpoint = a.engine.Endpoint(st.method, st.path)
+		a.log.Info("decision",
+			"endpoint", res.EndpointID, "method", st.method, "path", st.path,
+			"resource", res.ResourceType+"/"+res.ResourceID,
+			"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,
+			"violations", len(res.Violations))
+		if !res.Allowed {
+			code := statusCode(res.Status)
+			return a.immediateWithReason(code, res.Reason), true, nil
+		}
+		return continueRequestBody(), false, nil
+
+	case *extprocv3.ProcessingRequest_RequestTrailers:
+		return continueRequestTrailers(), false, nil
+
+	case *extprocv3.ProcessingRequest_ResponseHeaders:
+		for _, h := range req.ResponseHeaders.GetHeaders().GetHeaders() {
+			if strings.EqualFold(h.GetKey(), ":status") {
+				switch strings.TrimSpace(h.GetValue()) {
+				case "200":
+					st.status = 200
+				case "400":
+					st.status = 400
+				case "401":
+					st.status = 401
+				case "403":
+					st.status = 403
+				case "404":
+					st.status = 404
+				case "500":
+					st.status = 500
+				case "503":
+					st.status = 503
+				}
+			}
+		}
+		return continueResponseHeaders(), false, nil
+
+	case *extprocv3.ProcessingRequest_ResponseBody:
+		st.respBody = append(st.respBody, req.ResponseBody.GetBody()...)
+		if !req.ResponseBody.GetEndOfStream() {
+			return continueResponseBody(), false, nil
+		}
+		if st.endpoint == nil {
+			return continueResponseBody(), false, nil
+		}
+		if len(st.respBody) > a.max {
+			return a.immediate(typev3.StatusCode_InternalServerError, "response_too_large_to_mask"), true, nil
+		}
+		masked, err := a.engine.MaskResponse(st.endpoint, st.respBody, st.status >= 400)
+		if err != nil {
+			return nil, false, err
+		}
+		if string(masked) == string(st.respBody) {
+			return continueResponseBody(), false, nil
+		}
+		return mutateResponseBody(masked), false, nil
+
+	case *extprocv3.ProcessingRequest_ResponseTrailers:
+		return continueResponseTrailers(), false, nil
+	}
+	return nil, false, nil
+}
+
+func subjectFromHeaders(headers map[string]string) engine.Subject {
+	sub := engine.Subject{
+		Sub:    headers["x-subject"],
+		Claims: map[string]string{},
+	}
+	for k, v := range headers {
+		if strings.HasPrefix(k, "x-claim-") {
+			sub.Claims[strings.TrimPrefix(k, "x-claim-")] = v
+		}
+	}
+	return sub
+}
+
+func (a *Adapter) immediate(code typev3.StatusCode, reason string) *extprocv3.ProcessingResponse {
+	return a.immediateWithReason(code, reason)
+}
+
+func (a *Adapter) immediateWithReason(code typev3.StatusCode, reason string) *extprocv3.ProcessingResponse {
+	body, _ := json.Marshal(map[string]string{"error": reason})
+	return &extprocv3.ProcessingResponse{
+		Response: &extprocv3.ProcessingResponse_ImmediateResponse{
+			ImmediateResponse: &extprocv3.ImmediateResponse{
+				Status: &typev3.HttpStatus{Code: code},
+				Body:   body,
+				Headers: &extprocv3.HeaderMutation{
+					SetHeaders: []*corev3.HeaderValueOption{{
+						Header: &corev3.HeaderValue{Key: "content-type", Value: "application/json"},
+					}},
+				},
+			},
+		},
+	}
+}
+
+func statusCode(status int) typev3.StatusCode {
+	switch status {
+	case 400:
+		return typev3.StatusCode_BadRequest
+	case 401:
+		return typev3.StatusCode_Unauthorized
+	case 404:
+		return typev3.StatusCode_NotFound
+	case 503:
+		return typev3.StatusCode_ServiceUnavailable
+	default:
+		return typev3.StatusCode_Forbidden
+	}
+}
+
+func continueRequestHeaders() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_RequestHeaders{
+		RequestHeaders: &extprocv3.HeadersResponse{},
+	}}
+}
+
+func continueRequestBody() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_RequestBody{
+		RequestBody: &extprocv3.BodyResponse{Response: &extprocv3.CommonResponse{}},
+	}}
+}
+
+func continueRequestTrailers() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_RequestTrailers{
+		RequestTrailers: &extprocv3.TrailersResponse{},
+	}}
+}
+
+func continueResponseHeaders() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_ResponseHeaders{
+		ResponseHeaders: &extprocv3.HeadersResponse{},
+	}}
+}
+
+func continueResponseBody() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_ResponseBody{
+		ResponseBody: &extprocv3.BodyResponse{Response: &extprocv3.CommonResponse{}},
+	}}
+}
+
+func continueResponseTrailers() *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_ResponseTrailers{
+		ResponseTrailers: &extprocv3.TrailersResponse{},
+	}}
+}
+
+func mutateResponseBody(body []byte) *extprocv3.ProcessingResponse {
+	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_ResponseBody{
+		ResponseBody: &extprocv3.BodyResponse{Response: &extprocv3.CommonResponse{
+			BodyMutation: &extprocv3.BodyMutation{
+				Mutation: &extprocv3.BodyMutation_Body{Body: body},
+			},
+		}},
+	}}
+}

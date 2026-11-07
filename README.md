@@ -22,22 +22,27 @@ client ─▶ gateway (authn + coarse authz) ─▶ Envoy sidecar ─▶ Spring 
 ## Layout
 
 ```
-sidecar/            Envoy ext_proc engine + local HTTP harness
+sidecar/extproc/    Envoy ext_proc adapter (production transport)
+sidecar/envoy/      reference Envoy filter/listener configuration
+sidecar/cmd/        extproc server + local HTTP harness
 pip/                Policy Information Point (HTTP API over read replicas)
-internal/           config, policy, mask, dq, pipclient, engine
+internal/           config, policy, mask, dq, pipclient, engine, openapidiff
 contracts/          normative schemas, specs and PIP OpenAPI
-integration/        end-to-end tests against a fake PIP + fixture payloads
+integration/        end-to-end tests and benchmarks
+tools/openapi-diff/ registry ↔ OpenAPI coverage gate
 docs/adr/           architecture decisions
 ```
 
 ## Quick start
 
-Requires Go 1.24+.
+Requires Go 1.26+.
 
 ```bash
 make test          # go test ./... (integration tests spin up a fake PIP)
+make bench         # engine latency/memory benchmarks
 make pip           # :8082, fixtures in pip/fixtures/attributes.json
-make sidecar       # :8081, bundle in integration/testdata/config
+make sidecar       # :8081, local HTTP harness
+make extproc       # :50051, Envoy ext_proc gRPC service
 ```
 
 Exercise the full pipeline:
@@ -71,7 +76,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.1.0` — reference implementation of the engine, masking, DQ and PIP contract.
-The Envoy `ext_proc` adapter, `freshness` enforcement and classification-driven
-fail-safe masking are specified but not yet wired. See
+`v0.2.0` — engine, masking, DQ, PIP contract, ext_proc adapter and OpenAPI
+coverage gate. `freshness` enforcement, classification-driven fail-safe masking
+and a live Envoy integration test remain outstanding. See
 [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

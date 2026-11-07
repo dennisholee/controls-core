@@ -11,6 +11,8 @@ manual review step.
 | Unit | Policy evaluation, masking math, DQ predicates, registry matching | `internal/*` |
 | Integration | Full pipeline: registry → PIP → policy → DQ → masking | `integration/` |
 | Contract | PIP API shape, schema compatibility | `contracts/`, PIP handler tests |
+| Transport | ext_proc message handling, immediate responses, body mutation | `sidecar/extproc` |
+| Coverage | Registry ↔ OpenAPI parity | `internal/openapidiff`, `tools/openapi-diff` |
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
 | Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
@@ -20,7 +22,8 @@ manual review step.
 ```bash
 make test        # go test ./...
 make vet         # go vet ./...
-make fmt-check   # gofmt -l
+make fmt-check   # gofmt check on tracked files
+make bench       # integration benchmarks
 ```
 
 The integration suite starts an in-process PIP over the fixture
@@ -68,7 +71,10 @@ Every endpoint in the registry needs a fixture:
 - Locked fields not relaxed.
 - Every endpoint has fixture cases 1–3 at minimum.
 - Conformance suite from `controls-rules` passes against the built sidecar.
-- Performance: p99 control overhead ≤ 3 ms at 1,200 RPS/pod.
+- `openapi-diff` reports no missing registry entry and no orphan entry.
+- ext_proc adapter tests pass (deny, PIP failure, masking, self-description).
+- Performance: p99 control overhead ≤ 3 ms at 1,200 RPS/pod; benchmark trend
+  must not regress without justification.
 
 ## 5. Adding an endpoint
 
@@ -91,6 +97,11 @@ Every endpoint in the registry needs a fixture:
 
 ## 7. Performance test plan
 
-Before enforcing in production, run at 1,200 RPS/pod with 4 KB payloads and
-record: p50/p99 added latency, CPU per 1k RPS, memory, PIP cache hit rate and
-PIP QPS. Store results in the release notes; regressions block release.
+`make bench` runs three engine benchmarks on representative 4 KB payloads:
+decision without PIP, read path with warm PIP cache, and response masking.
+Reference results on an Apple M2: ~7 µs, ~1.5 µs and ~11 µs respectively.
+
+Before enforcing in production, run at 1,200 RPS/pod through Envoy with 4 KB
+payloads and record: p50/p99 added latency, CPU per 1k RPS, memory, PIP cache
+hit rate and PIP QPS. Store results in the release notes; regressions block
+release.

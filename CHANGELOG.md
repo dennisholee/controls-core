@@ -3,6 +3,25 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.2.0] — 2026-11-07
+
+### Added
+
+- Envoy `ext_proc` adapter (`sidecar/extproc`) with BUFFERED body handling,
+  immediate responses, response masking, body-size limits and fail-closed
+  behaviour; gRPC server at `sidecar/cmd/extproc`.
+- Reference Envoy configuration: standalone listener and Istio guidance under
+  `sidecar/envoy/`.
+- Registry ↔ OpenAPI coverage gate (`internal/openapidiff`,
+  `tools/openapi-diff`) with tests.
+- Benchmarks for decision, PIP-warm-read and 4 KB masking paths; `make bench`.
+
+### Changed
+
+- Go directive raised to 1.26; added Envoy proto and gRPC dependencies.
+- `make fmt`/`fmt-check` now operate on tracked Go files only (the previous
+  recursive `gofmt` descended into the module cache).
+
 ## [0.1.0] — 2026-11-06
 
 ### Added

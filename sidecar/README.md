@@ -40,14 +40,22 @@ delivery pipeline, and passes its path via `-config`. The sidecar validates on
 load and refuses to start on an invalid bundle. Reload semantics: validate,
 atomic swap, keep last-known-good on failure.
 
-## Production adapter (next)
+## Production adapter
 
-- `envoy/ext_proc` with `request_body_mode: BUFFERED`,
-  `response_body_mode: BUFFERED`.
-- Strip `Accept-Encoding` on JSON routes; pass through non-JSON with an explicit
-  bypass audit record.
-- Convert engine results to `ImmediateResponse` (403/503) or continue.
-- Add the request id to the decision log and propagate it to the app.
+`cmd/extproc` runs the Envoy `ext_proc` gRPC service; the adapter is in
+`extproc/` and the Envoy configuration is in [`envoy/`](envoy/README.md).
+
+```bash
+go run ./sidecar/cmd/extproc -listen :50051 \
+  -config integration/testdata/config \
+  -pip http://127.0.0.1:8082
+```
+
+- `BUFFERED` request and response body modes; chunked bodies are tolerated.
+- Immediate responses for deny (403/404/503), body mutation for masking.
+- `failure_mode_allow: false` and a 1 MiB body cap by default.
+- Strip `Accept-Encoding` on JSON routes; non-JSON passes through unchanged and
+  must be handled at the gateway.
 
 ## Performance expectations
 

@@ -1,0 +1,21 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Accounts and payments", "version": "1.0.0" },
+  "paths": {
+    "/accounts/{accountId}": {
+      "get": {
+        "operationId": "getAccount",
+        "parameters": [
+          { "name": "accountId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "account" } }
+      }
+    },
+    "/payments": {
+      "post": {
+        "operationId": "createPayment",
+        "responses": { "201": { "description": "created" } }
+      }
+    }
+  }
+}
