@@ -6,4 +6,4 @@ not autonomous mergers.
 | Charter | Status | Scope |
 |---|---|---|
 | [conformance-steward.md](conformance-steward.md) | active | acceptance coverage and rule/test truthfulness |
-| [repo-steward.md](repo-steward.md) | proposed | structure, documentation, maintainability, release hygiene |
+| [repo-steward.md](repo-steward.md) | active | structure, documentation, maintainability, release hygiene |

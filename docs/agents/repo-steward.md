@@ -1,6 +1,7 @@
 # Agent charter: repository steward (proposed)
 
-Status: **proposed**. Applies to `controls-core` and `controls-rules`.
+Status: **active**. Deterministic checks run in CI (`make steward`); the
+judgment layer runs as a read-only monthly review. Applies to `controls-core` and `controls-rules`.
 This is a *role*, not an autonomous merger. It reviews and recommends; humans
 own structure, licensing, ownership and architecture decisions.
 
