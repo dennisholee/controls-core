@@ -36,6 +36,7 @@ application. The alerts above map to these series:
 | PIP latency | `histogram_quantile(0.99, rate(pip_request_duration_seconds_bucket[5m]))` |
 | PIP misses | `rate(pip_attributes_total{found="false"}[5m])` |
 | PIP replica lag | `pip_lag_seconds{resource_type}` |
+| PIP overload | `rate(pip_rejected_total{reason="concurrency"}[5m])` |
 
 PIP latency is currently visible only as end-to-end control latency; a
 dedicated PIP histogram is a follow-up if the alert proves too coarse.

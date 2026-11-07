@@ -24,6 +24,7 @@ func main() {
 	fixtures := flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
 	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
 	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
+	maxConcurrent := flag.Int("max-concurrent", 0, "max in-flight requests (0 = unlimited)")
 	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
@@ -46,7 +47,11 @@ func main() {
 		repo = r
 	}
 	reg := metrics.New()
-	handler := server.New(repo, log, server.WithLagSeconds(*lagSeconds), server.WithMetrics(reg)).Handler()
+	handler := server.New(repo, log,
+		server.WithLagSeconds(*lagSeconds),
+		server.WithMetrics(reg),
+		server.WithMaxConcurrent(*maxConcurrent),
+	).Handler()
 	if *metricsAddr != "" {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", reg.Handler())

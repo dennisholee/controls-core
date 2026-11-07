@@ -22,10 +22,20 @@ type Server struct {
 	mux        *http.ServeMux
 	lagSeconds int
 	reg        *metrics.Registry
+	limit      chan struct{}
 }
 
 // Option configures the PIP server.
 type Option func(*Server)
+
+// WithMaxConcurrent bounds in-flight PIP requests. Zero means unlimited.
+func WithMaxConcurrent(n int) Option {
+	return func(s *Server) {
+		if n > 0 {
+			s.limit = make(chan struct{}, n)
+		}
+	}
+}
 
 // WithMetrics records request, attribute and lag metrics.
 func WithMetrics(reg *metrics.Registry) Option { return func(s *Server) { s.reg = reg } }
@@ -50,8 +60,26 @@ func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 	return s
 }
 
-// Handler returns the HTTP handler (used directly by tests).
-func (s *Server) Handler() http.Handler { return s.mux }
+// Handler returns the HTTP handler, with the concurrency limit applied when
+// configured.
+func (s *Server) Handler() http.Handler {
+	if s.limit == nil {
+		return s.mux
+	}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case s.limit <- struct{}{}:
+			defer func() { <-s.limit }()
+			s.mux.ServeHTTP(w, r)
+		default:
+			if s.reg != nil {
+				s.reg.Inc("pip_rejected_total", "PIP requests rejected before processing.",
+					map[string]string{"reason": "concurrency"}, 1)
+			}
+			http.Error(w, `{"error":"overloaded"}`, http.StatusServiceUnavailable)
+		}
+	})
+}
 
 func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()

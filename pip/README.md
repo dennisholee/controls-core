@@ -108,6 +108,10 @@ without saturating the replicas.
 - `pip_request_duration_seconds{endpoint}` (histogram)
 - `pip_attributes_total{resource_type,found}`
 - `pip_lag_seconds{resource_type}`
+- `pip_rejected_total{reason}` (concurrency saturation)
+
+`-max-concurrent` bounds in-flight requests; excess requests get `503
+{"error":"overloaded"}` instead of queueing behind a slow upstream.
 
 ## Failure behaviour
 

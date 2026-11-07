@@ -12,12 +12,13 @@ imagePullSecrets: []
 pip:
   enabled: true
   image: registry.example.com/controls-pip
-  tag: "0.13.1"
+  tag: "0.14.0"
   pullPolicy: IfNotPresent
   replicas: 2
   port: 8082
   metricsPort: 9090
   lagSeconds: 0
+  maxConcurrent: 256
   serviceAccount:
     create: true
     name: ""

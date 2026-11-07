@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -150,4 +151,55 @@ func TestMetricsRecorded(t *testing.T) {
 			t.Fatalf("missing %q in:\n%s", want, text)
 		}
 	}
+}
+
+type blockingRepo struct {
+	repo    Repository
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (b blockingRepo) Get(ctx context.Context, typ, id string, fields []string) (Resource, error) {
+	select {
+	case b.entered <- struct{}{}:
+	default:
+	}
+	<-b.release
+	return b.repo.Get(ctx, typ, id, fields)
+}
+
+func (b blockingRepo) Classification(ctx context.Context, typ string) (map[string]string, bool, error) {
+	return b.repo.Classification(ctx, typ)
+}
+
+func TestConcurrencyLimit(t *testing.T) {
+	base, err := LoadMemoryRepo("../fixtures/attributes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := blockingRepo{repo: base, entered: make(chan struct{}, 1), release: make(chan struct{})}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(repo, log, WithMaxConcurrent(1)).Handler())
+	t.Cleanup(srv.Close)
+
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+	}})
+	go func() {
+		resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	<-repo.entered
+
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	close(repo.release)
 }

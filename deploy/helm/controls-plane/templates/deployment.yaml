@@ -54,6 +54,8 @@ spec:
             - "{{ .Values.pip.lagSeconds }}"
             - -metrics-addr
             - ":{{ .Values.pip.metricsPort }}"
+            - -max-concurrent
+            - "{{ .Values.pip.maxConcurrent }}"
           ports:
             - name: http
               containerPort: {{ .Values.pip.port }}

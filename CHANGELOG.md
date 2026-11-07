@@ -3,6 +3,13 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.14.0] — 2026-11-07
+
+### Added
+
+- PIP concurrency limit (`-max-concurrent`, chart default 256) returning
+  `503 overloaded` and exposing `pip_rejected_total{reason="concurrency"}`.
+
 ## [0.13.1] — 2026-11-07
 
 ### Fixed
