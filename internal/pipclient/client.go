@@ -10,10 +10,13 @@ package pipclient
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -78,15 +81,16 @@ type call struct {
 
 // Client calls the PIP over HTTP.
 type Client struct {
-	base    string
-	http    *http.Client
-	ttl     time.Duration
-	mu      sync.Mutex
-	cache   map[string]cacheEntry
-	class   map[string]classEntry
-	flights map[string]*call
-	fails   int
-	openTil time.Time
+	base      string
+	http      *http.Client
+	ttl       time.Duration
+	mu        sync.Mutex
+	cache     map[string]cacheEntry
+	class     map[string]classEntry
+	flights   map[string]*call
+	fails     int
+	openTil   time.Time
+	tlsConfig *tls.Config
 }
 
 // Option configures the client.
@@ -97,6 +101,38 @@ func WithTimeout(d time.Duration) Option { return func(c *Client) { c.http.Timeo
 
 // WithDefaultTTL sets the cache TTL when the PIP does not return one.
 func WithDefaultTTL(d time.Duration) Option { return func(c *Client) { c.ttl = d } }
+
+// WithTLSConfig enables TLS (typically mutual TLS) for PIP requests.
+func WithTLSConfig(cfg *tls.Config) Option { return func(c *Client) { c.tlsConfig = cfg } }
+
+// TLSConfig builds a client TLS configuration from PEM files. Any of the
+// arguments may be empty; caFile adds a private root, certFile/keyFile add a
+// client certificate.
+func TLSConfig(caFile, certFile, keyFile, serverName string) (*tls.Config, error) {
+	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: serverName}
+	if caFile != "" {
+		raw, err := os.ReadFile(caFile)
+		if err != nil {
+			return nil, fmt.Errorf("read pip ca: %w", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(raw) {
+			return nil, fmt.Errorf("pip ca contains no certificates")
+		}
+		cfg.RootCAs = pool
+	}
+	if (certFile == "") != (keyFile == "") {
+		return nil, fmt.Errorf("pip client cert and key must be set together")
+	}
+	if certFile != "" {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("load pip client certificate: %w", err)
+		}
+		cfg.Certificates = []tls.Certificate{cert}
+	}
+	return cfg, nil
+}
 
 // New builds a PIP client.
 func New(base string, opts ...Option) *Client {
@@ -117,6 +153,11 @@ func New(base string, opts ...Option) *Client {
 	}
 	for _, o := range opts {
 		o(c)
+	}
+	if c.tlsConfig != nil {
+		if tr, ok := c.http.Transport.(*http.Transport); ok {
+			tr.TLSClientConfig = c.tlsConfig
+		}
 	}
 	return c
 }

@@ -56,6 +56,14 @@ spec:
             - ":{{ .Values.pip.metricsPort }}"
             - -max-concurrent
             - "{{ .Values.pip.maxConcurrent }}"
+            {{- if .Values.pip.tls.enabled }}
+            - -tls-cert
+            - /etc/controls-tls/{{ .Values.pip.tls.certKey }}
+            - -tls-key
+            - /etc/controls-tls/{{ .Values.pip.tls.keyKey }}
+            - -client-ca
+            - /etc/controls-tls/{{ .Values.pip.tls.clientCAKey }}
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.pip.port }}
@@ -98,6 +106,11 @@ spec:
               mountPath: /etc/controls-sources
               readOnly: true
             {{- end }}
+            {{- if .Values.pip.tls.enabled }}
+            - name: tls
+              mountPath: /etc/controls-tls
+              readOnly: true
+            {{- end }}
             {{- with .Values.pip.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -113,6 +126,11 @@ spec:
         - name: sources
           configMap:
             name: {{ include "controls-plane.fullname" . }}-sources
+        {{- end }}
+        {{- if .Values.pip.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ required "pip.tls.secretName is required" .Values.pip.tls.secretName }}
         {{- end }}
         {{- with .Values.pip.extraVolumes }}
         {{- toYaml . | nindent 8 }}

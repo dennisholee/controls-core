@@ -12,13 +12,21 @@ imagePullSecrets: []
 pip:
   enabled: true
   image: registry.example.com/controls-pip
-  tag: "0.14.0"
+  tag: "0.15.0"
   pullPolicy: IfNotPresent
   replicas: 2
   port: 8082
   metricsPort: 9090
   lagSeconds: 0
   maxConcurrent: 256
+  # Server TLS / mTLS for the PIP API. The secret must contain the server
+  # certificate, key and (for mTLS) the client CA.
+  tls:
+    enabled: false
+    secretName: ""
+    certKey: tls.crt
+    keyKey: tls.key
+    clientCAKey: ca.crt
   serviceAccount:
     create: true
     name: ""
@@ -70,6 +78,13 @@ sidecar:
   auditSaltKey: salt
   bundlePublicKeySecret: ""
   bundlePublicKeyKey: public-key.pem
+  # Client TLS material for sidecar -> PIP mTLS. Mounted by the service chart.
+  pipTLS:
+    caSecret: ""
+    caKey: ca.crt
+    certSecret: ""
+    certKey: tls.crt
+    keyKey: tls.key
 
 networkPolicy:
   enabled: true

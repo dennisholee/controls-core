@@ -41,8 +41,10 @@ for any environment containing real data.
 Status: **deployment controls provided.** The Helm chart applies a
 NetworkPolicy that admits only pods labeled `controls-plane/sidecar=true`, and
 optional Istio `PeerAuthentication: STRICT` plus an `AuthorizationPolicy`
-limited to listed service-account principals. The finding remains open until
-the chart is installed and the policy is verified in the target cluster.
+limited to listed service-account principals. Application-level mutual TLS is
+also available (`pip -tls-cert/-tls-key/-client-ca` and sidecar
+`-pip-ca/-pip-cert/-pip-key`). The finding remains open until one of these is
+installed and verified; per-caller field authorization is still a follow-up.
 
 ### C2 — Identity headers are trusted without verification at the sidecar
 Evidence: [`sidecar/extproc/adapter.go:231`](../sidecar/extproc/adapter.go#L231)

@@ -99,6 +99,16 @@ Two levels, deliberately different TTLs:
 The sidecar coalesces misses; the PIP must survive a cold-start stampede
 without saturating the replicas.
 
+## Transport security
+
+- Server TLS: `-tls-cert` / `-tls-key`.
+- Mutual TLS: add `-client-ca` to require a verified client certificate.
+- Sidecar client: `-pip-ca`, `-pip-cert`, `-pip-key`, `-pip-server-name`
+  (`CONTROLS_PIP_*`); these enable HTTPS plus client-certificate
+  authentication. `pipclient.TLSConfig` is tested against a real mTLS server.
+- The admin listener (`-metrics-addr`) stays plaintext and should be restricted
+  to the monitoring network.
+
 ## Metrics
 
 `-metrics-addr` (default `:9090`) serves `/metrics`, `/healthz` and `/readyz`:

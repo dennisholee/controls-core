@@ -3,6 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.15.0] — 2026-11-07
+
+### Added
+
+- Application-level TLS/mTLS for the PIP (`-tls-cert`, `-tls-key`,
+  `-client-ca`) and sidecar client TLS (`-pip-ca`, `-pip-cert`, `-pip-key`,
+  `-pip-server-name`, `CONTROLS_PIP_*`), with a real mTLS integration test.
+- Chart support for `pip.tls` and documented `sidecar.pipTLS` material.
+
 ## [0.14.0] — 2026-11-07
 
 ### Added

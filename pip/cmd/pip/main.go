@@ -6,6 +6,8 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"log/slog"
 	"net/http"
@@ -25,6 +27,9 @@ func main() {
 	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
 	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
 	maxConcurrent := flag.Int("max-concurrent", 0, "max in-flight requests (0 = unlimited)")
+	tlsCert := flag.String("tls-cert", "", "server certificate for PIP HTTPS")
+	tlsKey := flag.String("tls-key", "", "server key for PIP HTTPS")
+	clientCA := flag.String("client-ca", "", "CA bundle for mutual TLS client verification")
 	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
@@ -71,9 +76,39 @@ func main() {
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 	}
+	if (*tlsCert == "") != (*tlsKey == "") {
+		log.Error("tls-cert and tls-key must be set together")
+		os.Exit(1)
+	}
+	if *tlsCert != "" {
+		srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+		if *clientCA != "" {
+			raw, err := os.ReadFile(*clientCA)
+			if err != nil {
+				log.Error("read client CA", "err", err)
+				os.Exit(1)
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(raw) {
+				log.Error("client CA contains no certificates")
+				os.Exit(1)
+			}
+			srv.TLSConfig.ClientCAs = pool
+			srv.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+	} else if *clientCA != "" {
+		log.Error("client-ca requires tls-cert and tls-key")
+		os.Exit(1)
+	}
 	go func() {
-		log.Info("pip listening", "addr", *addr)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Info("pip listening", "addr", *addr, "mtls", srv.TLSConfig != nil && srv.TLSConfig.ClientAuth != tls.NoClientCert)
+		var err error
+		if srv.TLSConfig != nil {
+			err = srv.ListenAndServeTLS(*tlsCert, *tlsKey)
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			log.Error("listen", "err", err)
 			os.Exit(1)
 		}

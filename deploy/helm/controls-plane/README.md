@@ -34,7 +34,7 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 
 | Finding | Control |
 |---|---|
-| C1 — PIP reachable without identity | NetworkPolicy admits only pods labeled `controls-plane/sidecar=true`; optional Istio `PeerAuthentication: STRICT` and an `AuthorizationPolicy` limited to listed service-account principals |
+| C1 — PIP reachable without identity | NetworkPolicy admits only pods labeled `controls-plane/sidecar=true`; optional Istio `PeerAuthentication: STRICT` / `AuthorizationPolicy`; optional application mTLS via `pip.tls` plus sidecar client TLS |
 | C2 — sidecar identity spoofing | NetworkPolicy admits the sidecar's app port only from the gateway namespace/pod selector; the sidecar must still strip/re-inject identity headers at the gateway |
 | H1 — unsigned bundles | The sidecar receives `-bundle-pubkey`; the chart mounts only the public key |
 | L2 — open metrics | PIP and sidecar metrics ports are admitted only from the monitoring namespace selector |
@@ -48,6 +48,8 @@ helm template controls deploy/helm/controls-plane --namespace controls \
   `networkPolicy.pip.sidecarNamespaceSelector`.
 - Set `sidecar.bundlePublicKeySecret` so the sidecar can verify bundles.
 - `pip.egress.databaseCIDRs` must list the read replicas.
+- For application mTLS set `pip.tls.enabled` and `pip.tls.secretName`, and
+  configure the sidecar client with `sidecar.pipTLS` material.
 
 ## Caveats
 

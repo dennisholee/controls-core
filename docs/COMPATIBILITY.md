@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.15.x | 1.0.x | 1.0.x | 1.0.x | PIP mTLS |
 | 0.14.x | 1.0.x | 1.0.x | 1.0.x | PIP concurrency limit |
 | 0.13.x | 1.0.x | 1.0.x | 1.0.x | PIP metrics |
 | 0.12.x | 1.0.x | 1.0.x | 1.0.x | HTTP attribute sources |
