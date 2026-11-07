@@ -32,17 +32,20 @@ const DefaultMaxBody = 1 << 20 // 1 MiB
 
 // Config configures the adapter.
 type Config struct {
-	Engine       *engine.Engine
-	Log          *slog.Logger
-	MaxBodyBytes int
+	Engine *engine.Engine
+	// EngineProvider, when set, is consulted per message so a reload can swap
+	// the engine without restarting the stream adapter.
+	EngineProvider func() *engine.Engine
+	Log            *slog.Logger
+	MaxBodyBytes   int
 }
 
 // Adapter implements the ext_proc ExternalProcessor service.
 type Adapter struct {
 	extprocv3.UnimplementedExternalProcessorServer
-	engine *engine.Engine
-	log    *slog.Logger
-	max    int
+	engineFn func() *engine.Engine
+	log      *slog.Logger
+	max      int
 }
 
 // New builds an adapter.
@@ -53,7 +56,12 @@ func New(cfg Config) *Adapter {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	return &Adapter{engine: cfg.Engine, log: cfg.Log, max: cfg.MaxBodyBytes}
+	fn := cfg.EngineProvider
+	if fn == nil {
+		fixed := cfg.Engine
+		fn = func() *engine.Engine { return fixed }
+	}
+	return &Adapter{engineFn: fn, log: cfg.Log, max: cfg.MaxBodyBytes}
 }
 
 // stream is the subset of the gRPC stream the adapter needs (mockable).
@@ -179,7 +187,7 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 		if len(st.respBody) > a.max {
 			return a.immediate(typev3.StatusCode_InternalServerError, "response_too_large_to_mask"), true, nil
 		}
-		masked, err := a.engine.MaskResponseCtx(ctx, st.endpoint, st.respBody, st.status >= 400)
+		masked, err := a.engineFn().MaskResponseCtx(ctx, st.endpoint, st.respBody, st.status >= 400)
 		if err != nil {
 			return nil, false, err
 		}
@@ -202,13 +210,13 @@ func (a *Adapter) decide(ctx context.Context, st *state) (*extprocv3.ProcessingR
 		return nil, nil
 	}
 	st.decided = true
-	res := a.engine.ProcessRequest(ctx, engine.Request{
+	res := a.engineFn().ProcessRequest(ctx, engine.Request{
 		Method:  st.method,
 		Path:    st.path,
 		Body:    st.reqBody,
 		Subject: subjectFromHeaders(st.headers),
 	})
-	st.endpoint = a.engine.Endpoint(st.method, st.path)
+	st.endpoint = a.engineFn().Endpoint(st.method, st.path)
 	a.log.Debug("decision",
 		"endpoint", res.EndpointID, "method", st.method, "path", st.path,
 		"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,

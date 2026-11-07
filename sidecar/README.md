@@ -62,6 +62,9 @@ CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
   JSON on stdout (hashed identifiers, denials always, allows sampled).
 - `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) enables Ed25519 verification of
   `manifest.sig`; startup fails if the bundle was modified or unsigned.
+- `-reload-interval` (default 30s) polls the bundle directory; `SIGHUP` forces a
+  reload. Every reload re-verifies the signature, swaps the engine atomically,
+  and keeps the previous bundle on any error.
 
 The adapter is exercised against a live Envoy 1.40 by `make smoke`
 ([`hack/envoy-smoke.sh`](../hack/envoy-smoke.sh)).

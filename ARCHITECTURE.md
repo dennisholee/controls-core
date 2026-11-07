@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.8.0`.
+Status: reference implementation `v0.9.0`.
 
 ## 1. Context and constraints
 
@@ -120,6 +120,9 @@ cache is keyed by type, id and field projection.
 - **Bundle integrity**: the sidecar verifies `manifest.sig` against the
   recomputed digest when `-bundle-pubkey` is set, and refuses to start when the
   bundle is modified or unsigned.
+- **Reload**: the bundle directory is polled every 30s (configurable) and
+  `SIGHUP` forces a reload. Each reload re-verifies the signature, rebuilds the
+  engine and atomically swaps it; failures keep the last-known-good bundle.
 - **Deployment controls**: the Helm chart
   ([`deploy/helm/controls-plane`](deploy/helm/controls-plane)) deploys the PIP
   with NetworkPolicies (gateway → sidecar, sidecar → PIP, monitoring → metrics)

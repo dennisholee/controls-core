@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.9.x | 1.0.x | 1.0.x | 1.0.x | bundle reload |
 | 0.8.x | 1.0.x | 1.0.x | 1.0.x | Cedar policy engine |
 | 0.7.x | 1.0.x | 1.0.x | 1.0.x | Helm deployment controls |
 | 0.6.x | 1.0.x | 1.0.x | 1.0.x | bundle signing |

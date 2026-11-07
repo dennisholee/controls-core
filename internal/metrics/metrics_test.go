@@ -78,3 +78,12 @@ func TestObserver(t *testing.T) {
 		}
 	}
 }
+
+func TestResetFamily(t *testing.T) {
+	r := New()
+	r.Set("controls_bundle_info", "Bundle.", map[string]string{"bundle_version": "old"}, 1)
+	r.Reset("controls_bundle_info")
+	if out := snap(t, r); strings.Contains(out, "bundle_version=\"old\"") {
+		t.Fatalf("stale series remained:\n%s", out)
+	}
+}

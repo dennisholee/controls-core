@@ -1,5 +1,5 @@
 // Command extproc runs the Envoy External Processing (ext_proc) adapter with
-// decision audit and Prometheus metrics.
+// decision audit, Prometheus metrics and bundle reload.
 package main
 
 import (
@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -34,6 +35,7 @@ func main() {
 	auditSample := flag.Float64("audit-sample", 0.01, "fraction of allowed decisions to audit (denials always logged)")
 	auditSalt := flag.String("audit-salt", os.Getenv("CONTROLS_AUDIT_SALT"), "salt for identifier hashing (required in production)")
 	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
+	reloadInterval := flag.Duration("reload-interval", 30*time.Second, "bundle polling interval (0 disables polling; SIGHUP still reloads)")
 	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
 
@@ -43,48 +45,23 @@ func main() {
 	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 
-	bundle, err := config.LoadDir(*cfgDir)
-	if err != nil {
-		log.Error("invalid controls bundle", "err", err)
-		os.Exit(1)
-	}
 	if *auditSalt == "" {
 		log.Error("CONTROLS_AUDIT_SALT is required; refusing to start with a predictable audit salt")
 		os.Exit(1)
 	}
-	if *bundlePubKey != "" {
-		if err := signing.VerifyDir(*cfgDir, *bundlePubKey); err != nil {
-			log.Error("bundle signature verification failed", "err", err)
-			os.Exit(1)
-		}
-		log.Info("bundle signature verified")
-	} else {
+	if *bundlePubKey == "" {
 		log.Warn("bundle signature not verified; set -bundle-pubkey in production")
 	}
 
-	eng := engine.New(bundle, pipclient.New(*pipURL))
-	if err := eng.StartupError(); err != nil {
-		log.Error("policy engine initialisation failed", "err", err)
+	registry := metrics.New()
+	rs, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, registry)
+	if err != nil {
+		log.Error("cannot start controls bundle", "err", err)
 		os.Exit(1)
 	}
-	registry := metrics.New()
-	observer := metrics.NewObserver(registry)
-	observer.Bundle(manifestValue(bundle, "version"), manifestValue(bundle, "digest"), manifestValue(bundle, "schema"))
-	policyVersion := bundle.Rules.Version
-	if policyVersion == "" {
-		policyVersion = "1.0"
-	}
-	auditLog := audit.New(audit.Config{
-		Out:           os.Stdout,
-		Salt:          *auditSalt,
-		AllowSample:   *auditSample,
-		PolicyVersion: policyVersion,
-		BundleVersion: manifestValue(bundle, "version"),
-	})
-	eng.SetHooks(engine.Hooks{OnDecision: func(d engine.Decision) {
-		observer.Record(d)
-		auditLog.Record(d)
-	}})
+	var current atomic.Pointer[runtimeState]
+	current.Store(rs)
+	log.Info("controls bundle loaded", "version", rs.version, "digest", rs.digest)
 
 	if *metricsAddr != "" {
 		mux := http.NewServeMux()
@@ -107,9 +84,9 @@ func main() {
 	}
 	server := grpc.NewServer()
 	extprocv3.RegisterExternalProcessorServer(server, extproc.New(extproc.Config{
-		Engine:       eng,
-		Log:          log,
-		MaxBodyBytes: *maxBody,
+		EngineProvider: func() *engine.Engine { return current.Load().engine },
+		Log:            log,
+		MaxBodyBytes:   *maxBody,
 	}))
 	go func() {
 		log.Info("extproc listening", "addr", *listen, "config", *cfgDir, "pip", *pipURL)
@@ -119,10 +96,100 @@ func main() {
 		}
 	}()
 
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		var tick <-chan time.Time
+		if *reloadInterval > 0 {
+			t := time.NewTicker(*reloadInterval)
+			defer t.Stop()
+			tick = t.C
+		}
+		last := rs.fingerprint
+		lastFail := ""
+		reload := func(force bool, reason string) {
+			fp, err := config.Fingerprint(*cfgDir)
+			if err != nil {
+				log.Error("bundle fingerprint failed", "err", err)
+				return
+			}
+			if !force && (fp == last || fp == lastFail) {
+				return
+			}
+			next, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, registry)
+			if err != nil {
+				lastFail = fp
+				log.Error("bundle reload failed; keeping previous", "reason", reason, "err", err)
+				return
+			}
+			old := current.Swap(next)
+			last = fp
+			lastFail = ""
+			log.Info("bundle reloaded", "reason", reason, "version", next.version,
+				"digest", next.digest, "previous", old.version)
+		}
+		for {
+			select {
+			case <-hup:
+				reload(true, "SIGHUP")
+			case <-tick:
+				reload(false, "poll")
+			}
+		}
+	}()
+
 	<-stop
 	server.GracefulStop()
+}
+
+type runtimeState struct {
+	engine      *engine.Engine
+	version     string
+	digest      string
+	fingerprint string
+}
+
+func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey string, reg *metrics.Registry) (*runtimeState, error) {
+	bundle, err := config.LoadDir(cfgDir)
+	if err != nil {
+		return nil, err
+	}
+	if pubkey != "" {
+		if err := signing.VerifyDir(cfgDir, pubkey); err != nil {
+			return nil, err
+		}
+	}
+	eng := engine.New(bundle, pipclient.New(pipURL))
+	if err := eng.StartupError(); err != nil {
+		return nil, err
+	}
+	observer := metrics.NewObserver(reg)
+	version, digest, schema := manifestValue(bundle, "version"), manifestValue(bundle, "digest"), manifestValue(bundle, "schema")
+	reg.Reset("controls_bundle_info")
+	observer.Bundle(version, digest, schema)
+	policyVersion := bundle.Rules.Version
+	if policyVersion == "" {
+		policyVersion = "1.0"
+	}
+	al := audit.New(audit.Config{
+		Out:           os.Stdout,
+		Salt:          salt,
+		AllowSample:   sample,
+		PolicyVersion: policyVersion,
+		BundleVersion: version,
+	})
+	eng.SetHooks(engine.Hooks{OnDecision: func(d engine.Decision) {
+		observer.Record(d)
+		al.Record(d)
+	}})
+	fp, err := config.Fingerprint(cfgDir)
+	if err != nil {
+		return nil, err
+	}
+	return &runtimeState{engine: eng, version: version, digest: digest, fingerprint: fp}, nil
 }
 
 func manifestValue(b *config.Bundle, field string) string {

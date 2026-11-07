@@ -220,3 +220,41 @@ func TestBodylessRequestWithRawPseudoHeaders(t *testing.T) {
 		t.Fatalf("not masked: %v", doc)
 	}
 }
+
+// A reload swaps the engine under the adapter without restarting the stream
+// handler: the provider is consulted for each request.
+func TestEngineProviderSwap(t *testing.T) {
+	bundle, err := config.LoadDir("../../integration/testdata/config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	allow := engine.New(bundle, fakePIP{})
+	denyBundle := *bundle
+	denyBundle.Rules = config.Rules{Version: "1.0", DefaultEffect: "deny"}
+	deny := engine.New(&denyBundle, fakePIP{})
+
+	current := allow
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	a := New(Config{EngineProvider: func() *engine.Engine { return current }, Log: log})
+
+	run := func() *extprocv3.ProcessingResponse {
+		s := &fakeStream{reqs: []*extprocv3.ProcessingRequest{
+			headerReq("GET", "/accounts/A123", map[string]string{"x-subject": "u-1", "x-claim-region": "US"}),
+			bodyReq(""),
+			respHeadersReq("200"),
+			respBodyReq(`{"ssn":"111-22-3333"}`),
+		}}
+		if err := a.Handle(s); err != nil {
+			t.Fatal(err)
+		}
+		return s.sent[len(s.sent)-1]
+	}
+
+	if first := run(); first.GetImmediateResponse() != nil {
+		t.Fatalf("expected allow before reload, got %+v", first)
+	}
+	current = deny
+	if second := run(); second.GetImmediateResponse() == nil {
+		t.Fatalf("expected deny after reload, got %+v", second)
+	}
+}

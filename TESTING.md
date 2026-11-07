@@ -20,6 +20,7 @@ manual review step.
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
 | Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
+| Reload | Poll/SIGHUP swap, last-known-good on invalid bundle | `config.Fingerprint`, adapter provider test, manual smoke |
 | Smoke | Real Envoy → ext_proc → engine → app | `hack/envoy-smoke.sh`, `make smoke` |
 
 ## 2. Running
@@ -110,7 +111,9 @@ Every endpoint in the registry needs a fixture:
 - PIP stopped mid-traffic: expect 503s, no unmasked responses, no 200s.
 - PIP latency > timeout: breaker opens, fail closed, recovery after 5 s.
 - Corrupt bundle at boot: pod not ready.
-- Corrupt bundle on reload: last-known-good retained, alert raised.
+- Corrupt bundle on reload: last-known-good retained, alert raised. Verified by
+  polling a modified directory and by `kill -HUP`; signature failure is checked
+  on every reload.
 - Mask policy removed while endpoint references it: startup validation fails.
 
 ## 6b. Bundle and conformance

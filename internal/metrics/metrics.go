@@ -230,3 +230,11 @@ func labelsWith(labels map[string]string, key, value string) string {
 func formatFloat(v float64) string {
 	return strconv.FormatFloat(v, 'g', -1, 64)
 }
+
+// Reset drops a metric family. Used when the bundle info gauge is replaced
+// after a reload so stale label sets do not linger.
+func (r *Registry) Reset(name string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.families, name)
+}
