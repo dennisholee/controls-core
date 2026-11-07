@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"example.com/controls/core/internal/metrics"
@@ -18,16 +19,21 @@ const (
 
 // Server exposes the PIP HTTP API.
 type Server struct {
-	repo       Repository
-	log        *slog.Logger
-	mux        *http.ServeMux
-	lagSeconds int
-	reg        *metrics.Registry
-	limit      chan struct{}
+	repo          Repository
+	log           *slog.Logger
+	mux           *http.ServeMux
+	lagSeconds    int
+	reg           *metrics.Registry
+	limit         chan struct{}
+	requireCaller bool
 }
 
 // Option configures the PIP server.
 type Option func(*Server)
+
+// WithRequireCaller rejects API calls that have no authenticated caller
+// identity (for example when PIP mTLS is not enabled).
+func WithRequireCaller(v bool) Option { return func(s *Server) { s.requireCaller = v } }
 
 // WithMaxConcurrent bounds in-flight PIP requests. Zero means unlimited.
 func WithMaxConcurrent(n int) Option {
@@ -65,6 +71,16 @@ func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 // limit applied when configured.
 func (s *Server) Handler() http.Handler {
 	base := callerMiddleware(s.mux)
+	if s.requireCaller {
+		next := base
+		base = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/v1/") && CallerFromContext(r.Context()) == "" {
+				http.Error(w, `{"error":"caller_required"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 	if s.limit == nil {
 		return base
 	}

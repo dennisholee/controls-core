@@ -23,6 +23,22 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
   interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
 
+## [0.19.0] — 2026-11-07
+
+### Security
+
+- Gateway identity envelope: when `CONTROLS_IDENTITY_HMAC_KEY` is set, the
+  sidecar requires a signed, time-bounded `x-controls-identity` header and
+  ignores raw `x-subject`/`x-claim-*`.
+- PIP `-require-mtls` and `-require-caller` reject unauthenticated API calls;
+  classification metadata is caller-authorized too.
+- Bundles now require `-bundle-pubkey`; `-allow-unsigned` is an explicit
+  development escape.
+
+### Fixed
+
+- `rejectFields` supports `[*]` array wildcards, so array PAN/CVV is rejected.
+
 ## [0.18.0] — 2026-11-07
 
 ### Fixed

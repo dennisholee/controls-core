@@ -4,6 +4,9 @@ HELM_ARGS ?=
 CONTROLS_NAMESPACE ?= controls
 LOADTEST_URL ?= http://127.0.0.1:18000/accounts/A123
 LOADTEST_ARGS ?=
+BUNDLE_DIR ?= integration/testdata/config
+PIP_FIXTURES ?= pip/fixtures/attributes.json
+API_ADDR ?= 127.0.0.1:8081
 ENV ?= prod
 SERVICE ?= accounts
 GOCACHE ?= $(CURDIR)/.gocache
@@ -11,7 +14,7 @@ GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
 export GOPATH
 
-.PHONY: test vet build bench fmt fmt-check all pip sidecar extproc openapi-diff openapi-gate acceptance smoke clean
+.PHONY: test vet build bench fmt fmt-check all pip sidecar api api-rules extproc openapi-diff openapi-gate acceptance smoke clean
 
 all: fmt-check vet test
 
@@ -45,10 +48,20 @@ fmt-check:
 	@out=$$(gofmt -l $$(git ls-files '*.go')); if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 
 pip:
-	$(GO) run ./pip/cmd/pip -addr :8082 -metrics-addr :9091 -fixtures pip/fixtures/attributes.json
+	$(GO) run ./pip/cmd/pip -addr 127.0.0.1:8082 -metrics-addr 127.0.0.1:9091 -fixtures $(PIP_FIXTURES)
 
+# External-PIP harness: run `make pip` in another terminal first.
 sidecar:
-	$(GO) run ./sidecar/cmd/sidecar -addr :8081 -config integration/testdata/config -pip http://127.0.0.1:8082
+	$(GO) run ./sidecar/cmd/sidecar -addr $(API_ADDR) -config $(BUNDLE_DIR) -pip http://127.0.0.1:8082
+
+# One process: test API plus an in-process PIP backed by fixtures.
+api:
+	$(GO) run ./sidecar/cmd/sidecar -addr $(API_ADDR) -config $(BUNDLE_DIR) -fixtures $(PIP_FIXTURES)
+
+# Render the delivery-owned rules, then serve that bundle on the test API.
+api-rules:
+	$(GO) run ./tools/bundle -src ../controls-rules -env $(ENV) -service $(SERVICE) -out dist/$(SERVICE)
+	$(GO) run ./sidecar/cmd/sidecar -addr $(API_ADDR) -config dist/$(SERVICE) -fixtures $(PIP_FIXTURES)
 
 extproc:
 	CONTROLS_AUDIT_SALT=dev-salt $(GO) run ./sidecar/cmd/extproc -listen :50051 -config integration/testdata/config -pip http://127.0.0.1:8082

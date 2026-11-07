@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.18.0`.
+Status: reference implementation `v0.19.0`.
 
 ## 1. Context and constraints
 

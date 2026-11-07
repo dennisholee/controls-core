@@ -229,3 +229,24 @@ func TestForbiddenCallerMapsTo403(t *testing.T) {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
 }
+
+func TestRequireCaller(t *testing.T) {
+	repo, err := LoadMemoryRepo("../fixtures/attributes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(repo, log, WithRequireCaller(true)).Handler())
+	t.Cleanup(srv.Close)
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+	}})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}

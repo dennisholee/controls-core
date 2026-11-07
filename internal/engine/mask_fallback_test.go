@@ -136,3 +136,16 @@ func TestClassificationEmptyFailsClosed(t *testing.T) {
 		t.Fatal("empty classification must fail closed")
 	}
 }
+
+func TestPathPresentWildcard(t *testing.T) {
+	doc := map[string]any{"items": []any{
+		map[string]any{"pan": "4111"},
+		map[string]any{"pan": "4222"},
+	}}
+	if !pathPresent(doc, "items[*].pan") {
+		t.Fatal("wildcard path not found")
+	}
+	if pathPresent(doc, "items[*].cvv") {
+		t.Fatal("absent wildcard field reported present")
+	}
+}

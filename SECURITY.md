@@ -72,7 +72,10 @@ headers at the sidecar (C2). The Helm chart supplies the network and mTLS
 controls for both, but they are only effective once installed and verified in
 the target cluster.
 Deployments must not expose the PIP or the sidecar listener outside the trusted
-network until those are resolved. The PIP now supports application mTLS
+network until those are resolved. Identity headers are only trusted when the gateway injects a signed
+`x-controls-identity` envelope (`CONTROLS_IDENTITY_HMAC_KEY`); without a key the
+sidecar falls back to raw headers for development. The PIP now supports
+application mTLS
 (`-tls-cert`, `-tls-key`, `-client-ca`), independent of the mesh, and can
 restrict sources/fields to specific certificate identities. Bundle signature verification is implemented
 but only active when `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) is set;

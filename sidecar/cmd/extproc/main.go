@@ -36,6 +36,7 @@ func main() {
 	auditSample := flag.Float64("audit-sample", 0.01, "fraction of allowed decisions to audit (denials always logged)")
 	auditSalt := flag.String("audit-salt", os.Getenv("CONTROLS_AUDIT_SALT"), "salt for identifier hashing (required in production)")
 	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
+	allowUnsigned := flag.Bool("allow-unsigned", false, "allow a bundle without -bundle-pubkey (development only)")
 	opaURL := flag.String("opa-url", os.Getenv("CONTROLS_OPA_URL"), "OPA base URL (required for the opa policy engine)")
 	pipCA := flag.String("pip-ca", os.Getenv("CONTROLS_PIP_CA"), "CA bundle for PIP TLS")
 	pipCert := flag.String("pip-cert", os.Getenv("CONTROLS_PIP_CERT"), "client certificate for PIP mTLS")
@@ -58,7 +59,11 @@ func main() {
 		os.Exit(1)
 	}
 	if *bundlePubKey == "" {
-		log.Warn("bundle signature not verified; set -bundle-pubkey in production")
+		if !*allowUnsigned {
+			log.Error("bundle verification required: set -bundle-pubkey or -allow-unsigned")
+			os.Exit(1)
+		}
+		log.Warn("bundle signature not verified: -allow-unsigned")
 	}
 
 	pipOpts := []pipclient.Option{pipclient.WithMaxTTL(*maxTTL)}
@@ -100,11 +105,16 @@ func main() {
 		log.Error("listen", "err", err)
 		os.Exit(1)
 	}
+	identityKey := []byte(os.Getenv("CONTROLS_IDENTITY_HMAC_KEY"))
+	if len(identityKey) > 0 {
+		log.Info("gateway identity envelope enforced")
+	}
 	server := grpc.NewServer()
 	extprocv3.RegisterExternalProcessorServer(server, extproc.New(extproc.Config{
 		EngineProvider: func() *engine.Engine { return current.Load().engine },
 		Log:            log,
 		MaxBodyBytes:   *maxBody,
+		IdentityKey:    identityKey,
 	}))
 	go func() {
 		log.Info("extproc listening", "addr", *listen, "config", *cfgDir, "pip", *pipURL)

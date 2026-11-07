@@ -54,7 +54,7 @@ PIDS+=($!)
 "$TMP/app" -addr ":$APP_PORT" >"$TMP/app.log" 2>&1 &
 PIDS+=($!)
 "$TMP/extproc" -listen ":$EXTPROC_PORT" -config "$ROOT/integration/testdata/config" \
-  -pip "http://127.0.0.1:$PIP_PORT" -metrics-addr :19090 -audit-sample 1 -audit-salt smoke \
+  -pip "http://127.0.0.1:$PIP_PORT" -metrics-addr :19090 -audit-sample 1 -audit-salt smoke -allow-unsigned \
   >"$TMP/extproc.log" 2>&1 &
 PIDS+=($!)
 

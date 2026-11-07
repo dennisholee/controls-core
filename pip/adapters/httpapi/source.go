@@ -304,10 +304,14 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 }
 
 // Classification returns the configured classification map.
-func (r *Repo) Classification(_ context.Context, typ string) (map[string]string, bool, error) {
+func (r *Repo) Classification(ctx context.Context, typ string) (map[string]string, bool, error) {
 	s, ok := r.sources[typ]
 	if !ok {
 		return nil, false, nil
+	}
+	caller := server.CallerFromContext(ctx)
+	if len(s.allowed) > 0 && !s.allowed[caller] {
+		return nil, false, server.ErrForbidden
 	}
 	out := make(map[string]string, len(s.classes))
 	for k, v := range s.classes {

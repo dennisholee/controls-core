@@ -18,6 +18,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	extprocv3 "github.com/envoyproxy/go-control-plane/envoy/service/ext_proc/v3"
@@ -38,14 +39,20 @@ type Config struct {
 	EngineProvider func() *engine.Engine
 	Log            *slog.Logger
 	MaxBodyBytes   int
+	// IdentityKey, when set, requires a gateway-signed x-controls-identity
+	// envelope and ignores raw x-subject/x-claim-* headers.
+	IdentityKey     []byte
+	IdentityMaxSkew time.Duration
 }
 
 // Adapter implements the ext_proc ExternalProcessor service.
 type Adapter struct {
 	extprocv3.UnimplementedExternalProcessorServer
-	engineFn func() *engine.Engine
-	log      *slog.Logger
-	max      int
+	engineFn        func() *engine.Engine
+	log             *slog.Logger
+	max             int
+	identityKey     []byte
+	identityMaxSkew time.Duration
 }
 
 // New builds an adapter.
@@ -61,7 +68,11 @@ func New(cfg Config) *Adapter {
 		fixed := cfg.Engine
 		fn = func() *engine.Engine { return fixed }
 	}
-	return &Adapter{engineFn: fn, log: cfg.Log, max: cfg.MaxBodyBytes}
+	skew := cfg.IdentityMaxSkew
+	if len(cfg.IdentityKey) > 0 && skew <= 0 {
+		skew = time.Minute
+	}
+	return &Adapter{engineFn: fn, log: cfg.Log, max: cfg.MaxBodyBytes, identityKey: cfg.IdentityKey, identityMaxSkew: skew}
 }
 
 // stream is the subset of the gRPC stream the adapter needs (mockable).
@@ -213,11 +224,16 @@ func (a *Adapter) decide(ctx context.Context, st *state) (*extprocv3.ProcessingR
 		return nil, nil
 	}
 	st.decided = true
+	subject, err := a.subject(st.headers)
+	if err != nil {
+		a.log.Warn("rejected untrusted identity", "err", err)
+		return a.immediateWithReason(typev3.StatusCode_Forbidden, "identity_untrusted"), nil
+	}
 	res := st.eng.ProcessRequest(ctx, engine.Request{
 		Method:  st.method,
 		Path:    st.path,
 		Body:    st.reqBody,
-		Subject: subjectFromHeaders(st.headers),
+		Subject: subject,
 	})
 	st.endpoint = st.eng.Endpoint(st.method, st.path)
 	a.log.Debug("decision",
@@ -237,6 +253,13 @@ func headerValue(h *corev3.HeaderValue) string {
 		return v
 	}
 	return string(h.GetRawValue())
+}
+
+func (a *Adapter) subject(headers map[string]string) (engine.Subject, error) {
+	if len(a.identityKey) > 0 {
+		return verifyIdentity(headers[identityHeader], a.identityKey, time.Now(), a.identityMaxSkew)
+	}
+	return subjectFromHeaders(headers), nil
 }
 
 func subjectFromHeaders(headers map[string]string) engine.Subject {

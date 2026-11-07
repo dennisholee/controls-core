@@ -208,7 +208,7 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 
 	maskPolicy, _ := e.cfg.Masks.Policies[ep.MaskPolicy]
 	for _, f := range maskPolicy.RejectFields {
-		if _, present := lookupPath(body, f); present {
+		if pathPresent(body, f) {
 			return Result{Allowed: false, Status: 403, Reason: "rejected_field:" + f,
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
 		}
@@ -408,6 +408,46 @@ func extractID(ep *config.Endpoint, params map[string]string, body map[string]an
 	}
 	id := fmt.Sprint(v)
 	return id, id != ""
+}
+
+// pathPresent reports whether a dot path exists, including [*] array
+// wildcards (e.g. items[*].pan). Rejecting any match is the safe direction.
+func pathPresent(v any, path string) bool {
+	path = strings.TrimPrefix(path, "$.")
+	parts := strings.Split(path, ".")
+	var walk func(any, []string) bool
+	walk = func(cur any, parts []string) bool {
+		if len(parts) == 0 {
+			return true
+		}
+		p := parts[0]
+		if strings.HasSuffix(p, "[*]") {
+			m, ok := cur.(map[string]any)
+			if !ok {
+				return false
+			}
+			arr, ok := m[strings.TrimSuffix(p, "[*]")].([]any)
+			if !ok {
+				return false
+			}
+			for _, e := range arr {
+				if walk(e, parts[1:]) {
+					return true
+				}
+			}
+			return false
+		}
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return false
+		}
+		next, ok := m[p]
+		if !ok {
+			return false
+		}
+		return walk(next, parts[1:])
+	}
+	return walk(v, parts)
 }
 
 func lookupPath(doc map[string]any, path string) (any, bool) {

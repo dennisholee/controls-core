@@ -50,8 +50,12 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 - `pip.pdb` keeps one PIP replica available during drains; preferred
   anti-affinity spreads replicas across nodes.
 - `pip.egress.databaseCIDRs` must list the read replicas.
-- For application mTLS set `pip.tls.enabled` and `pip.tls.secretName`, and
-  configure the sidecar client with `sidecar.pipTLS` material. Once mTLS is
+- For application mTLS set `pip.tls.enabled`, `pip.tls.required` and
+  `pip.tls.secretName`, and configure the sidecar client with
+  `sidecar.pipTLS` material.
+- The sidecar should set `CONTROLS_IDENTITY_HMAC_KEY` from
+  `sidecar.identity.hmacSecret`; `sidecar.allowUnsigned` must remain false
+  outside development. Once mTLS is
   on, use `allowedCallers`/`fieldCallers` in the PIP source document to scope
   each sidecar identity to the fields it needs.
 

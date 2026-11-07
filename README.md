@@ -102,6 +102,7 @@ contract, examples and limitations.
 - [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
 - [RUNBOOK.md](RUNBOOK.md) — alerts and incident procedures
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md) — ownership, review, break-glass
+- [docs/IDENTITY.md](docs/IDENTITY.md) — gateway identity envelope and header-trust model
 - [docs/ASSESSMENT-2026-11-07.md](docs/ASSESSMENT-2026-11-07.md) — independent assessment and remediation status
 - [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) — cluster prerequisite/verification checklist
 - [docs/PIPELINE.md](docs/PIPELINE.md) — Jenkins contract: inputs, stages, outputs
@@ -111,7 +112,7 @@ contract, examples and limitations.
 
 ## Status
 
-`v0.18.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.19.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

@@ -27,6 +27,8 @@ func main() {
 	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
 	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
 	maxConcurrent := flag.Int("max-concurrent", 0, "max in-flight requests (0 = unlimited)")
+	requireCaller := flag.Bool("require-caller", false, "reject API calls without a client-certificate identity")
+	requireMTLS := flag.Bool("require-mtls", false, "require TLS with a verified client certificate")
 	tlsCert := flag.String("tls-cert", "", "server certificate for PIP HTTPS")
 	tlsKey := flag.String("tls-key", "", "server key for PIP HTTPS")
 	clientCA := flag.String("client-ca", "", "CA bundle for mutual TLS client verification")
@@ -52,10 +54,15 @@ func main() {
 		repo = r
 	}
 	reg := metrics.New()
+	if *requireMTLS && (*tlsCert == "" || *tlsKey == "" || *clientCA == "") {
+		log.Error("-require-mtls needs -tls-cert, -tls-key and -client-ca")
+		os.Exit(1)
+	}
 	handler := server.New(repo, log,
 		server.WithLagSeconds(*lagSeconds),
 		server.WithMetrics(reg),
 		server.WithMaxConcurrent(*maxConcurrent),
+		server.WithRequireCaller(*requireCaller || *requireMTLS),
 	).Handler()
 	if *metricsAddr != "" {
 		mux := http.NewServeMux()

@@ -56,6 +56,12 @@ spec:
             - ":{{ .Values.pip.metricsPort }}"
             - -max-concurrent
             - "{{ .Values.pip.maxConcurrent }}"
+            {{- if .Values.pip.requireCaller }}
+            - -require-caller
+            {{- end }}
+            {{- if .Values.pip.tls.required }}
+            - -require-mtls
+            {{- end }}
             {{- if .Values.pip.tls.enabled }}
             - -tls-cert
             - /etc/controls-tls/{{ .Values.pip.tls.certKey }}

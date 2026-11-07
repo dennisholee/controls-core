@@ -42,9 +42,9 @@ fixed in 0.18.0.
 
 | # | Finding | Owner | Gate |
 |---|---|---|---|
-| C2 | Sidecar trusts client-supplied `x-subject`/`x-claim-*`; no strip/verify anywhere | Platform/gateway + core | Forged-header test must fail |
-| C1 | PIP defaults to plaintext with no caller auth; mTLS/caller authz are opt-in | Platform + core | `pip.tls.enabled`, `-client-ca`, `allowedCallers` on every source |
-| H | Unsigned bundle mode is the default; `-bundle-pubkey` only warns | Core | Pubkey mandatory in production manifests |
+| C2 | Sidecar trusts raw `x-subject`/`x-claim-*` unless `CONTROLS_IDENTITY_HMAC_KEY` is set; gateway signing not yet deployed | Platform/gateway + core | Envelope enforced; forged raw header test fails |
+| C1 | PIP defaults to plaintext; `-require-mtls` / `-require-caller` are opt-in | Platform + core | `pip.tls.required`, `allowedCallers` on every source |
+| H | Unsigned bundle mode now requires explicit `-allow-unsigned` | Core | Remove dev escape from production manifests |
 | H | No signed contract version; manifest outside digest | Core | Enforce major in `Validate`; include manifest in digest |
 | H | Audit writes stdout synchronously with a global mutex on 100% of denies | Core | Bounded async sink + drop metric |
 | H | `fresh`/`deny-on-stale` trust optional lag; no max-TTL before 0.17 | Core | Lag mandatory for those modes; TTL clamp now in |
@@ -53,7 +53,7 @@ fixed in 0.18.0.
 | M | No rate limiting (only concurrency cap) | Core/platform | Per-identity limit + 429/503 metric |
 | M | DQ has no unit suite; fallback/reload paths lack end-to-end tests | QA | Tests added to CI gates |
 | M | Classification tags live outside the signed bundle | Delivery/core | Move into bundle or version/stamp them |
-| H | `rejectFields` lacks `[*]` wildcard, so array PAN/CVV is not rejected | Core | Shared wildcard path resolver |
+| — | `rejectFields` wildcard support added | Core | Done in 0.19.0 |
 | M | Audit writes fail silently and share stdout with logs | Core | Dedicated sink + failure counter |
 | M | Rule comparisons coerce strings, enabling body-sourced bypass | Core | Strict typed comparison |
 | M | Base images and Jenkins tools image are tag/placeholder pinned | Core | Digest pinning |
