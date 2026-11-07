@@ -46,6 +46,10 @@ spec:
             - /etc/controls/attributes.json
             - -lag-seconds
             - "{{ .Values.pip.lagSeconds }}"
+            {{- if .Values.pip.sources.enabled }}
+            - -sources
+            - /etc/controls-sources/sources.json
+            {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.pip.port }}
@@ -67,19 +71,37 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- with .Values.pip.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.pip.resources | nindent 12 }}
-          {{- if .Values.pip.fixtures.enabled }}
+          {{- if or .Values.pip.fixtures.enabled .Values.pip.sources.enabled }}
           volumeMounts:
+            {{- if .Values.pip.fixtures.enabled }}
             - name: fixtures
               mountPath: /etc/controls
               readOnly: true
+            {{- end }}
+            {{- if .Values.pip.sources.enabled }}
+            - name: sources
+              mountPath: /etc/controls-sources
+              readOnly: true
+            {{- end }}
           {{- end }}
-      {{- if .Values.pip.fixtures.enabled }}
+      {{- if or .Values.pip.fixtures.enabled .Values.pip.sources.enabled }}
       volumes:
+        {{- if .Values.pip.fixtures.enabled }}
         - name: fixtures
           configMap:
             name: {{ include "controls-plane.fullname" . }}-fixtures
+        {{- end }}
+        {{- if .Values.pip.sources.enabled }}
+        - name: sources
+          configMap:
+            name: {{ include "controls-plane.fullname" . }}-sources
+        {{- end }}
       {{- end }}
       {{- with .Values.pip.nodeSelector }}
       nodeSelector:

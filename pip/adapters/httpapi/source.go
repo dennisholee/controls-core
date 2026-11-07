@@ -1,0 +1,209 @@
+// Package httpapi implements a PIP repository backed by per-domain HTTP
+// attribute APIs (typically read APIs in front of replicas).
+//
+// The URL template, allowed fields and classification are configuration; the
+// resource id is path-escaped and interpolated. No caller-controlled URL or
+// field outside the allowlist can reach the upstream.
+package httpapi
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"example.com/controls/core/pip/server"
+)
+
+// Config is the source document.
+type Config struct {
+	Sources map[string]Source `json:"sources"`
+}
+
+// Source describes one resource type.
+type Source struct {
+	URL            string            `json:"url"` // must contain {id}
+	TimeoutMs      int               `json:"timeoutMs"`
+	Headers        map[string]string `json:"headers"`
+	Fields         []string          `json:"fields"`
+	Classification map[string]string `json:"classification"`
+	LagHeader      string            `json:"lagHeader"`
+}
+
+type source struct {
+	url       string
+	client    *http.Client
+	headers   map[string]string
+	fields    map[string]bool
+	classes   map[string]string
+	lagHeader string
+}
+
+// Repo implements server.Repository over HTTP attribute APIs.
+type Repo struct {
+	sources map[string]*source
+}
+
+// Load reads and validates a sources document.
+func Load(path string) (*Repo, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	if len(cfg.Sources) == 0 {
+		return nil, fmt.Errorf("%s: no sources", path)
+	}
+	repo := &Repo{sources: map[string]*source{}}
+	for typ, src := range cfg.Sources {
+		s, err := build(typ, src)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", typ, err)
+		}
+		repo.sources[typ] = s
+	}
+	return repo, nil
+}
+
+func build(typ string, src Source) (*source, error) {
+	u, err := url.Parse(src.URL)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, fmt.Errorf("invalid url")
+	}
+	if u.User != nil {
+		return nil, fmt.Errorf("url must not contain credentials")
+	}
+	if !strings.Contains(src.URL, "{id}") {
+		return nil, fmt.Errorf("url must contain {id}")
+	}
+	if len(src.Fields) == 0 {
+		return nil, fmt.Errorf("fields allowlist is required")
+	}
+	timeout := time.Duration(src.TimeoutMs) * time.Millisecond
+	if timeout <= 0 {
+		timeout = 100 * time.Millisecond
+	}
+	if timeout > 5*time.Second {
+		return nil, fmt.Errorf("timeoutMs must be <= 5000")
+	}
+	headers := map[string]string{}
+	for k, v := range src.Headers {
+		expanded, err := expandEnv(v)
+		if err != nil {
+			return nil, fmt.Errorf("header %s: %w", k, err)
+		}
+		headers[k] = expanded
+	}
+	fields := map[string]bool{}
+	for _, f := range src.Fields {
+		if f == "" {
+			return nil, fmt.Errorf("empty field in allowlist")
+		}
+		fields[f] = true
+	}
+	lagHeader := src.LagHeader
+	if lagHeader == "" {
+		lagHeader = "X-Replica-Lag-Seconds"
+	}
+	return &source{
+		url:       src.URL,
+		client:    &http.Client{Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		headers:   headers,
+		fields:    fields,
+		classes:   src.Classification,
+		lagHeader: lagHeader,
+	}, nil
+}
+
+func expandEnv(v string) (string, error) {
+	var missing string
+	out := os.Expand(v, func(key string) string {
+		val, ok := os.LookupEnv(key)
+		if !ok {
+			missing = key
+		}
+		return val
+	})
+	if missing != "" {
+		return "", fmt.Errorf("environment variable %s is not set", missing)
+	}
+	return out, nil
+}
+
+// Get fetches one resource and projects the allowlisted fields.
+func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server.Resource, error) {
+	s, ok := r.sources[typ]
+	if !ok {
+		return server.Resource{Found: false}, nil
+	}
+	endpoint := strings.ReplaceAll(s.url, "{id}", url.PathEscape(id))
+	reqCtx, cancel := context.WithTimeout(ctx, s.client.Timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return server.Resource{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	for k, v := range s.headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return server.Resource{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return server.Resource{Found: false}, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return server.Resource{}, fmt.Errorf("upstream status %d", resp.StatusCode)
+	}
+	var all map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&all); err != nil {
+		return server.Resource{}, fmt.Errorf("decode upstream: %w", err)
+	}
+	want := fields
+	if len(want) == 0 {
+		want = make([]string, 0, len(s.fields))
+		for f := range s.fields {
+			want = append(want, f)
+		}
+	}
+	out := map[string]any{}
+	for _, f := range want {
+		if !s.fields[f] {
+			continue
+		}
+		if v, ok := all[f]; ok {
+			out[f] = v
+		}
+	}
+	lag := 0
+	if raw := resp.Header.Get(s.lagHeader); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			lag = n
+		}
+	}
+	return server.Resource{Attributes: out, Found: true, LagSeconds: lag}, nil
+}
+
+// Classification returns the configured classification map.
+func (r *Repo) Classification(_ context.Context, typ string) (map[string]string, bool, error) {
+	s, ok := r.sources[typ]
+	if !ok {
+		return nil, false, nil
+	}
+	out := make(map[string]string, len(s.classes))
+	for k, v := range s.classes {
+		out[k] = v
+	}
+	return out, true, nil
+}

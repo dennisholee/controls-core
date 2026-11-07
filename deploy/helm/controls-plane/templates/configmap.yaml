@@ -10,3 +10,16 @@ data:
   attributes.json: |
 {{ .Values.pip.fixtures.json | indent 4 }}
 {{- end }}
+{{- if and .Values.pip.enabled .Values.pip.sources.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "controls-plane.fullname" . }}-sources
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+data:
+  sources.json: |
+{{ .Values.pip.sources.json | indent 4 }}
+{{- end }}

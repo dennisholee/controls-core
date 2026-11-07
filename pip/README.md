@@ -13,6 +13,41 @@ Normative definition: [`../contracts/pip-api.yaml`](../contracts/pip-api.yaml).
 - `GET /v1/classification/{resourceType}` — long-lived classification metadata.
 - `GET /healthz`.
 
+## Attribute sources
+
+Two repositories implement the data port:
+
+1. **Fixtures** (default) — `-fixtures`, for local development and smoke tests.
+2. **HTTP attribute APIs** — `-sources`, for production. Each resource type maps
+   to a read API in front of the replicas:
+
+```json
+{
+  "sources": {
+    "account": {
+      "url": "https://accounts.internal/accounts/{id}",
+      "timeoutMs": 100,
+      "headers": {"Authorization": "Bearer ${ACCOUNTS_TOKEN}"},
+      "fields": ["ownerId", "region", "status"],
+      "classification": {
+        "accountNumber": "pii.partial",
+        "ssn": "pii.locked"
+      },
+      "lagHeader": "X-Replica-Lag-Seconds"
+    }
+  }
+}
+```
+
+- `{id}` is path-escaped; the URL host is fixed by configuration (no
+  caller-controlled URLs), redirects are refused, and headers expand
+  `${ENV}` at load.
+- `fields` is a hard allowlist: the PIP will never return a field outside it,
+  even if the caller asks.
+- `404` means `found: false`; any other non-200 or decode error fails closed.
+- `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`; if the
+  upstream omits it, lag is zero.
+
 ## Reference implementation
 
 `pip/server` ships an in-memory `Repository` backed by
@@ -62,4 +97,5 @@ The PIP must never call back through the sidecar.
 
 ```bash
 go run ./pip/cmd/pip -addr :8082 -fixtures pip/fixtures/attributes.json
+go run ./pip/cmd/pip -addr :8082 -sources pip-sources.json
 ```

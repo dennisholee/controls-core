@@ -13,8 +13,16 @@ import (
 // adapters over read replicas with curated, parameterized queries.
 
 type Repository interface {
-	Get(ctx context.Context, resourceType, id string, fields []string) (map[string]any, bool, error)
+	Get(ctx context.Context, resourceType, id string, fields []string) (Resource, error)
 	Classification(ctx context.Context, resourceType string) (map[string]string, bool, error)
+}
+
+// Resource is one resolved attribute set. LagSeconds is the replica lag
+// reported by the source (zero when unknown).
+type Resource struct {
+	Attributes map[string]any
+	Found      bool
+	LagSeconds int
 }
 
 // MemoryRepo serves fixtures. It exists so the sidecar and the PIP contract can
@@ -43,29 +51,28 @@ func LoadMemoryRepo(path string) (*MemoryRepo, error) {
 }
 
 // Get returns a projected copy of the resource attributes.
-func (r *MemoryRepo) Get(_ context.Context, resourceType, id string, fields []string) (map[string]any, bool, error) {
+func (r *MemoryRepo) Get(_ context.Context, resourceType, id string, fields []string) (Resource, error) {
 	byID, ok := r.resources[resourceType]
 	if !ok {
-		return nil, false, nil
+		return Resource{Found: false}, nil
 	}
 	attrs, ok := byID[id]
 	if !ok {
-		return nil, false, nil
+		return Resource{Found: false}, nil
 	}
+	out := map[string]any{}
 	if len(fields) == 0 {
-		out := make(map[string]any, len(attrs))
 		for k, v := range attrs {
 			out[k] = v
 		}
-		return out, true, nil
+		return Resource{Attributes: out, Found: true}, nil
 	}
-	out := map[string]any{}
 	for _, f := range fields {
 		if v, ok := attrs[f]; ok {
 			out[f] = v
 		}
 	}
-	return out, true, nil
+	return Resource{Attributes: out, Found: true}, nil
 }
 
 // Classification returns the field classification map.

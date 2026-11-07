@@ -66,20 +66,24 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	results := make([]pipclient.Attribute, 0, len(req.Requests))
 	for _, ref := range req.Requests {
-		attrs, found, err := s.repo.Get(r.Context(), ref.Type, ref.ID, ref.Fields)
+		res, err := s.repo.Get(r.Context(), ref.Type, ref.ID, ref.Fields)
 		if err != nil {
 			s.log.Error("pip lookup failed", "type", ref.Type, "id", ref.ID, "err", err)
 			http.Error(w, `{"error":"lookup_failed"}`, http.StatusInternalServerError)
 			return
 		}
+		lag := res.LagSeconds
+		if lag == 0 {
+			lag = s.lagSeconds
+		}
 		results = append(results, pipclient.Attribute{
 			Type:       ref.Type,
 			ID:         ref.ID,
-			Found:      found,
-			Attributes: attrs,
+			Found:      res.Found,
+			Attributes: res.Attributes,
 			Version:    "fixture-v1",
 			TTLSeconds: 30,
-			LagSeconds: s.lagSeconds,
+			LagSeconds: lag,
 		})
 	}
 	s.log.Info("pip batch", "refs", len(req.Requests), "ms", time.Since(start).Milliseconds())

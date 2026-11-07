@@ -33,10 +33,19 @@ pip:
     enabled: true
     json: |
       {"resources":{},"classifications":{}}
+  # HTTP attribute sources (read APIs in front of replicas). When enabled the
+  # fixtures file is ignored. See pip/README.md for the document format.
+  sources:
+    enabled: false
+    json: |
+      {"sources":{}}
+  extraEnv: []
   # Egress allowed in addition to DNS and the sidecar network.
   egress:
     databaseCIDRs: []
     databasePort: 5432
+    # Raw NetworkPolicy egress entries for attribute APIs (list items).
+    extraPeers: []
   podLabels: {}
   podAnnotations: {}
   nodeSelector: {}

@@ -43,4 +43,7 @@ spec:
         - protocol: TCP
           port: {{ $.Values.pip.egress.databasePort }}
     {{- end }}
+    {{- with .Values.pip.egress.extraPeers }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 {{- end }}

@@ -14,20 +14,34 @@ import (
 	"syscall"
 	"time"
 
+	"example.com/controls/core/pip/adapters/httpapi"
 	"example.com/controls/core/pip/server"
 )
 
 func main() {
 	addr := flag.String("addr", ":8082", "listen address")
 	fixtures := flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
+	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
 	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	repo, err := server.LoadMemoryRepo(*fixtures)
-	if err != nil {
-		log.Error("load fixtures", "err", err)
-		os.Exit(1)
+	var repo server.Repository
+	if *sources != "" {
+		r, err := httpapi.Load(*sources)
+		if err != nil {
+			log.Error("load attribute sources", "err", err)
+			os.Exit(1)
+		}
+		repo = r
+		log.Info("using HTTP attribute sources", "config", *sources)
+	} else {
+		r, err := server.LoadMemoryRepo(*fixtures)
+		if err != nil {
+			log.Error("load fixtures", "err", err)
+			os.Exit(1)
+		}
+		repo = r
 	}
 	srv := &http.Server{
 		Addr:              *addr,
@@ -37,7 +51,7 @@ func main() {
 		WriteTimeout:      10 * time.Second,
 	}
 	go func() {
-		log.Info("pip listening", "addr", *addr, "resources", repo.ResourceTypes())
+		log.Info("pip listening", "addr", *addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error("listen", "err", err)
 			os.Exit(1)

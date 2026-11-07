@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.11.0`.
+Status: reference implementation `v0.12.0`.
 
 ## 1. Context and constraints
 
@@ -37,7 +37,7 @@ Status: reference implementation `v0.11.0`.
 | Masking | `internal/mask` | Full/partial field masking, array paths, locked fields |
 | DQ | `internal/dq` | Multi-state validation; blocking only when configured |
 | PIP client | `internal/pipclient` | HTTP, projection, TTL cache, coalescing, breaker, fail-closed |
-| PIP server | `pip/server` | Batch/classification API over a read-only Repository |
+| PIP server | `pip/server` | Batch/classification API over a read-only Repository (fixtures or HTTP attribute APIs) |
 | ext_proc adapter | `sidecar/extproc` | Envoy transport: header extraction, buffering, immediate responses, body mutation |
 | Harness | `sidecar/cmd/sidecar` | HTTP harness used locally and in integration tests |
 | Audit | `internal/audit` | Hashed, sampled decision log per the contract |
@@ -113,8 +113,10 @@ cache is keyed by type, id and field projection.
 
 - **Sidecar**: one image, injected into all 5 service pods. `maxUnavailable: 1`.
   Upgrades are rolling pod restarts; no application rebuild.
-- **PIP**: 2+ replicas behind a Service, mTLS, read-only DB credentials,
-  connection pool sized for cache-miss QPS (~5% of 5,000 = 250 RPS).
+- **PIP**: 2+ replicas behind a Service, mTLS. Production uses the HTTP
+  attribute-source adapter (`-sources`) against per-domain read APIs; those
+  APIs own replica credentials and query shape. Size for cache-miss QPS
+  (~5% of 5,000 = 250 RPS).
 - **Observability**: ext_proc exposes `/metrics`, `/healthz` and `/readyz` on
   `:9090`; decision logs are stdout JSON with hashed identifiers. Scrape the
   admin port and ship stdout to the platform log store.

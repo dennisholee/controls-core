@@ -1,6 +1,6 @@
 # BDD and acceptance criteria
 
-Status: adopted for the reference implementation (`v0.11.0`). Owner: core
+Status: adopted for the reference implementation (`v0.12.0`). Owner: core
 engineering for the harness, delivery for the journeys.
 
 ## 1. Why BDD here

@@ -56,7 +56,9 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 - This chart does not authenticate users; the gateway owns authentication and
   must strip client-supplied `x-subject`/`x-claim-*` before injecting verified
   values.
-- The reference PIP image serves an in-memory fixture. Production uses
-  read-replica adapters (see `controls-core/pip/README.md`).
+- The reference PIP image serves an in-memory fixture by default. Set
+  `pip.sources.enabled=true` and provide `pip.sources.json` to use HTTP
+  attribute APIs; add `pip.egress.extraPeers` for the upstream network policy.
+  See `controls-core/pip/README.md`.
 - The sidecar container/Envoy configuration is provided by the service chart;
   `values.yaml` documents the ports and secrets it must use.
