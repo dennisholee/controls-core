@@ -23,6 +23,7 @@ type Resource struct {
 	Attributes map[string]any
 	Found      bool
 	LagSeconds int
+	Version    string
 }
 
 // MemoryRepo serves fixtures. It exists so the sidecar and the PIP contract can
@@ -65,14 +66,14 @@ func (r *MemoryRepo) Get(_ context.Context, resourceType, id string, fields []st
 		for k, v := range attrs {
 			out[k] = v
 		}
-		return Resource{Attributes: out, Found: true}, nil
+		return Resource{Attributes: out, Found: true, Version: "fixture-v1"}, nil
 	}
 	for _, f := range fields {
 		if v, ok := attrs[f]; ok {
 			out[f] = v
 		}
 	}
-	return Resource{Attributes: out, Found: true}, nil
+	return Resource{Attributes: out, Found: true, Version: "fixture-v1"}, nil
 }
 
 // Classification returns the field classification map.

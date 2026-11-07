@@ -50,6 +50,9 @@ func TestBatchProjectsFields(t *testing.T) {
 	if out.Results[0].Attributes["ownerId"] != "u-1" {
 		t.Fatalf("ownerId = %v", out.Results[0].Attributes["ownerId"])
 	}
+	if out.Results[0].Version != "fixture-v1" {
+		t.Fatalf("version = %q", out.Results[0].Version)
+	}
 	if out.Results[1].Found {
 		t.Fatalf("missing resource should be found=false")
 	}

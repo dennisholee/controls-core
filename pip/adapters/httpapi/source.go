@@ -39,6 +39,7 @@ type Source struct {
 	Fields         []string          `json:"fields"`
 	Classification map[string]string `json:"classification"`
 	LagHeader      string            `json:"lagHeader"`
+	VersionHeader  string            `json:"versionHeader"`
 	// TLS options for mTLS to the attribute API. All paths are operator-owned.
 	CAFile     string `json:"caFile"`
 	CertFile   string `json:"certFile"`
@@ -47,12 +48,13 @@ type Source struct {
 }
 
 type source struct {
-	url       string
-	client    *http.Client
-	headers   map[string]string
-	fields    map[string]bool
-	classes   map[string]string
-	lagHeader string
+	url           string
+	client        *http.Client
+	headers       map[string]string
+	fields        map[string]bool
+	classes       map[string]string
+	lagHeader     string
+	versionHeader string
 }
 
 // Repo implements server.Repository over HTTP attribute APIs.
@@ -127,6 +129,10 @@ func build(typ string, src Source) (*source, error) {
 	if lagHeader == "" {
 		lagHeader = "X-Replica-Lag-Seconds"
 	}
+	versionHeader := src.VersionHeader
+	if versionHeader == "" {
+		versionHeader = "X-Resource-Version"
+	}
 	tlsCfg, err := buildTLS(src, u.Scheme)
 	if err != nil {
 		return nil, err
@@ -137,12 +143,13 @@ func build(typ string, src Source) (*source, error) {
 	transport.MaxIdleConns = 100
 	transport.MaxIdleConnsPerHost = 100
 	return &source{
-		url:       src.URL,
-		client:    &http.Client{Timeout: timeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
-		headers:   headers,
-		fields:    fields,
-		classes:   src.Classification,
-		lagHeader: lagHeader,
+		url:           src.URL,
+		client:        &http.Client{Timeout: timeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		headers:       headers,
+		fields:        fields,
+		classes:       src.Classification,
+		lagHeader:     lagHeader,
+		versionHeader: versionHeader,
 	}, nil
 }
 
@@ -254,7 +261,8 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 			lag = n
 		}
 	}
-	return server.Resource{Attributes: out, Found: true, LagSeconds: lag}, nil
+	version := strings.Trim(resp.Header.Get(s.versionHeader), `"`)
+	return server.Resource{Attributes: out, Found: true, LagSeconds: lag, Version: version}, nil
 }
 
 // Classification returns the configured classification map.

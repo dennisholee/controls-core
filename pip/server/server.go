@@ -97,12 +97,16 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 			s.reg.Set("pip_lag_seconds", "Replica lag reported by the PIP.",
 				map[string]string{"resource_type": ref.Type}, float64(lag))
 		}
+		version := res.Version
+		if version == "" {
+			version = "unknown"
+		}
 		results = append(results, pipclient.Attribute{
 			Type:       ref.Type,
 			ID:         ref.ID,
 			Found:      res.Found,
 			Attributes: res.Attributes,
-			Version:    "fixture-v1",
+			Version:    version,
 			TTLSeconds: 30,
 			LagSeconds: lag,
 		})

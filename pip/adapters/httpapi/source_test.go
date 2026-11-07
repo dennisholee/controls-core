@@ -30,6 +30,7 @@ func TestGetProjectsAllowlistAndLag(t *testing.T) {
 			t.Errorf("auth = %q", r.Header.Get("Authorization"))
 		}
 		w.Header().Set("X-Replica-Lag-Seconds", "12")
+		w.Header().Set("X-Resource-Version", `"v42"`)
 		_, _ = w.Write([]byte(`{"ownerId":"u-1","region":"US","ssn":"111","extra":"x"}`))
 	}))
 	defer upstream.Close()
@@ -51,6 +52,9 @@ func TestGetProjectsAllowlistAndLag(t *testing.T) {
 	}
 	if !res.Found || res.LagSeconds != 12 {
 		t.Fatalf("resource = %+v", res)
+	}
+	if res.Version != "v42" {
+		t.Fatalf("version = %q", res.Version)
 	}
 	if _, ok := res.Attributes["ssn"]; ok {
 		t.Fatalf("projection leaked ssn: %v", res.Attributes)

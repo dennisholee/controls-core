@@ -54,6 +54,9 @@ Two repositories implement the data port:
 - `404` means `found: false`; any other non-200 or decode error fails closed.
 - `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`; if the
   upstream omits it, lag is zero.
+- `versionHeader` (default `X-Resource-Version`, ETag-style quotes stripped)
+  feeds the `version` field used for cache invalidation; a missing header
+  reports `unknown`.
 - The client never uses an environment HTTP proxy, so internal attribute calls
   cannot be routed through an unexpected proxy.
 
