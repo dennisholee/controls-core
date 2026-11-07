@@ -101,7 +101,8 @@ contract, examples and limitations.
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup, PR gates, documentation and review rules
 - [ARCHITECTURE.md](ARCHITECTURE.md) — components, flows, failure matrix, latency budget
-- [Architecture infographic](docs/architecture-infographic.svg) — one-page visual of the solution
+- [Architecture infographic](docs/architecture-infographic.svg) — one-page logical view
+- [Deployment infographic](docs/deployment-infographic.svg) — namespaces, network policies and HA
 - [SECURITY.md](SECURITY.md) — threat model and controls
 - [TESTING.md](TESTING.md) — test strategy, fixture format, gates
 - [docs/SIDECAR-GUIDE.md](docs/SIDECAR-GUIDE.md) — service-team adoption guide

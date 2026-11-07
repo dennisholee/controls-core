@@ -2,7 +2,7 @@
 
 Status: reference implementation `v0.38.3`.
 
-Visual overview: [`docs/architecture-infographic.svg`](docs/architecture-infographic.svg).
+Visual overview: [`docs/architecture-infographic.svg`](docs/architecture-infographic.svg) · deployment: [`docs/deployment-infographic.svg`](docs/deployment-infographic.svg).
 
 ## 1. Context and constraints
 

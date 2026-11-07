@@ -143,6 +143,8 @@ controls-check -openapi openapi.yaml -bundle controls
 
 ## 3. Deployment
 
+Topology visual: [`deployment-infographic.svg`](deployment-infographic.svg).
+
 Use the `controls-sidecar` Helm library or an equivalent manifest to add:
 
 - Envoy container on the service port;
