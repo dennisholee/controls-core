@@ -218,6 +218,12 @@ func readJSON(path string, v any) error {
 // Validate enforces the invariants the contracts promise. The sidecar refuses
 // to start on an invalid bundle rather than run with partial configuration.
 func (b *Bundle) Validate() error {
+	if b.Manifest != nil && b.Manifest.SchemaVersion != "" {
+		major := strings.SplitN(b.Manifest.SchemaVersion, ".", 2)[0]
+		if major != "1" {
+			return fmt.Errorf("manifest: unsupported contract major %q", major)
+		}
+	}
 	switch b.Registry.DefaultUnregistered {
 	case "", "deny":
 	case "allow":

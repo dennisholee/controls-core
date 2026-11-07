@@ -37,6 +37,7 @@ func main() {
 	auditSalt := flag.String("audit-salt", os.Getenv("CONTROLS_AUDIT_SALT"), "salt for identifier hashing (required in production)")
 	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
 	allowUnsigned := flag.Bool("allow-unsigned", false, "allow a bundle without -bundle-pubkey (development only)")
+	auditBuffer := flag.Int("audit-buffer", 4096, "async audit queue size (0 = synchronous)")
 	opaURL := flag.String("opa-url", os.Getenv("CONTROLS_OPA_URL"), "OPA base URL (required for the opa policy engine)")
 	pipCA := flag.String("pip-ca", os.Getenv("CONTROLS_PIP_CA"), "CA bundle for PIP TLS")
 	pipCert := flag.String("pip-cert", os.Getenv("CONTROLS_PIP_CERT"), "client certificate for PIP mTLS")
@@ -77,7 +78,20 @@ func main() {
 	}
 	pip := pipclient.New(*pipURL, pipOpts...)
 	registry := metrics.New()
-	rs, err := buildRuntime(*cfgDir, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pip, registry)
+	al := audit.New(audit.Config{
+		Out:         os.Stdout,
+		Buffer:      *auditBuffer,
+		Salt:        *auditSalt,
+		AllowSample: *auditSample,
+		OnDrop: func() {
+			registry.Inc("controls_audit_dropped_total", "Audit entries dropped by the async queue.", map[string]string{}, 1)
+		},
+		OnWriteError: func() {
+			registry.Inc("controls_audit_write_failures_total", "Audit sink write failures.", map[string]string{}, 1)
+		},
+	})
+	defer al.Close()
+	rs, err := buildRuntime(*cfgDir, *bundlePubKey, *opaURL, *opaTimeout, pip, al, registry)
 	if err != nil {
 		log.Error("cannot start controls bundle", "err", err)
 		os.Exit(1)
@@ -90,7 +104,13 @@ func main() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", registry.Handler())
 		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
-		mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+		mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+			if err := current.Load().engine.StartupError(); err != nil {
+				http.Error(w, "policy initialisation failed", http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = w.Write([]byte("ok"))
+		})
 		go func() {
 			srv := &http.Server{Addr: *metricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 			log.Info("metrics listening", "addr", *metricsAddr)
@@ -147,7 +167,7 @@ func main() {
 			if !force && (fp == last || fp == lastFail) {
 				return
 			}
-			next, err := buildRuntime(*cfgDir, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pip, registry)
+			next, err := buildRuntime(*cfgDir, *bundlePubKey, *opaURL, *opaTimeout, pip, al, registry)
 			if err != nil {
 				lastFail = fp
 				log.Error("bundle reload failed; keeping previous", "reason", reason, "err", err)
@@ -180,7 +200,7 @@ type runtimeState struct {
 	fingerprint string
 }
 
-func buildRuntime(cfgDir, salt string, sample float64, pubkey, opaURL string, opaTimeout time.Duration, pip engine.PIP, reg *metrics.Registry) (*runtimeState, error) {
+func buildRuntime(cfgDir, pubkey, opaURL string, opaTimeout time.Duration, pip engine.PIP, al *audit.Logger, reg *metrics.Registry) (*runtimeState, error) {
 	bundle, err := config.LoadDir(cfgDir)
 	if err != nil {
 		return nil, err
@@ -204,13 +224,7 @@ func buildRuntime(cfgDir, salt string, sample float64, pubkey, opaURL string, op
 	if policyVersion == "" {
 		policyVersion = "1.0"
 	}
-	al := audit.New(audit.Config{
-		Out:           os.Stdout,
-		Salt:          salt,
-		AllowSample:   sample,
-		PolicyVersion: policyVersion,
-		BundleVersion: version,
-	})
+	al.SetVersions(policyVersion, version)
 	eng.SetHooks(engine.Hooks{OnDecision: func(d engine.Decision) {
 		observer.Record(d)
 		al.Record(d)

@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.20.x | 1.0.x | 1.0.x | 1.0.x | async audit, contract major |
 | 0.19.x | 1.0.x | 1.0.x | 1.0.x | identity envelope, mandatory signing |
 | 0.18.x | 1.0.x | 1.0.x | 1.0.x | breaker/cache fixes |
 | 0.17.x | 1.0.x | 1.0.x | 1.0.x | security hardening |

@@ -3,6 +3,7 @@ package audit
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -79,5 +80,28 @@ func TestHashIsStablePerSalt(t *testing.T) {
 	New(Config{Out: &b, Salt: "salt-b", AllowSample: 1}).Record(decision(true))
 	if a.String() == b.String() {
 		t.Fatal("different salts should produce different hashes")
+	}
+}
+
+type errWriter struct{}
+
+func (errWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
+func TestAsyncQueueAndWriteFailures(t *testing.T) {
+	var buf bytes.Buffer
+	l := New(Config{Out: &buf, Salt: "s", AllowSample: 1, Buffer: 16})
+	l.Record(decision(true))
+	l.Close()
+	if buf.Len() == 0 {
+		t.Fatal("async queue did not flush")
+	}
+	if l.Dropped() != 0 || l.WriteFailures() != 0 {
+		t.Fatalf("dropped=%d failures=%d", l.Dropped(), l.WriteFailures())
+	}
+
+	bad := New(Config{Out: errWriter{}, Salt: "s", AllowSample: 1})
+	bad.Record(decision(true))
+	if bad.WriteFailures() != 1 {
+		t.Fatalf("write failures = %d", bad.WriteFailures())
 	}
 }

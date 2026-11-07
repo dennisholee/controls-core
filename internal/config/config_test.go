@@ -126,3 +126,11 @@ func TestEndpointForStripsQueryAndRejectsTraversal(t *testing.T) {
 		t.Fatal("encoded traversal must not match")
 	}
 }
+
+func TestUnsupportedContractMajorRejected(t *testing.T) {
+	b := loadTestBundle(t)
+	b.Manifest = &Manifest{SchemaVersion: "2.0"}
+	if err := b.Validate(); err == nil {
+		t.Fatal("unsupported contract major must be rejected")
+	}
+}

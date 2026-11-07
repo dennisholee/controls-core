@@ -23,6 +23,16 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
   interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
 
+## [0.20.0] — 2026-11-07
+
+### Added
+
+- Contract major is validated at bundle load; unknown majors fail closed.
+- Audit writes use a bounded async queue (4096) with
+  `controls_audit_dropped_total` / `controls_audit_write_failures_total`;
+  `-audit-buffer 0` keeps synchronous mode for tests.
+- Extproc `/readyz` fails when the policy engine failed to initialise.
+
 ## [0.19.0] — 2026-11-07
 
 ### Security

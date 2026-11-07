@@ -12,6 +12,7 @@ import (
 	"io"
 	mrand "math/rand/v2"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"example.com/controls/core/internal/engine"
@@ -25,17 +26,30 @@ type Config struct {
 	PolicyVersion string
 	BundleVersion string
 	Now           func() time.Time
+	// Buffer > 0 moves writes to a bounded background queue. Record never
+	// blocks; when the queue is full the entry is dropped and counted.
+	Buffer       int
+	OnDrop       func()
+	OnWriteError func()
 }
 
 // Logger writes one JSON line per sampled decision.
 type Logger struct {
 	mu            sync.Mutex
+	versionMu     sync.RWMutex
 	out           io.Writer
 	salt          string
 	allowSample   float64
 	policyVersion string
 	bundleVersion string
 	now           func() time.Time
+	ch            chan []byte
+	wg            sync.WaitGroup
+	closeOnce     sync.Once
+	dropped       atomic.Uint64
+	writeFailures atomic.Uint64
+	onDrop        func()
+	onWriteError  func()
 }
 
 // New builds a Logger.
@@ -44,14 +58,27 @@ func New(cfg Config) *Logger {
 	if now == nil {
 		now = time.Now
 	}
-	return &Logger{
+	l := &Logger{
 		out:           cfg.Out,
 		salt:          cfg.Salt,
 		allowSample:   cfg.AllowSample,
 		policyVersion: cfg.PolicyVersion,
 		bundleVersion: cfg.BundleVersion,
 		now:           now,
+		onDrop:        cfg.OnDrop,
+		onWriteError:  cfg.OnWriteError,
 	}
+	if cfg.Buffer > 0 {
+		l.ch = make(chan []byte, cfg.Buffer)
+		l.wg.Add(1)
+		go func() {
+			defer l.wg.Done()
+			for raw := range l.ch {
+				l.write(raw)
+			}
+		}()
+	}
+	return l
 }
 
 type pipInfo struct {
@@ -84,6 +111,7 @@ type entry struct {
 
 // Record writes a decision if it passes sampling.
 func (l *Logger) Record(d engine.Decision) {
+	policyVersion, bundleVersion := l.versions()
 	if l == nil || l.out == nil {
 		return
 	}
@@ -113,8 +141,8 @@ func (l *Logger) Record(d engine.Decision) {
 		Action:         d.Action,
 		Decision:       decision,
 		Reason:         d.Reason,
-		PolicyVersion:  l.policyVersion,
-		BundleVersion:  l.bundleVersion,
+		PolicyVersion:  policyVersion,
+		BundleVersion:  bundleVersion,
 		Status:         d.Status,
 		LatencyMs:      float64(d.Latency.Microseconds()) / 1000.0,
 		DQ:             make([]dqInfo, 0, len(d.Violations)),
@@ -130,9 +158,60 @@ func (l *Logger) Record(d engine.Decision) {
 		return
 	}
 	raw = append(raw, '\n')
+	if l.ch != nil {
+		select {
+		case l.ch <- raw:
+		default:
+			l.dropped.Add(1)
+			if l.onDrop != nil {
+				l.onDrop()
+			}
+		}
+		return
+	}
+	l.write(raw)
+}
+
+func (l *Logger) write(raw []byte) {
 	l.mu.Lock()
-	_, _ = l.out.Write(raw)
-	l.mu.Unlock()
+	defer l.mu.Unlock()
+	if _, err := l.out.Write(raw); err != nil {
+		l.writeFailures.Add(1)
+		if l.onWriteError != nil {
+			l.onWriteError()
+		}
+	}
+}
+
+// SetVersions updates the policy and bundle versions stamped on new entries.
+// The logger is process-lifetime; reloads update it in place.
+func (l *Logger) SetVersions(policyVersion, bundleVersion string) {
+	l.versionMu.Lock()
+	l.policyVersion = policyVersion
+	l.bundleVersion = bundleVersion
+	l.versionMu.Unlock()
+}
+
+func (l *Logger) versions() (string, string) {
+	l.versionMu.RLock()
+	defer l.versionMu.RUnlock()
+	return l.policyVersion, l.bundleVersion
+}
+
+// Dropped reports entries dropped because the async queue was full.
+func (l *Logger) Dropped() uint64 { return l.dropped.Load() }
+
+// WriteFailures reports failed sink writes.
+func (l *Logger) WriteFailures() uint64 { return l.writeFailures.Load() }
+
+// Close drains the queue. Safe to call more than once.
+func (l *Logger) Close() {
+	l.closeOnce.Do(func() {
+		if l.ch != nil {
+			close(l.ch)
+			l.wg.Wait()
+		}
+	})
 }
 
 func (l *Logger) hash(value string) string {
