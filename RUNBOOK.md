@@ -32,6 +32,10 @@ application. The alerts above map to these series:
 | Stale denials | `rate(controls_stale_denials_total[5m])` |
 | DQ blocking | `rate(controls_dq_violations_total{blocking="true"}[5m])` |
 | Bundle version | `controls_bundle_info{bundle_version,bundle_digest}` |
+| PIP errors | `rate(pip_request_errors_total[5m])` |
+| PIP latency | `histogram_quantile(0.99, rate(pip_request_duration_seconds_bucket[5m]))` |
+| PIP misses | `rate(pip_attributes_total{found="false"}[5m])` |
+| PIP replica lag | `pip_lag_seconds{resource_type}` |
 
 PIP latency is currently visible only as end-to-end control latency; a
 dedicated PIP histogram is a follow-up if the alert proves too coarse.

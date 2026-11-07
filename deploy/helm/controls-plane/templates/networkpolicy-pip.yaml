@@ -27,6 +27,12 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.pip.port }}
+    - from:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.pip.metricsNamespaceSelector | nindent 12 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.pip.metricsPort }}
   egress:
     - to:
         - namespaceSelector: {}

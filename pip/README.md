@@ -33,7 +33,10 @@ Two repositories implement the data port:
         "accountNumber": "pii.partial",
         "ssn": "pii.locked"
       },
-      "lagHeader": "X-Replica-Lag-Seconds"
+      "lagHeader": "X-Replica-Lag-Seconds",
+      "caFile": "/etc/controls-tls/ca.pem",
+      "certFile": "/etc/controls-tls/client.pem",
+      "keyFile": "/etc/controls-tls/client-key.pem"
     }
   }
 }
@@ -42,22 +45,27 @@ Two repositories implement the data port:
 - `{id}` is path-escaped; the URL host is fixed by configuration (no
   caller-controlled URLs), redirects are refused, and headers expand
   `${ENV}` at load.
+- `caFile` / `certFile` / `keyFile` enable server verification and mTLS to the
+  attribute API; they require an `https` URL. `serverName` overrides the SNI
+  name when the certificate does not match the host.
 - `fields` is a hard allowlist: the PIP will never return a field outside it,
   even if the caller asks.
+- Upstream responses are capped at 1 MiB; a larger body fails closed.
 - `404` means `found: false`; any other non-200 or decode error fails closed.
 - `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`; if the
   upstream omits it, lag is zero.
+- The client never uses an environment HTTP proxy, so internal attribute calls
+  cannot be routed through an unexpected proxy.
 
 ## Reference implementation
 
 `pip/server` ships an in-memory `Repository` backed by
-[`fixtures/attributes.json`](fixtures/attributes.json). The production
-implementation registers per-domain adapters that query read replicas with
-curated, parameterized statements.
+[`fixtures/attributes.json`](fixtures/attributes.json); `pip/adapters/httpapi`
+is the production adapter over read APIs in front of the replicas.
 
 ```go
 type Repository interface {
-    Get(ctx, resourceType, id string, fields []string) (map[string]any, bool, error)
+    Get(ctx, resourceType, id string, fields []string) (server.Resource, error)
     Classification(ctx, resourceType string) (map[string]string, bool, error)
 }
 ```
@@ -66,7 +74,8 @@ type Repository interface {
 
 - Read-only credentials, one grant per domain, views rather than base tables
   where possible.
-- Fixed queries only. Never translate client input into SQL or JSONPath-to-SQL.
+- Fixed URLs and allowlisted fields only; never interpolate caller input beyond
+  the path-escaped `{id}`.
 - Always honour the requested field projection.
 - Return `found: false` for unknown ids; do not leak existence through errors.
 - Bound every query with a timeout and a row limit.
@@ -86,6 +95,16 @@ Two levels, deliberately different TTLs:
 
 The sidecar coalesces misses; the PIP must survive a cold-start stampede
 without saturating the replicas.
+
+## Metrics
+
+`-metrics-addr` (default `:9090`) serves `/metrics`, `/healthz` and `/readyz`:
+
+- `pip_requests_total{endpoint}`
+- `pip_request_errors_total{endpoint}`
+- `pip_request_duration_seconds{endpoint}` (histogram)
+- `pip_attributes_total{resource_type,found}`
+- `pip_lag_seconds{resource_type}`
 
 ## Failure behaviour
 

@@ -8,8 +8,11 @@ package httpapi
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +22,9 @@ import (
 
 	"example.com/controls/core/pip/server"
 )
+
+// maxResponseBytes bounds one upstream attribute response.
+const maxResponseBytes = 1 << 20
 
 // Config is the source document.
 type Config struct {
@@ -33,6 +39,11 @@ type Source struct {
 	Fields         []string          `json:"fields"`
 	Classification map[string]string `json:"classification"`
 	LagHeader      string            `json:"lagHeader"`
+	// TLS options for mTLS to the attribute API. All paths are operator-owned.
+	CAFile     string `json:"caFile"`
+	CertFile   string `json:"certFile"`
+	KeyFile    string `json:"keyFile"`
+	ServerName string `json:"serverName"`
 }
 
 type source struct {
@@ -81,6 +92,9 @@ func build(typ string, src Source) (*source, error) {
 	if u.User != nil {
 		return nil, fmt.Errorf("url must not contain credentials")
 	}
+	if strings.Contains(u.Host, "{id}") {
+		return nil, fmt.Errorf("url must not interpolate {id} into the host")
+	}
 	if !strings.Contains(src.URL, "{id}") {
 		return nil, fmt.Errorf("url must contain {id}")
 	}
@@ -113,14 +127,55 @@ func build(typ string, src Source) (*source, error) {
 	if lagHeader == "" {
 		lagHeader = "X-Replica-Lag-Seconds"
 	}
+	tlsCfg, err := buildTLS(src, u.Scheme)
+	if err != nil {
+		return nil, err
+	}
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.Proxy = nil // attribute APIs are internal; never use an env proxy
+	transport.TLSClientConfig = tlsCfg
+	transport.MaxIdleConns = 100
+	transport.MaxIdleConnsPerHost = 100
 	return &source{
 		url:       src.URL,
-		client:    &http.Client{Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
+		client:    &http.Client{Timeout: timeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		headers:   headers,
 		fields:    fields,
 		classes:   src.Classification,
 		lagHeader: lagHeader,
 	}, nil
+}
+
+func buildTLS(src Source, scheme string) (*tls.Config, error) {
+	if src.CAFile == "" && src.CertFile == "" && src.KeyFile == "" && src.ServerName == "" {
+		return nil, nil
+	}
+	if scheme != "https" {
+		return nil, fmt.Errorf("tls options require an https url")
+	}
+	if (src.CertFile == "") != (src.KeyFile == "") {
+		return nil, fmt.Errorf("certFile and keyFile must be set together")
+	}
+	cfg := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: src.ServerName}
+	if src.CAFile != "" {
+		raw, err := os.ReadFile(src.CAFile)
+		if err != nil {
+			return nil, fmt.Errorf("read caFile: %w", err)
+		}
+		pool := x509.NewCertPool()
+		if !pool.AppendCertsFromPEM(raw) {
+			return nil, fmt.Errorf("caFile contains no valid certificates")
+		}
+		cfg.RootCAs = pool
+	}
+	if src.CertFile != "" {
+		cert, err := tls.LoadX509KeyPair(src.CertFile, src.KeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("load client certificate: %w", err)
+		}
+		cfg.Certificates = []tls.Certificate{cert}
+	}
+	return cfg, nil
 }
 
 func expandEnv(v string) (string, error) {
@@ -166,8 +221,15 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 	if resp.StatusCode != http.StatusOK {
 		return server.Resource{}, fmt.Errorf("upstream status %d", resp.StatusCode)
 	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
+	if err != nil {
+		return server.Resource{}, fmt.Errorf("read upstream: %w", err)
+	}
+	if len(raw) > maxResponseBytes {
+		return server.Resource{}, fmt.Errorf("upstream response exceeds %d bytes", maxResponseBytes)
+	}
 	var all map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&all); err != nil {
+	if err := json.Unmarshal(raw, &all); err != nil {
 		return server.Resource{}, fmt.Errorf("decode upstream: %w", err)
 	}
 	want := fields

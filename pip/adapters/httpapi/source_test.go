@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -101,5 +103,62 @@ func TestConfigValidation(t *testing.T) {
 		if _, err := Load(writeConfig(t, body)); err == nil {
 			t.Fatalf("expected validation error for %s", body)
 		}
+	}
+}
+
+func TestTLSWithCustomCA(t *testing.T) {
+	upstream := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"ownerId":"u-1"}`))
+	}))
+	defer upstream.Close()
+
+	ca := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: upstream.Certificate().Raw})
+	caPath := filepath.Join(t.TempDir(), "ca.pem")
+	if err := os.WriteFile(caPath, ca, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"`+upstream.URL+`/accounts/{id}",
+	  "caFile":"`+caPath+`",
+	  "fields":["ownerId"]
+	}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := repo.Get(context.Background(), "account", "A123", []string{"ownerId"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Found || res.Attributes["ownerId"] != "u-1" {
+		t.Fatalf("resource = %+v", res)
+	}
+}
+
+func TestResponseSizeLimit(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"ownerId":"` + strings.Repeat("x", 1<<20) + `"}`))
+	}))
+	defer upstream.Close()
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"`+upstream.URL+`/accounts/{id}",
+	  "fields":["ownerId"]
+	}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.Get(context.Background(), "account", "A123", nil); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("expected size error, got %v", err)
+	}
+}
+
+func TestRejectsIDInHost(t *testing.T) {
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"http://{id}.example.com/accounts",
+	  "fields":["ownerId"]
+	}}}`)
+	if _, err := Load(cfg); err == nil {
+		t.Fatal("expected host interpolation error")
 	}
 }

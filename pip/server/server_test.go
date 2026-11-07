@@ -7,8 +7,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/internal/pipclient"
 )
 
@@ -109,5 +111,40 @@ func TestBatchCapEnforced(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}
+
+func TestMetricsRecorded(t *testing.T) {
+	repo, err := LoadMemoryRepo("../fixtures/attributes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	reg := metrics.New()
+	srv := httptest.NewServer(New(repo, log, WithMetrics(reg)).Handler())
+	t.Cleanup(srv.Close)
+
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+		{Type: "account", ID: "missing", Fields: []string{"ownerId"}},
+	}})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+
+	var out bytes.Buffer
+	reg.Write(&out)
+	text := out.String()
+	for _, want := range []string{
+		`pip_requests_total{endpoint="attributes"} 1`,
+		`pip_attributes_total{found="true",resource_type="account"} 1`,
+		`pip_attributes_total{found="false",resource_type="account"} 1`,
+		`pip_request_duration_seconds_count{endpoint="attributes"} 1`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("missing %q in:\n%s", want, text)
+		}
 	}
 }

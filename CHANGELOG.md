@@ -3,6 +3,21 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.12.1] — 2026-11-07
+
+### Added
+
+- HTTP attribute sources for the PIP (`-sources`): per-resource URLs, field
+  allowlists, `${ENV}` headers, replica-lag headers, classification metadata,
+  and an optional `-sources` Helm ConfigMap.
+
+### Security
+
+- Attribute-source mTLS: `caFile`/`certFile`/`keyFile`/`serverName`, HTTPS-only,
+  redirects refused, no environment proxy.
+- Upstream responses are capped at 1 MiB; `{id}` cannot be interpolated into
+  the URL host.
+
 ## [0.5.0] — 2026-11-07
 
 ### Security

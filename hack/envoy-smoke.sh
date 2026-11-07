@@ -156,6 +156,8 @@ grep -q 'controls_decisions_total' "$TMP/metrics" || fail "decisions metric miss
 grep -q 'controls_pip_cache_total' "$TMP/metrics" || fail "pip cache metric missing"
 grep -q '"subjectHash"' "$TMP/extproc.log" || fail "audit log missing"
 grep -q '"decision":"deny"' "$TMP/extproc.log" || fail "audit deny missing"
+curl -sf "http://127.0.0.1:9090/metrics" >"$TMP/pip-metrics" || fail "PIP metrics endpoint failed"
+grep -q 'pip_requests_total' "$TMP/pip-metrics" || fail "PIP requests metric missing"
 
 # 8. Optional throughput/latency gate through the real Envoy chain.
 if [ "${CONTROLS_LOADTEST:-0}" = "1" ]; then

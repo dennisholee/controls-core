@@ -37,7 +37,7 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 | C1 — PIP reachable without identity | NetworkPolicy admits only pods labeled `controls-plane/sidecar=true`; optional Istio `PeerAuthentication: STRICT` and an `AuthorizationPolicy` limited to listed service-account principals |
 | C2 — sidecar identity spoofing | NetworkPolicy admits the sidecar's app port only from the gateway namespace/pod selector; the sidecar must still strip/re-inject identity headers at the gateway |
 | H1 — unsigned bundles | The sidecar receives `-bundle-pubkey`; the chart mounts only the public key |
-| L2 — open metrics | Metrics port is admitted only from the monitoring namespace selector |
+| L2 — open metrics | PIP and sidecar metrics ports are admitted only from the monitoring namespace selector |
 
 ## Required configuration
 

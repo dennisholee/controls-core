@@ -15,4 +15,8 @@ spec:
       port: {{ .Values.pip.port }}
       targetPort: http
       protocol: TCP
+    - name: metrics
+      port: {{ .Values.pip.metricsPort }}
+      targetPort: metrics
+      protocol: TCP
 {{- end }}

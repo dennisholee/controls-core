@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/internal/pipclient"
 )
 
@@ -20,10 +21,14 @@ type Server struct {
 	log        *slog.Logger
 	mux        *http.ServeMux
 	lagSeconds int
+	reg        *metrics.Registry
 }
 
 // Option configures the PIP server.
 type Option func(*Server)
+
+// WithMetrics records request, attribute and lag metrics.
+func WithMetrics(reg *metrics.Registry) Option { return func(s *Server) { s.reg = reg } }
 
 // WithLagSeconds reports the given replica lag on every attribute response.
 // Production adapters should derive this from the replica's applied position;
@@ -50,17 +55,22 @@ func (s *Server) Handler() http.Handler { return s.mux }
 
 func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	s.recordRequest("attributes")
+	defer s.observe("attributes", start)
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var req pipclient.BatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.recordError("attributes")
 		http.Error(w, `{"error":"invalid_json"}`, http.StatusBadRequest)
 		return
 	}
 	if len(req.Requests) == 0 {
+		s.recordError("attributes")
 		http.Error(w, `{"error":"empty_batch"}`, http.StatusBadRequest)
 		return
 	}
 	if len(req.Requests) > maxBatch {
+		s.recordError("attributes")
 		http.Error(w, `{"error":"batch_too_large"}`, http.StatusBadRequest)
 		return
 	}
@@ -69,12 +79,23 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 		res, err := s.repo.Get(r.Context(), ref.Type, ref.ID, ref.Fields)
 		if err != nil {
 			s.log.Error("pip lookup failed", "type", ref.Type, "id", ref.ID, "err", err)
+			s.recordError("attributes")
 			http.Error(w, `{"error":"lookup_failed"}`, http.StatusInternalServerError)
 			return
 		}
 		lag := res.LagSeconds
 		if lag == 0 {
 			lag = s.lagSeconds
+		}
+		if s.reg != nil {
+			found := "false"
+			if res.Found {
+				found = "true"
+			}
+			s.reg.Inc("pip_attributes_total", "PIP attribute resolutions.",
+				map[string]string{"resource_type": ref.Type, "found": found}, 1)
+			s.reg.Set("pip_lag_seconds", "Replica lag reported by the PIP.",
+				map[string]string{"resource_type": ref.Type}, float64(lag))
 		}
 		results = append(results, pipclient.Attribute{
 			Type:       ref.Type,
@@ -91,13 +112,18 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleClassification(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	s.recordRequest("classification")
+	defer s.observe("classification", start)
 	resourceType := r.PathValue("type")
 	fields, found, err := s.repo.Classification(r.Context(), resourceType)
 	if err != nil {
+		s.recordError("classification")
 		http.Error(w, `{"error":"lookup_failed"}`, http.StatusInternalServerError)
 		return
 	}
 	if !found {
+		s.recordError("classification")
 		http.Error(w, `{"error":"unknown_resource_type"}`, http.StatusNotFound)
 		return
 	}
@@ -106,6 +132,30 @@ func (s *Server) handleClassification(w http.ResponseWriter, r *http.Request) {
 		Fields:       fields,
 		TTLSeconds:   3600,
 	})
+}
+
+func (s *Server) recordRequest(endpoint string) {
+	if s.reg == nil {
+		return
+	}
+	s.reg.Inc("pip_requests_total", "PIP requests by endpoint.",
+		map[string]string{"endpoint": endpoint}, 1)
+}
+
+func (s *Server) recordError(endpoint string) {
+	if s.reg == nil {
+		return
+	}
+	s.reg.Inc("pip_request_errors_total", "PIP request errors by endpoint.",
+		map[string]string{"endpoint": endpoint}, 1)
+}
+
+func (s *Server) observe(endpoint string, start time.Time) {
+	if s.reg == nil {
+		return
+	}
+	s.reg.Observe("pip_request_duration_seconds", "PIP request latency by endpoint.",
+		map[string]string{"endpoint": endpoint}, time.Since(start).Seconds())
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

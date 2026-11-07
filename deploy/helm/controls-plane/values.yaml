@@ -12,10 +12,11 @@ imagePullSecrets: []
 pip:
   enabled: true
   image: registry.example.com/controls-pip
-  tag: "0.10.1"
+  tag: "0.12.1"
   pullPolicy: IfNotPresent
   replicas: 2
   port: 8082
+  metricsPort: 9090
   lagSeconds: 0
   serviceAccount:
     create: true
@@ -40,6 +41,9 @@ pip:
     json: |
       {"sources":{}}
   extraEnv: []
+  # Mount TLS material for attribute APIs (ca/cert/key) or other secrets.
+  extraVolumes: []
+  extraVolumeMounts: []
   # Egress allowed in addition to DNS and the sidecar network.
   egress:
     databaseCIDRs: []
@@ -72,6 +76,9 @@ networkPolicy:
     # Namespace/pod selectors allowed to call the PIP. Empty namespaceSelector
     # means "this release namespace".
     sidecarNamespaceSelector: {}
+    metricsNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
     sidecarPodSelector:
       matchLabels:
         controls-plane/sidecar: "true"

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/pip/adapters/httpapi"
 	"example.com/controls/core/pip/server"
 )
@@ -22,6 +23,7 @@ func main() {
 	addr := flag.String("addr", ":8082", "listen address")
 	fixtures := flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
 	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
+	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
 	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
@@ -43,9 +45,23 @@ func main() {
 		}
 		repo = r
 	}
+	reg := metrics.New()
+	handler := server.New(repo, log, server.WithLagSeconds(*lagSeconds), server.WithMetrics(reg)).Handler()
+	if *metricsAddr != "" {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", reg.Handler())
+		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+		mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+		go func() {
+			log.Info("pip metrics listening", "addr", *metricsAddr)
+			if err := http.ListenAndServe(*metricsAddr, mux); err != nil {
+				log.Error("metrics listen", "err", err)
+			}
+		}()
+	}
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           server.New(repo, log, server.WithLagSeconds(*lagSeconds)).Handler(),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
