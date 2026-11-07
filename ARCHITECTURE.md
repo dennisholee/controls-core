@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.5.0`.
+Status: reference implementation `v0.6.0`.
 
 ## 1. Context and constraints
 
@@ -117,6 +117,9 @@ cache is keyed by type, id and field projection.
 - **Observability**: ext_proc exposes `/metrics`, `/healthz` and `/readyz` on
   `:9090`; decision logs are stdout JSON with hashed identifiers. Scrape the
   admin port and ship stdout to the platform log store.
+- **Bundle integrity**: the sidecar verifies `manifest.sig` against the
+  recomputed digest when `-bundle-pubkey` is set, and refuses to start when the
+  bundle is modified or unsigned.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 

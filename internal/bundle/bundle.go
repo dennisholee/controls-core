@@ -73,7 +73,12 @@ type dqDoc struct {
 type overlay struct {
 	Environment string `json:"environment"`
 	Service     string `json:"service"`
-	Bundle      struct {
+	// Pipeline-owned sections are ignored by the renderer but accepted so a
+	// single overlay can carry logging/signing settings.
+	Controls json.RawMessage `json:"controls,omitempty"`
+	Logging  json.RawMessage `json:"logging,omitempty"`
+	Pipeline json.RawMessage `json:"pipeline,omitempty"`
+	Bundle   struct {
 		DefaultUnregistered string                       `json:"defaultUnregistered"`
 		DisableRules        []string                     `json:"disableRules"`
 		DisableDQRules      []string                     `json:"disableDQRules"`
@@ -439,6 +444,20 @@ func writeBundle(dir string, contents map[string][]byte) error {
 		}
 	}
 	return nil
+}
+
+// DigestDir recomputes the bundle digest from the four files on disk. It must
+// match the digest recorded by Render; signing and verification rely on it.
+func DigestDir(dir string) (string, error) {
+	contents := map[string][]byte{}
+	for _, name := range []string{"rules.json", "mask-policies.json", "registry.json", "dq.json"} {
+		raw, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return "", err
+		}
+		contents[name] = raw
+	}
+	return digestOf(contents), nil
 }
 
 func digestOf(contents map[string][]byte) string {

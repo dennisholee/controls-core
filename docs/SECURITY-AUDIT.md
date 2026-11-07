@@ -12,7 +12,7 @@ proxy unreachable from this environment); see M7.
 | Severity | Count |
 |---|---|
 | CRITICAL | 2 (open) |
-| HIGH | 3 (H2/H3 remediated, H1 open) |
+| HIGH | 3 (all remediated) |
 | MEDIUM | 8 |
 | LOW | 2 |
 
@@ -62,9 +62,15 @@ in the sidecar, while [`docs/PIPELINE.md:120`](PIPELINE.md#L120) says the
 pipeline signs the bundle.
 Impact: a modified ConfigMap or artifact changes policy and masking while the
 audit log still shows the original digest, so provenance is not proven.
-Remediation: verify a cosign signature (or an admission-control policy) over the
+Remediation: verify a signature (or an admission-control policy) over the
 bundle digest at startup and on reload; fail closed if verification fails; keep
 the public key outside the bundle.
+
+Status: **remediated.** `bundle-sign` produces an Ed25519 detached signature
+over the recomputed digest; the sidecar takes `-bundle-pubkey` /
+`CONTROLS_BUNDLE_PUBKEY` and refuses to start when verification fails.
+Tampering with any bundle file now causes a digest mismatch before the
+signature check, and both paths are tested.
 
 ### H2 — `defaultUnregistered: allow` can be introduced through an overlay
 Evidence: [`bundle.go:337`](../internal/bundle/bundle.go#L337) copies the overlay
@@ -173,11 +179,11 @@ to the monitoring network or add auth at the scrape proxy.
 
 ## Remediated during the audit
 
-H2 (fail-open overlay), H3 (PIP limits, partially), M1 (unknown overlay keys)
-and M8 (audit salt) were fixed and covered by tests in the same change.
+H1 (bundle signatures), H2 (fail-open overlay), H3 (PIP limits, partially),
+M1 (unknown overlay keys) and M8 (audit salt) were fixed and covered by tests.
 
 ## Release gate
 
 C1 and C2 must be resolved (or formally accepted with compensating network
-controls) before any production data is in scope. H1–H3 should be fixed before
-the pilot; M1–M3 are quick hardening items suitable for the same change window.
+controls) before any production data is in scope. H1–H3 are remediated; M1–M3
+are quick hardening items suitable for the same change window.

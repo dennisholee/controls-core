@@ -21,6 +21,7 @@ import (
 	"example.com/controls/core/internal/engine"
 	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/internal/pipclient"
+	"example.com/controls/core/internal/signing"
 	"example.com/controls/core/sidecar/extproc"
 )
 
@@ -32,6 +33,7 @@ func main() {
 	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
 	auditSample := flag.Float64("audit-sample", 0.01, "fraction of allowed decisions to audit (denials always logged)")
 	auditSalt := flag.String("audit-salt", os.Getenv("CONTROLS_AUDIT_SALT"), "salt for identifier hashing (required in production)")
+	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
 	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
 
@@ -49,6 +51,15 @@ func main() {
 	if *auditSalt == "" {
 		log.Error("CONTROLS_AUDIT_SALT is required; refusing to start with a predictable audit salt")
 		os.Exit(1)
+	}
+	if *bundlePubKey != "" {
+		if err := signing.VerifyDir(*cfgDir, *bundlePubKey); err != nil {
+			log.Error("bundle signature verification failed", "err", err)
+			os.Exit(1)
+		}
+		log.Info("bundle signature verified")
+	} else {
+		log.Warn("bundle signature not verified; set -bundle-pubkey in production")
 	}
 
 	eng := engine.New(bundle, pipclient.New(*pipURL))

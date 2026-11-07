@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.6.x | 1.0.x | 1.0.x | 1.0.x | bundle signing |
 | 0.5.x | 1.0.x | 1.0.x | 1.0.x | classification fallback |
 | 0.4.x | 1.0.x | 1.0.x | 1.0.x | audit, metrics |
 | 0.3.x | 1.0.x | 1.0.x | 1.0.x | bundle renderer, conformance, freshness |

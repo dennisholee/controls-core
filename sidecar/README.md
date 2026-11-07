@@ -60,6 +60,8 @@ CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
   `raw_value`, per Envoy's wire behaviour.
 - `/metrics`, `/healthz` and `/readyz` are served on `:9090`; decision audit is
   JSON on stdout (hashed identifiers, denials always, allows sampled).
+- `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) enables Ed25519 verification of
+  `manifest.sig`; startup fails if the bundle was modified or unsigned.
 
 The adapter is exercised against a live Envoy 1.40 by `make smoke`
 ([`hack/envoy-smoke.sh`](../hack/envoy-smoke.sh)).

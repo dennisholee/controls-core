@@ -7,6 +7,9 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ### Security
 
+- Ed25519 bundle signing (`bundle-sign`, `bundle-keygen`) and sidecar
+  verification via `-bundle-pubkey`; the digest is recomputed from the four
+  files, so any modification fails startup.
 - Bundle overlays reject `defaultUnregistered: allow`; overlay documents are
   decoded strictly, so unknown keys fail the render.
 - PIP enforces a 64 KiB body limit and a 100-resource batch cap.

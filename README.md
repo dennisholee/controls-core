@@ -97,8 +97,9 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.5.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.6.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
-the pipeline entry points (`bundle`, `conformance`, OpenAPI gate), and audited,
-metered enforcement. Remaining: OPA/Cedar and production packaging. See
+the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
+gate), audited/metered enforcement and verified bundle integrity. Remaining:
+OPA/Cedar and production packaging. See
 [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

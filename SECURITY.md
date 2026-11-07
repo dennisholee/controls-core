@@ -70,7 +70,9 @@ The latest review is [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md). Open
 release blockers: unauthenticated PIP access (C1) and unverified identity
 headers at the sidecar (C2). Bundle signature verification (H1) is also open.
 Deployments must not expose the PIP or the sidecar listener outside the trusted
-network until those are resolved.
+network until those are resolved. Bundle signature verification is implemented
+but only active when `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) is set;
+production must set it.
 
 ## 7. Reporting
 

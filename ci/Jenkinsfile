@@ -52,9 +52,13 @@ pipeline {
     }
 
     stage('Sign and publish') {
-      // Jenkins-owned. Replace with the platform's signing/publishing steps.
+      // Jenkins-owned. The key is a Jenkins file credential; only the public
+      // key is mounted into the sidecar.
       steps {
-        echo "cosign sign-blob dist/${params.SERVICE}/manifest.json"
+        withCredentials([file(credentialsId: 'controls-bundle-signing', variable: 'BUNDLE_SIGNING_KEY')]) {
+          sh 'bundle-sign -bundle dist/${params.SERVICE} -key "$BUNDLE_SIGNING_KEY"'
+        }
+        sh 'bundle-sign -bundle dist/${params.SERVICE} -verify -pubkey /etc/controls/bundle-signing.pub.pem'
         echo "publish dist/${params.SERVICE} to the artifact store"
       }
     }

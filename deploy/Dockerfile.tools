@@ -11,7 +11,9 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -o /out/bundle ./tools/bundle \
  && CGO_ENABLED=0 go build -o /out/conformance ./tools/conformance \
- && CGO_ENABLED=0 go build -o /out/openapi-diff ./tools/openapi-diff
+ && CGO_ENABLED=0 go build -o /out/openapi-diff ./tools/openapi-diff \
+ && CGO_ENABLED=0 go build -o /out/bundle-sign ./tools/bundle-sign \
+ && CGO_ENABLED=0 go build -o /out/bundle-keygen ./tools/bundle-keygen
 
 FROM alpine:3.20
 RUN apk add --no-cache ca-certificates

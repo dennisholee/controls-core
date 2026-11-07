@@ -91,6 +91,7 @@ dist/<service>/
   registry.json
   dq.json
   manifest.json        # bundleDigest, bundleVersion, schemaVersion, counts, sources
+  manifest.sig         # Ed25519 signature over the recomputed bundle digest
 ```
 
 `manifest.json` is the handoff to sign, store and deploy. The sidecar logs
@@ -117,10 +118,23 @@ Owned by Jenkins, not by these tools:
 
 1. Render + conformance pass on the PR (fast feedback).
 2. Merge to `main` triggers a build for each service/environment.
-3. Sign `manifest.json` and the bundle (cosign), record the digest.
-4. Publish the bundle as an OCI artifact (or the platform's artifact store).
-5. Deploy by pinning the bundle digest in the service's deployment.
-6. Rollback redeploys the previous digest — no application rebuild.
+3. Sign the bundle with the pipeline's Ed25519 key:
+   `bundle-sign -bundle dist/<service> -key "$BUNDLE_SIGNING_KEY"`.
+4. Verify the signature and record the digest.
+5. Publish the bundle as an OCI artifact (or the platform's artifact store).
+6. Deploy by pinning the bundle digest in the service's deployment and the
+   public key into the sidecar (`-bundle-pubkey`).
+7. Rollback redeploys the previous digest — no application rebuild.
+
+### Keys
+
+```bash
+bundle-keygen -out ./keys        # once, offline
+```
+
+Store the private key in Jenkins credentials (file credential). Mount only the
+public key into the sidecar. Losing or rotating the key requires re-signing the
+bundle; the sidecar refuses to start when verification fails.
 
 ## Versioning
 
