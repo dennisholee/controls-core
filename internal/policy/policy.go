@@ -1,7 +1,7 @@
 // Package policy evaluates authorization rules.
 //
-// The Evaluator interface exists so the reference structured-rule engine can be
-// replaced by OPA (compiled to Wasm) or Cedar without changing the sidecar.
+// The Evaluator interface lets a bundle select the reference rules, Cedar, or
+// an external OPA decision service without changing the sidecar.
 // The reference engine is intentionally small and total: no I/O, no reflection,
 // deterministic, and safe to run on the request path.
 package policy
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"example.com/controls/core/internal/config"
 )
@@ -45,13 +46,30 @@ func New(b *config.Bundle) *RuleEvaluator {
 	return &RuleEvaluator{rules: b.Rules.Rules, defaultEffect: b.Rules.DefaultEffect}
 }
 
-// NewEvaluator selects the evaluator named by the bundle.
+// Options configures evaluators that need external endpoints.
+type Options struct {
+	OPAURL     string
+	OPATimeout time.Duration
+}
+
+// NewEvaluator selects the evaluator named by the bundle with default options.
 func NewEvaluator(b *config.Bundle) (Evaluator, error) {
+	return NewEvaluatorWithOptions(b, Options{})
+}
+
+// NewEvaluatorWithOptions selects the evaluator named by the bundle.
+func NewEvaluatorWithOptions(b *config.Bundle, opts Options) (Evaluator, error) {
 	switch b.Rules.Engine {
 	case "", "rules":
 		return New(b), nil
 	case "cedar":
 		return NewCedarEvaluator(b.CedarPolicies)
+	case "opa":
+		decision := "controls/authz/allow"
+		if b.Rules.OPA != nil && b.Rules.OPA.Decision != "" {
+			decision = b.Rules.OPA.Decision
+		}
+		return NewOPAEvaluator(opts.OPAURL, decision, opts.OPATimeout)
 	default:
 		return nil, fmt.Errorf("unknown policy engine %q", b.Rules.Engine)
 	}

@@ -58,10 +58,17 @@ type Ref struct {
 // Rules is the authorization rule set. Deny rules are evaluated first and are
 // absolute; allow rules are then OR-ed. No match falls back to DefaultEffect.
 type Rules struct {
-	Version       string `json:"version"`
-	DefaultEffect string `json:"defaultEffect"`    // allow | deny
-	Engine        string `json:"engine,omitempty"` // rules | cedar
-	Rules         []Rule `json:"rules"`
+	Version       string     `json:"version"`
+	DefaultEffect string     `json:"defaultEffect"`    // allow | deny
+	Engine        string     `json:"engine,omitempty"` // rules | cedar | opa
+	OPA           *OPAConfig `json:"opa,omitempty"`
+	Rules         []Rule     `json:"rules"`
+}
+
+// OPAConfig selects the external OPA decision path. The sidecar supplies the
+// base URL (CONTROLS_OPA_URL); the bundle supplies only the decision.
+type OPAConfig struct {
+	Decision string `json:"decision"` // e.g. controls/authz/allow
 }
 
 // Rule is a single authorization rule.
@@ -260,8 +267,24 @@ func (b *Bundle) Validate() error {
 		if len(b.Rules.Rules) > 0 {
 			return fmt.Errorf("rules: engine cedar cannot be combined with JSON rules")
 		}
+		if b.Rules.OPA != nil {
+			return fmt.Errorf("rules: engine cedar cannot use OPA settings")
+		}
+	case "opa":
+		if b.CedarPolicies != "" {
+			return fmt.Errorf("rules: engine opa cannot be combined with policies.cedar")
+		}
+		if len(b.Rules.Rules) > 0 {
+			return fmt.Errorf("rules: engine opa cannot be combined with JSON rules")
+		}
+		if b.Rules.OPA == nil || b.Rules.OPA.Decision == "" {
+			b.Rules.OPA = &OPAConfig{Decision: "controls/authz/allow"}
+		}
+		if !validOPADecision(b.Rules.OPA.Decision) {
+			return fmt.Errorf("rules: opa decision %q is invalid", b.Rules.OPA.Decision)
+		}
 	default:
-		return fmt.Errorf("rules: engine must be rules or cedar")
+		return fmt.Errorf("rules: engine must be rules, cedar or opa")
 	}
 	for _, r := range b.Rules.Rules {
 		if r.ID == "" {
@@ -340,6 +363,21 @@ func splitPath(p string) []string {
 		return nil
 	}
 	return strings.Split(p, "/")
+}
+
+func validOPADecision(path string) bool {
+	if strings.HasPrefix(path, "/") || strings.Contains(path, "..") {
+		return false
+	}
+	for _, r := range path {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '_' || r == '-' || r == '/' || r == '.':
+		default:
+			return false
+		}
+	}
+	return path != ""
 }
 
 func lastSegment(path string) string {

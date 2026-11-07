@@ -15,6 +15,7 @@ Statuses: proposed / accepted / superseded.
 | [0009](0009-masking-at-edge.md) | Masking at the edge; application logs out of scope |
 | [0010](0010-cedar-policy-engine.md) | Optional Cedar policy engine |
 | [0011](0011-bundle-reload.md) | Bundle reload by polling plus SIGHUP |
+| [0012](0012-external-opa-engine.md) | External OPA decision engine |
 
 New decisions follow the same format: Status, Context, Decision, Consequences,
 Alternatives. A decision that contradicts an accepted ADR requires a

@@ -65,6 +65,8 @@ CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
 - `-reload-interval` (default 30s) polls the bundle directory; `SIGHUP` forces a
   reload. Every reload re-verifies the signature, swaps the engine atomically,
   and keeps the previous bundle on any error.
+- `-opa-url` / `CONTROLS_OPA_URL` supplies the OPA base URL when the bundle uses
+  `engine: opa`; `-opa-timeout` defaults to 100 ms and failures fail closed.
 
 The adapter is exercised against a live Envoy 1.40 by `make smoke`
 ([`hack/envoy-smoke.sh`](../hack/envoy-smoke.sh)).

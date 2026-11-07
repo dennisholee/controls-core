@@ -22,6 +22,7 @@ import (
 	"example.com/controls/core/internal/engine"
 	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/internal/pipclient"
+	"example.com/controls/core/internal/policy"
 	"example.com/controls/core/internal/signing"
 	"example.com/controls/core/sidecar/extproc"
 )
@@ -35,6 +36,8 @@ func main() {
 	auditSample := flag.Float64("audit-sample", 0.01, "fraction of allowed decisions to audit (denials always logged)")
 	auditSalt := flag.String("audit-salt", os.Getenv("CONTROLS_AUDIT_SALT"), "salt for identifier hashing (required in production)")
 	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
+	opaURL := flag.String("opa-url", os.Getenv("CONTROLS_OPA_URL"), "OPA base URL (required for the opa policy engine)")
+	opaTimeout := flag.Duration("opa-timeout", 100*time.Millisecond, "OPA decision timeout")
 	reloadInterval := flag.Duration("reload-interval", 30*time.Second, "bundle polling interval (0 disables polling; SIGHUP still reloads)")
 	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
@@ -54,7 +57,7 @@ func main() {
 	}
 
 	registry := metrics.New()
-	rs, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, registry)
+	rs, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, registry)
 	if err != nil {
 		log.Error("cannot start controls bundle", "err", err)
 		os.Exit(1)
@@ -119,7 +122,7 @@ func main() {
 			if !force && (fp == last || fp == lastFail) {
 				return
 			}
-			next, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, registry)
+			next, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, registry)
 			if err != nil {
 				lastFail = fp
 				log.Error("bundle reload failed; keeping previous", "reason", reason, "err", err)
@@ -152,7 +155,7 @@ type runtimeState struct {
 	fingerprint string
 }
 
-func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey string, reg *metrics.Registry) (*runtimeState, error) {
+func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey, opaURL string, opaTimeout time.Duration, reg *metrics.Registry) (*runtimeState, error) {
 	bundle, err := config.LoadDir(cfgDir)
 	if err != nil {
 		return nil, err
@@ -162,7 +165,9 @@ func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey string, re
 			return nil, err
 		}
 	}
-	eng := engine.New(bundle, pipclient.New(pipURL))
+	eng := engine.NewWithOptions(bundle, pipclient.New(pipURL), engine.Options{
+		Policy: policy.Options{OPAURL: opaURL, OPATimeout: opaTimeout},
+	})
 	if err := eng.StartupError(); err != nil {
 		return nil, err
 	}

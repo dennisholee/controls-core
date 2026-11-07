@@ -99,11 +99,22 @@ type Engine struct {
 	initErr error
 }
 
-// New builds an engine from a validated bundle. A policy-engine initialisation
-// failure is retained and surfaced by StartupError; requests fail closed.
+// Options configures external policy engines.
+type Options struct {
+	Policy policy.Options
+}
+
+// New builds an engine from a validated bundle with default options.
 func New(cfg *config.Bundle, pip PIP) *Engine {
+	return NewWithOptions(cfg, pip, Options{})
+}
+
+// NewWithOptions builds an engine from a validated bundle. A policy-engine
+// initialisation failure is retained and surfaced by StartupError; requests
+// fail closed.
+func NewWithOptions(cfg *config.Bundle, pip PIP, opts Options) *Engine {
 	e := &Engine{cfg: cfg, dq: dq.New(cfg), pip: pip}
-	ev, err := policy.NewEvaluator(cfg)
+	ev, err := policy.NewEvaluatorWithOptions(cfg, opts.Policy)
 	if err != nil {
 		e.initErr = err
 		e.pol = policy.DenyAll{}

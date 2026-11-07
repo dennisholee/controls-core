@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.9.1`.
+Status: reference implementation `v0.10.0`.
 
 ## 1. Context and constraints
 
@@ -33,7 +33,7 @@ Status: reference implementation `v0.9.1`.
 |---|---|---|
 | Engine | `internal/engine` | Orchestrates match → identity → attributes → decision → DQ → masking |
 | Registry | `internal/config` | Route binding, identity extraction, authority rule |
-| Policy | `internal/policy` | Selectable evaluator: reference rules or Cedar; deny-first |
+| Policy | `internal/policy` | Selectable evaluator: reference rules, Cedar, or external OPA; deny-first |
 | Masking | `internal/mask` | Full/partial field masking, array paths, locked fields |
 | DQ | `internal/dq` | Multi-state validation; blocking only when configured |
 | PIP client | `internal/pipclient` | HTTP, projection, TTL cache, coalescing, breaker, fail-closed |
@@ -63,7 +63,8 @@ Status: reference implementation `v0.9.1`.
    controls cache bypass and the replica-lag bound (`maxStalenessSeconds`,
    default 5s); a violation is `503 stale_attributes`.
 7. **Policy.** The bundle selects `rules` (deny rules absolute, allow rules
-   OR-ed, default deny) or `cedar` (Cedar entity evaluation, deny by default).
+   OR-ed, default deny), `cedar` (entity evaluation, deny by default), or `opa`
+   (external decision API, fail closed).
 8. **DQ.** Violations are recorded; only `blocking: true` rejects.
 9. **Response.** The matched endpoint's mask policy is applied to JSON
    responses, including errors when `maskErrors` is true.

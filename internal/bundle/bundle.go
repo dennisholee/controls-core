@@ -49,10 +49,11 @@ type Counts struct {
 }
 
 type rulesDoc struct {
-	Version       string        `json:"version"`
-	DefaultEffect string        `json:"defaultEffect"`
-	Engine        string        `json:"engine,omitempty"`
-	Rules         []config.Rule `json:"rules"`
+	Version       string            `json:"version"`
+	DefaultEffect string            `json:"defaultEffect"`
+	Engine        string            `json:"engine,omitempty"`
+	OPA           *config.OPAConfig `json:"opa,omitempty"`
+	Rules         []config.Rule     `json:"rules"`
 }
 
 type masksDoc struct {
@@ -301,6 +302,15 @@ func loadRules(src string) (*rulesDoc, error) {
 				return nil, fmt.Errorf("%s: conflicting defaultEffect", f)
 			}
 			out.DefaultEffect = doc.DefaultEffect
+		}
+		if doc.Engine != "" {
+			if out.Engine != "" && out.Engine != doc.Engine {
+				return nil, fmt.Errorf("%s: conflicting engine", f)
+			}
+			out.Engine = doc.Engine
+		}
+		if doc.OPA != nil {
+			out.OPA = doc.OPA
 		}
 		for _, r := range doc.Rules {
 			if seen[r.ID] {

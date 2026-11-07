@@ -206,3 +206,37 @@ permit (principal, action == Action::"read", resource);
 		t.Fatal("digest did not change with cedar policy")
 	}
 }
+
+func TestRenderOPAEngine(t *testing.T) {
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "registry", "accounts.json"), `{
+	  "version": "1.0", "defaultUnregistered": "deny",
+	  "endpoints": [{
+	    "id": "get-account", "service": "accounts", "method": "GET",
+	    "path": "/accounts/{accountId}", "resourceType": "account",
+	    "resourceId": {"from": "path", "name": "accountId"},
+	    "resourceSource": "pip"
+	  }]
+	}`)
+	writeFile(t, filepath.Join(src, "policies", "opa.json"), `{
+	  "version": "1.0", "defaultEffect": "deny", "engine": "opa",
+	  "opa": {"decision": "controls/authz/allow"}, "rules": []
+	}`)
+	writeFile(t, filepath.Join(src, "mask-policies", "masks.json"), `{"version":"1.0","policies":{}}`)
+	writeFile(t, filepath.Join(src, "dq", "dq.json"), `{"version":"1.0","rules":[]}`)
+	out := t.TempDir()
+	if _, err := Render(Options{Src: src, Out: out, Service: "accounts"}); err != nil {
+		t.Fatal(err)
+	}
+	var rules struct {
+		Engine string `json:"engine"`
+	}
+	raw, _ := os.ReadFile(filepath.Join(out, "rules.json"))
+	_ = json.Unmarshal(raw, &rules)
+	if rules.Engine != "opa" {
+		t.Fatalf("engine = %q", rules.Engine)
+	}
+	if _, err := config.LoadDir(out); err != nil {
+		t.Fatalf("opa bundle should load: %v", err)
+	}
+}
