@@ -52,6 +52,9 @@ make extproc       # :50051, Envoy ext_proc gRPC service
 make smoke         # live Envoy 1.40 in Docker (requires Docker)
 ```
 
+`extproc` also serves `/metrics`, `/healthz` and `/readyz` on `:9090`; audit
+lines go to stdout. See [RUNBOOK.md](RUNBOOK.md#1a-metrics-mapping).
+
 Render and check a delivery bundle:
 
 ```bash
@@ -94,7 +97,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.3.0` — engine, masking, DQ, replica-lag freshness, ext_proc adapter
+`v0.4.0` — engine, masking, DQ, replica-lag freshness, ext_proc adapter
 (exercised against a live Envoy via `make smoke`), plus the pipeline entry
 points: deterministic `bundle` rendering, fixture conformance and the OpenAPI
 gate. Classification-driven fail-safe masking remains outstanding. See

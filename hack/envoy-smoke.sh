@@ -54,7 +54,8 @@ PIDS+=($!)
 "$TMP/app" -addr ":$APP_PORT" >"$TMP/app.log" 2>&1 &
 PIDS+=($!)
 "$TMP/extproc" -listen ":$EXTPROC_PORT" -config "$ROOT/integration/testdata/config" \
-  -pip "http://127.0.0.1:$PIP_PORT" >"$TMP/extproc.log" 2>&1 &
+  -pip "http://127.0.0.1:$PIP_PORT" -metrics-addr :19090 -audit-sample 1 -audit-salt smoke \
+  >"$TMP/extproc.log" 2>&1 &
 PIDS+=($!)
 
 wait_for "http://127.0.0.1:$PIP_PORT/healthz" || fail "pip did not start"
@@ -147,4 +148,13 @@ echo "running BDD acceptance criteria against envoy"
 (cd "$ROOT" && CONTROLS_ACCEPTANCE_URL="http://127.0.0.1:$ENVOY_PORT" \
   go test ./integration -run TestAcceptance -count=1 -v) || fail "BDD acceptance criteria failed"
 
-echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD"
+# 7. Audit and metrics are emitted for the traffic above.
+echo "checking audit and metrics"
+curl -sf "http://127.0.0.1:19090/healthz" >/dev/null || fail "metrics healthz failed"
+curl -sf "http://127.0.0.1:19090/metrics" >"$TMP/metrics" || fail "metrics endpoint failed"
+grep -q 'controls_decisions_total' "$TMP/metrics" || fail "decisions metric missing"
+grep -q 'controls_pip_cache_total' "$TMP/metrics" || fail "pip cache metric missing"
+grep -q '"subjectHash"' "$TMP/extproc.log" || fail "audit log missing"
+grep -q '"decision":"deny"' "$TMP/extproc.log" || fail "audit deny missing"
+
+echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD, audit+metrics"

@@ -35,6 +35,7 @@ func (f *fakePIP) attrs(refs []pipclient.Ref) map[string]pipclient.Attribute {
 			Type: r.Type, ID: r.ID, Found: true,
 			Attributes: map[string]any{"ownerId": "u-1", "status": "active"},
 			LagSeconds: f.lag,
+			Cache:      "miss",
 		}
 	}
 	return out
@@ -131,4 +132,22 @@ func (p *plainPIP) Resolve(_ context.Context, refs []pipclient.Ref) (map[string]
 
 func (p *plainPIP) Classification(context.Context, string) (map[string]string, error) {
 	return nil, nil
+}
+
+func TestDecisionHook(t *testing.T) {
+	var got Decision
+	e := New(freshnessBundle("cached", 0), &fakePIP{lag: 0})
+	e.SetHooks(Hooks{OnDecision: func(d Decision) { got = d }})
+	res := e.ProcessRequest(context.Background(), Request{
+		RequestID: "req-9", Method: "GET", Path: "/accounts/A123",
+		Subject: Subject{Sub: "u-1"},
+	})
+	if !res.Allowed {
+		t.Fatalf("expected allow: %+v", res)
+	}
+	if got.RequestID != "req-9" || got.EndpointID != "get-account" ||
+		got.Subject != "u-1" || got.Action != "read" || !got.Allowed ||
+		got.PIPCache != "miss" || got.Latency <= 0 {
+		t.Fatalf("unexpected decision event: %+v", got)
+	}
 }

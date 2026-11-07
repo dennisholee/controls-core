@@ -16,6 +16,7 @@ manual review step.
 | Coverage | Registry ↔ OpenAPI parity | `internal/openapidiff`, `tools/openapi-diff` |
 | Bundle | Deterministic render, overlays, digest | `internal/bundle`, `tools/bundle` |
 | Conformance | Rendered bundle satisfies delivery fixtures | `internal/conformance`, `tools/conformance` |
+| Audit/metrics | Hashing, sampling, metric rendering and hook emission | `internal/audit`, `internal/metrics` |
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
 | Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
@@ -86,7 +87,8 @@ Every endpoint in the registry needs a fixture:
 - Performance: p99 control overhead ≤ 3 ms at 1,200 RPS/pod; benchmark trend
   must not regress without justification.
 - Live Envoy smoke test passes (`make smoke`, Docker required): allow+mask,
-  deny, self-description mismatch, authorized write, unregistered route.
+  deny, self-description mismatch, authorized write, unregistered route,
+  plus audit lines and `/metrics` output.
 
 ## 5. Adding an endpoint
 

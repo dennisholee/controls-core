@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"example.com/controls/core/internal/config"
 	"example.com/controls/core/internal/dq"
@@ -46,10 +47,11 @@ type Subject struct {
 
 // Request is the normalized input to the control plane.
 type Request struct {
-	Method  string  `json:"method"`
-	Path    string  `json:"path"`
-	Body    []byte  `json:"body,omitempty"`
-	Subject Subject `json:"subject"`
+	RequestID string  `json:"requestId,omitempty"`
+	Method    string  `json:"method"`
+	Path      string  `json:"path"`
+	Body      []byte  `json:"body,omitempty"`
+	Subject   Subject `json:"subject"`
 }
 
 // Result is the outcome of request processing.
@@ -63,13 +65,36 @@ type Result struct {
 	Violations   []dq.Violation `json:"violations,omitempty"`
 }
 
+// Decision is emitted after every request for audit and metrics.
+type Decision struct {
+	RequestID     string
+	EndpointID    string
+	ResourceType  string
+	ResourceID    string
+	Subject       string
+	Action        string
+	Allowed       bool
+	Status        int
+	Reason        string
+	Latency       time.Duration
+	PIPCache      string
+	PIPLagSeconds int
+	Violations    []dq.Violation
+}
+
+// Hooks receive control-plane events. Set them before serving traffic.
+type Hooks struct {
+	OnDecision func(Decision)
+}
+
 // Engine evaluates controls for one request at a time. It is safe for
 // concurrent use.
 type Engine struct {
-	cfg *config.Bundle
-	pol policy.Evaluator
-	dq  *dq.Evaluator
-	pip PIP
+	cfg   *config.Bundle
+	pol   policy.Evaluator
+	dq    *dq.Evaluator
+	pip   PIP
+	hooks Hooks
 }
 
 // New builds an engine from a validated bundle.
@@ -77,9 +102,42 @@ func New(cfg *config.Bundle, pip PIP) *Engine {
 	return &Engine{cfg: cfg, pol: policy.New(cfg), dq: dq.New(cfg), pip: pip}
 }
 
+// SetHooks installs audit/metrics hooks. Call once, before serving.
+func (e *Engine) SetHooks(h Hooks) { e.hooks = h }
+
 // ProcessRequest runs entitlement and data-quality checks.
-func (e *Engine) ProcessRequest(ctx context.Context, req Request) Result {
+func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
+	start := time.Now()
+	var endpoint *config.Endpoint
+	var pipCache string
+	var pipLag int
+	defer func() {
+		if e.hooks.OnDecision == nil {
+			return
+		}
+		action := ""
+		if endpoint != nil {
+			action = actionOf(endpoint)
+		}
+		e.hooks.OnDecision(Decision{
+			RequestID:     req.RequestID,
+			EndpointID:    out.EndpointID,
+			ResourceType:  out.ResourceType,
+			ResourceID:    out.ResourceID,
+			Subject:       req.Subject.Sub,
+			Action:        action,
+			Allowed:       out.Allowed,
+			Status:        out.Status,
+			Reason:        out.Reason,
+			Latency:       time.Since(start),
+			PIPCache:      pipCache,
+			PIPLagSeconds: pipLag,
+			Violations:    out.Violations,
+		})
+	}()
+
 	ep, params := e.cfg.EndpointFor(req.Method, req.Path)
+	endpoint = ep
 	if ep == nil {
 		if e.cfg.Registry.DefaultUnregistered == "allow" {
 			return Result{Allowed: true, Status: 200, Reason: "unregistered:allow"}
@@ -155,6 +213,8 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) Result {
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
 		}
 		attr, found := attrs[ep.ResourceType+"|"+resourceID]
+		pipCache = attr.Cache
+		pipLag = attr.LagSeconds
 		if !found || !attr.Found {
 			return Result{Allowed: false, Status: 404, Reason: "resource_not_found",
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
@@ -181,7 +241,7 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) Result {
 	})
 
 	violations := e.dq.Check(ep.ResourceType, body)
-	out := Result{
+	out = Result{
 		Allowed:      result.Allowed,
 		Status:       200,
 		Reason:       result.Reason,

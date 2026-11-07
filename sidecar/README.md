@@ -58,6 +58,8 @@ go run ./sidecar/cmd/extproc -listen :50051 \
   must be handled at the gateway.
 - Pseudo-headers and the mutated `content-length` are read/written as
   `raw_value`, per Envoy's wire behaviour.
+- `/metrics`, `/healthz` and `/readyz` are served on `:9090`; decision audit is
+  JSON on stdout (hashed identifiers, denials always, allows sampled).
 
 The adapter is exercised against a live Envoy 1.40 by `make smoke`
 ([`hack/envoy-smoke.sh`](../hack/envoy-smoke.sh)).

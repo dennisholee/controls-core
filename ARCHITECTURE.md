@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.3.0`.
+Status: reference implementation `v0.4.0`.
 
 ## 1. Context and constraints
 
@@ -40,6 +40,8 @@ Status: reference implementation `v0.3.0`.
 | PIP server | `pip/server` | Batch/classification API over a read-only Repository |
 | ext_proc adapter | `sidecar/extproc` | Envoy transport: header extraction, buffering, immediate responses, body mutation |
 | Harness | `sidecar/cmd/sidecar` | HTTP harness used locally and in integration tests |
+| Audit | `internal/audit` | Hashed, sampled decision log per the contract |
+| Metrics | `internal/metrics` | Prometheus counters/histograms/gauges on the admin port |
 | Bundle renderer | `internal/bundle`, `tools/bundle` | Merge sources/overlays into a validated, digest-bearing bundle |
 | Conformance | `internal/conformance`, `tools/conformance` | Execute delivery fixtures against a rendered bundle |
 | OpenAPI gate | `internal/openapidiff`, `tools/openapi-diff` | Registry ↔ OpenAPI coverage check |
@@ -112,6 +114,9 @@ cache is keyed by type, id and field projection.
   Upgrades are rolling pod restarts; no application rebuild.
 - **PIP**: 2+ replicas behind a Service, mTLS, read-only DB credentials,
   connection pool sized for cache-miss QPS (~5% of 5,000 = 250 RPS).
+- **Observability**: ext_proc exposes `/metrics`, `/healthz` and `/readyz` on
+  `:9090`; decision logs are stdout JSON with hashed identifiers. Scrape the
+  admin port and ship stdout to the platform log store.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 
@@ -150,4 +155,4 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 | Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
 | Jenkins job not yet created | Reference Jenkinsfile and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
-| Decision log emitted to stdout only | No audit sink yet | OTel → collector |
+| Audit sink/retention unmanaged by core | Platform must ship stdout and enforce retention | Hand over scrape/log config with the pilot |

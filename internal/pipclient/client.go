@@ -41,6 +41,9 @@ type Attribute struct {
 	// LagSeconds is the replica lag observed by the PIP when serving this
 	// attribute. Used to enforce fresh/deny-on-stale registry entries.
 	LagSeconds int `json:"lagSeconds"`
+	// Cache records how the sidecar obtained the value: hit, miss or bypass.
+	// It is local metadata and is never sent over the wire.
+	Cache string `json:"-"`
 }
 
 type BatchRequest struct {
@@ -135,7 +138,9 @@ func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map
 		key := cacheKey(r)
 		if !bypassCache {
 			if e, ok := c.cache[key]; ok && e.expires.After(now) {
-				out[attrKey(r.Type, r.ID)] = e.attr
+				a := e.attr
+				a.Cache = "hit"
+				out[attrKey(r.Type, r.ID)] = a
 				continue
 			}
 		}
@@ -171,7 +176,11 @@ func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map
 		return nil, ErrUnavailable
 	}
 
-	fetched, err := c.fetch(ctx, misses)
+	state := "miss"
+	if bypassCache {
+		state = "bypass"
+	}
+	fetched, err := c.fetch(ctx, misses, state)
 	c.finish(flightKey, f, fetched, err)
 	if err != nil {
 		return nil, err
@@ -199,7 +208,7 @@ func (c *Client) finish(key string, f *call, attrs map[string]Attribute, err err
 	f.wg.Done()
 }
 
-func (c *Client) fetch(ctx context.Context, refs []Ref) (map[string]Attribute, error) {
+func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[string]Attribute, error) {
 	body, err := json.Marshal(BatchRequest{Requests: refs})
 	if err != nil {
 		return nil, err
@@ -220,6 +229,9 @@ func (c *Client) fetch(ctx context.Context, refs []Ref) (map[string]Attribute, e
 	var out BatchResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
+	}
+	for i := range out.Results {
+		out.Results[i].Cache = cacheState
 	}
 	now := time.Now()
 	c.mu.Lock()

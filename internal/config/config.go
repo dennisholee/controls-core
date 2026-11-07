@@ -127,6 +127,18 @@ type Bundle struct {
 	Rules    Rules
 	Masks    MaskPolicies
 	DQ       DQConfig
+	// Manifest is present when the bundle was rendered by tools/bundle.
+	Manifest *Manifest
+}
+
+// Manifest mirrors the fields of manifest.json that the sidecar reports in
+// decision logs. Additional fields in the file are ignored.
+type Manifest struct {
+	SchemaVersion string `json:"schemaVersion"`
+	BundleDigest  string `json:"bundleDigest"`
+	BundleVersion string `json:"bundleVersion"`
+	Environment   string `json:"environment,omitempty"`
+	Service       string `json:"service,omitempty"`
 }
 
 // LockedFields may only be fully redacted. They cannot be relaxed per journey.
@@ -151,6 +163,13 @@ func LoadDir(dir string) (*Bundle, error) {
 	}
 	if err := readJSON(filepath.Join(dir, "dq.json"), &b.DQ); err != nil {
 		return nil, err
+	}
+	if _, err := os.Stat(filepath.Join(dir, "manifest.json")); err == nil {
+		var m Manifest
+		if err := readJSON(filepath.Join(dir, "manifest.json"), &m); err != nil {
+			return nil, err
+		}
+		b.Manifest = &m
 	}
 	if err := b.Validate(); err != nil {
 		return nil, err

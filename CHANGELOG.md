@@ -3,6 +3,21 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.4.0] — 2026-11-07
+
+### Added
+
+- Decision audit (`internal/audit`) emitting `decision-log.schema.json`-shaped
+  JSON with salted SHA-256 subject/resource hashes, 100% deny logging and
+  configurable allow sampling.
+- Prometheus metrics (`internal/metrics`) on a separate admin listener:
+  decisions, latency histogram, PIP cache outcomes, replica lag, stale denials,
+  DQ violations and bundle info.
+- Engine decision hooks carrying request id, cache state and latency.
+- Ext_proc flags `-metrics-addr`, `-audit-sample`, `-audit-salt`; bundle
+  manifest metadata is loaded and reported.
+- Smoke test now asserts audit output and metrics.
+
 ## [0.3.0] — 2026-11-07
 
 ### Added

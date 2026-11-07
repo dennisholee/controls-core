@@ -17,6 +17,25 @@ Audience: on-call for the controls plane (core engineering).
 | `UnmaskedCanary` | canary detects a sensitive field in clear | page + security | §2.6 |
 | `CertExpiry` | mTLS cert < 14 days | ticket | §2.7 |
 
+## 1a. Metrics mapping
+
+Scrape the ext_proc admin listener (`:9090/metrics` by default) alongside the
+application. The alerts above map to these series:
+
+| Alert | Metric |
+|---|---|
+| `PIPErrorRate` | `rate(controls_decisions_total{reason="pip_unavailable"}[5m]) / rate(controls_decisions_total[5m])` |
+| `PIPCacheHitLow` | `sum(rate(controls_pip_cache_total{cache="hit"}[15m])) / sum(rate(controls_pip_cache_total[15m]))` |
+| `ReplicaLag` | `controls_pip_lag_seconds` (per resource type) |
+| `ControlLatency` | `histogram_quantile(0.99, rate(controls_request_duration_seconds_bucket[5m]))` |
+| `DenyRateSpike` | `sum(rate(controls_decisions_total{decision="deny"}[10m]))` |
+| Stale denials | `rate(controls_stale_denials_total[5m])` |
+| DQ blocking | `rate(controls_dq_violations_total{blocking="true"}[5m])` |
+| Bundle version | `controls_bundle_info{bundle_version,bundle_digest}` |
+
+PIP latency is currently visible only as end-to-end control latency; a
+dedicated PIP histogram is a follow-up if the alert proves too coarse.
+
 ## 2. Procedures
 
 ### 2.1 PIP outage

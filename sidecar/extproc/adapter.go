@@ -209,9 +209,8 @@ func (a *Adapter) decide(ctx context.Context, st *state) (*extprocv3.ProcessingR
 		Subject: subjectFromHeaders(st.headers),
 	})
 	st.endpoint = a.engine.Endpoint(st.method, st.path)
-	a.log.Info("decision",
+	a.log.Debug("decision",
 		"endpoint", res.EndpointID, "method", st.method, "path", st.path,
-		"resource", res.ResourceType+"/"+res.ResourceID,
 		"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,
 		"violations", len(res.Violations))
 	if res.Allowed {

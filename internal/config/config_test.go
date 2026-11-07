@@ -1,6 +1,8 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -58,5 +60,29 @@ func TestEndpointMatch(t *testing.T) {
 	}
 	if ep, _ := b.EndpointFor("POST", "/accounts/A123"); ep != nil {
 		t.Fatalf("method must match")
+	}
+}
+
+func TestManifestLoadedWhenPresent(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"registry.json", "rules.json", "mask-policies.json", "dq.json"} {
+		raw, err := os.ReadFile(filepath.Join("../../integration/testdata/config", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := `{"schemaVersion":"1.0","bundleDigest":"sha256:abc","bundleVersion":"bundle-abc"}`
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	b, err := LoadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Manifest == nil || b.Manifest.BundleVersion != "bundle-abc" || b.Manifest.BundleDigest != "sha256:abc" {
+		t.Fatalf("manifest = %+v", b.Manifest)
 	}
 }

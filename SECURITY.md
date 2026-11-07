@@ -47,6 +47,9 @@ client ── untrusted ──▶ gateway ── verified identity ──▶ sid
 
 - **Never logged**: request/response bodies, attribute values, raw subject or
   resource identifiers.
+- **Audit hashing**: identifiers are SHA-256 hashes with a per-environment salt
+  (`CONTROLS_AUDIT_SALT`). The salt is a secret; rotating it breaks correlation
+  with historical logs and must be coordinated with the audit owner.
 - **Logged**: endpoint id, hashed subject/resource, decision, reason, policy
   version, bundle digest, latency, DQ rule ids.
 - **Retention**: decision logs 90 days by default; audit export per compliance
