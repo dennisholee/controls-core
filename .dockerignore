@@ -1,8 +1,6 @@
 .git
 .gocache
 .gopath
-bin
+.tools
 dist
-*.out
-.DS_Store
-.docker
+**/*.test

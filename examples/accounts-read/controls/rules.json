@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "defaultEffect": "deny",
+  "rules": [
+    {
+      "id": "account.read.owner",
+      "effect": "allow",
+      "resourceType": "account",
+      "action": "read",
+      "when": {"field": "subject.sub", "op": "eq", "value": "$resource.ownerId"}
+    }
+  ]
+}

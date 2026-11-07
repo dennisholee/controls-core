@@ -3,15 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
-## [Unreleased]
+## [0.29.0] — 2026-11-07
 
 ### Added
 
-- `make demo`: runs the Envoy + smokeapp + PIP + extproc stack and keeps it
-  running for interactive testing (Ctrl-C stops it).
-
-### Added
-
+- `examples/accounts-read`: self-contained sample (app, controls bundle, Envoy
+  config, compose, contract test) and a `controls-sidecar` runtime image that
+  packages Envoy + extproc as one artifact. `make examples` runs it in CI.
+- `make demo`: keeps the Envoy + smokeapp + PIP + extproc stack running for
+  interactive testing.
 - Local test API (`make api`): `POST /v1/process` evaluates a request and masks
   the supplied upstream response, `POST /v1/test` runs a conformance fixture,
   and `GET /v1/endpoints`, `GET /v1/info`, `/docs` and `/openapi.yaml` make the

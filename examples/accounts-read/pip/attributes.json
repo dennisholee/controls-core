@@ -1,0 +1,10 @@
+{
+  "resources": {
+    "account": {
+      "A123": {"ownerId": "u-1", "region": "US", "status": "active"}
+    }
+  },
+  "classifications": {
+    "account": {"ssn": "pii.locked", "accountNumber": "pii.partial", "holder.email": "pii.partial"}
+  }
+}

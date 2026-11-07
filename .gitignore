@@ -10,3 +10,4 @@ dist/
 /loadtest
 /steward
 deploy/examples/*/charts/
+.tmp/
