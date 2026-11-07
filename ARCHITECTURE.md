@@ -2,6 +2,8 @@
 
 Status: reference implementation `v0.38.3`.
 
+Visual overview: [`docs/architecture-infographic.svg`](docs/architecture-infographic.svg).
+
 ## 1. Context and constraints
 
 | Constraint | Value | Consequence |
