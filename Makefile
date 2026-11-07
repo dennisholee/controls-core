@@ -92,6 +92,7 @@ examples:
 	$(MAKE) -C examples/payments-write test
 	$(MAKE) -C examples/pip-outage test
 	$(MAKE) -C examples/mtls-caller test
+	$(MAKE) -C examples/spring-accounts test
 
 steward:
 	$(GO) run ./tools/steward -root .

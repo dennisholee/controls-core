@@ -1,0 +1,24 @@
+name: controls-example-spring
+services:
+  app:
+    image: spring-accounts-app:dev
+    expose:
+      - "8080"
+  pip:
+    image: spring-accounts-pip:dev
+    expose:
+      - "8082"
+  sidecar:
+    image: controls-sidecar:dev
+    ports:
+      - "18005:8080"
+    environment:
+      PIP_URL: http://pip:8082
+      CONTROLS_AUDIT_SALT: sample-salt
+      SERVICE_NAME: spring-accounts
+    volumes:
+      - ./controls:/etc/controls/bundle:ro
+      - ./envoy/envoy.yaml:/etc/controls/envoy.yaml:ro
+    depends_on:
+      - app
+      - pip

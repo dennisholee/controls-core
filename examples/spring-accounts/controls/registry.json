@@ -1,0 +1,20 @@
+{
+  "version": "1.0",
+  "defaultUnregistered": "deny",
+  "endpoints": [
+    {
+      "id": "get-account",
+      "method": "GET",
+      "path": "/accounts/{accountId}",
+      "resourceType": "account",
+      "action": "read",
+      "resourceId": {"from": "path", "name": "accountId"},
+      "resourceSource": "pip",
+      "attributes": ["ownerId", "region", "status"],
+      "maskPolicy": "account.read",
+      "maskErrors": true,
+      "freshness": "cached",
+      "selfDescribing": false
+    }
+  ]
+}

@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.32.0] — 2026-11-07
+
+### Added
+
+- `examples/spring-accounts`: Spring Boot service behind the sidecar, built
+  offline with Maven and run on an Alpine headless JRE image, with the same
+  masking/deny contract test as the base sample.
+
 ## [0.31.1] — 2026-11-07
 
 ### Changed
