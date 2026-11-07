@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"example.com/controls/core/internal/config"
 )
 
 func writeFile(t *testing.T, path, body string) {
@@ -150,5 +152,57 @@ func TestOverlayRejectsUnknownKeys(t *testing.T) {
 	}`)
 	if _, err := Render(Options{Src: src, Env: "prod", Check: true}); err == nil {
 		t.Fatal("expected unknown overlay key to be rejected")
+	}
+}
+
+func TestRenderCedarEngine(t *testing.T) {
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "registry", "accounts.json"), `{
+	  "version": "1.0", "defaultUnregistered": "deny",
+	  "endpoints": [{
+	    "id": "get-account", "service": "accounts", "method": "GET",
+	    "path": "/accounts/{accountId}", "resourceType": "account",
+	    "resourceId": {"from": "path", "name": "accountId"},
+	    "resourceSource": "pip"
+	  }]
+	}`)
+	writeFile(t, filepath.Join(src, "mask-policies", "masks.json"), `{"version":"1.0","policies":{}}`)
+	writeFile(t, filepath.Join(src, "dq", "dq.json"), `{"version":"1.0","rules":[]}`)
+	writeFile(t, filepath.Join(src, "policies", "accounts.cedar"), `
+permit (principal, action == Action::"read", resource)
+when { principal.sub == resource.ownerId };
+`)
+	out := t.TempDir()
+	res, err := Render(Options{Src: src, Out: out, Service: "accounts"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(out, "policies.cedar")); err != nil {
+		t.Fatalf("policies.cedar missing: %v", err)
+	}
+	var rules struct {
+		Engine string `json:"engine"`
+	}
+	raw, _ := os.ReadFile(filepath.Join(out, "rules.json"))
+	if err := json.Unmarshal(raw, &rules); err != nil {
+		t.Fatal(err)
+	}
+	if rules.Engine != "cedar" {
+		t.Fatalf("engine = %q", rules.Engine)
+	}
+	if _, err := config.LoadDir(out); err != nil {
+		t.Fatalf("cedar bundle should load: %v", err)
+	}
+	// Digest must change when policy text changes.
+	writeFile(t, filepath.Join(src, "policies", "accounts.cedar"), `
+permit (principal, action == Action::"read", resource);
+`)
+	out2 := t.TempDir()
+	res2, err := Render(Options{Src: src, Out: out2, Service: "accounts"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Digest == res2.Digest {
+		t.Fatal("digest did not change with cedar policy")
 	}
 }

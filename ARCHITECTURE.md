@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.7.0`.
+Status: reference implementation `v0.8.0`.
 
 ## 1. Context and constraints
 
@@ -33,7 +33,7 @@ Status: reference implementation `v0.7.0`.
 |---|---|---|
 | Engine | `internal/engine` | Orchestrates match → identity → attributes → decision → DQ → masking |
 | Registry | `internal/config` | Route binding, identity extraction, authority rule |
-| Policy | `internal/policy` | Deny-first evaluation; pluggable interface for OPA/Cedar |
+| Policy | `internal/policy` | Selectable evaluator: reference rules or Cedar; deny-first |
 | Masking | `internal/mask` | Full/partial field masking, array paths, locked fields |
 | DQ | `internal/dq` | Multi-state validation; blocking only when configured |
 | PIP client | `internal/pipclient` | HTTP, projection, TTL cache, coalescing, breaker, fail-closed |
@@ -62,8 +62,8 @@ Status: reference implementation `v0.7.0`.
    calls request only the registry's `attributes` projection. `freshness`
    controls cache bypass and the replica-lag bound (`maxStalenessSeconds`,
    default 5s); a violation is `503 stale_attributes`.
-7. **Policy.** Deny rules are absolute and evaluated first; allow rules are
-   OR-ed; no match falls back to `defaultEffect` (deny).
+7. **Policy.** The bundle selects `rules` (deny rules absolute, allow rules
+   OR-ed, default deny) or `cedar` (Cedar entity evaluation, deny by default).
 8. **DQ.** Violations are recorded; only `blocking: true` rejects.
 9. **Response.** The matched endpoint's mask policy is applied to JSON
    responses, including errors when `maskErrors` is true.
@@ -161,6 +161,6 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 | Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
 | PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
 | Classification tag completeness | Untagged sensitive fields are not masked by the fallback | Catalog review + classification coverage check before pilot |
-| Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
+| No OPA adapter | Rego shops cannot reuse policies | Add behind `policy.Evaluator` if needed |
 | Jenkins job not yet created | Reference Jenkinsfile and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
 | Audit sink/retention unmanaged by core | Platform must ship stdout and enforce retention | Hand over scrape/log config with the pilot |

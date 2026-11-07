@@ -17,9 +17,10 @@ import (
 
 // Context is the input to a decision.
 type Context struct {
-	Subject  map[string]any
-	Resource map[string]any
-	Request  map[string]any
+	Subject    map[string]any
+	Resource   map[string]any
+	ResourceID string
+	Request    map[string]any
 }
 
 // Result is a decision plus the rule that produced it.
@@ -39,9 +40,29 @@ type RuleEvaluator struct {
 	defaultEffect string
 }
 
-// New builds an evaluator from a validated bundle.
+// New builds the reference rule evaluator from a validated bundle.
 func New(b *config.Bundle) *RuleEvaluator {
 	return &RuleEvaluator{rules: b.Rules.Rules, defaultEffect: b.Rules.DefaultEffect}
+}
+
+// NewEvaluator selects the evaluator named by the bundle.
+func NewEvaluator(b *config.Bundle) (Evaluator, error) {
+	switch b.Rules.Engine {
+	case "", "rules":
+		return New(b), nil
+	case "cedar":
+		return NewCedarEvaluator(b.CedarPolicies)
+	default:
+		return nil, fmt.Errorf("unknown policy engine %q", b.Rules.Engine)
+	}
+}
+
+// DenyAll is used when the configured evaluator failed to initialise.
+type DenyAll struct{}
+
+// Decide always denies.
+func (DenyAll) Decide(string, string, Context) Result {
+	return Result{Allowed: false, Reason: "policy_init_error"}
 }
 
 // Decide applies deny rules first (absolute), then allow rules (OR-ed).

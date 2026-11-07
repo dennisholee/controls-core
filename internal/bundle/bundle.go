@@ -51,6 +51,7 @@ type Counts struct {
 type rulesDoc struct {
 	Version       string        `json:"version"`
 	DefaultEffect string        `json:"defaultEffect"`
+	Engine        string        `json:"engine,omitempty"`
 	Rules         []config.Rule `json:"rules"`
 }
 
@@ -129,10 +130,26 @@ func Render(opts Options) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	cedar, err := loadCedar(src)
+	if err != nil {
+		return nil, err
+	}
+	if cedar != "" {
+		if len(rules.Rules) > 0 {
+			return nil, fmt.Errorf("cannot combine JSON rules with Cedar policies")
+		}
+		rules.Engine = "cedar"
+	}
 
 	sources := []string{}
 	for _, dir := range []string{"policies", "mask-policies", "registry", "dq"} {
 		files, _ := filepath.Glob(filepath.Join(src, dir, "*.json"))
+		for _, f := range files {
+			rel, _ := filepath.Rel(src, f)
+			sources = append(sources, rel)
+		}
+	}
+	if files, _ := filepath.Glob(filepath.Join(src, "policies", "*.cedar")); len(files) > 0 {
 		for _, f := range files {
 			rel, _ := filepath.Rel(src, f)
 			sources = append(sources, rel)
@@ -164,7 +181,7 @@ func Render(opts Options) (*Result, error) {
 	sort.Slice(dq.Rules, func(i, j int) bool { return dq.Rules[i].ID < dq.Rules[j].ID })
 	sort.Slice(reg.Endpoints, func(i, j int) bool { return reg.Endpoints[i].ID < reg.Endpoints[j].ID })
 
-	contents, err := marshalBundle(reg, rules, masks, dq)
+	contents, err := marshalBundle(reg, rules, masks, dq, cedar)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +437,7 @@ func filterService(service string, reg *registryDoc, masks *masksDoc) {
 	}
 }
 
-func marshalBundle(reg *registryDoc, rules *rulesDoc, masks *masksDoc, dq *dqDoc) (map[string][]byte, error) {
+func marshalBundle(reg *registryDoc, rules *rulesDoc, masks *masksDoc, dq *dqDoc, cedar string) (map[string][]byte, error) {
 	out := map[string][]byte{}
 	for name, v := range map[string]any{
 		"rules.json":         rules,
@@ -433,6 +450,9 @@ func marshalBundle(reg *registryDoc, rules *rulesDoc, masks *masksDoc, dq *dqDoc
 			return nil, err
 		}
 		out[name] = append(raw, '\n')
+	}
+	if cedar != "" {
+		out["policies.cedar"] = []byte(cedar)
 	}
 	return out, nil
 }
@@ -457,18 +477,50 @@ func DigestDir(dir string) (string, error) {
 		}
 		contents[name] = raw
 	}
+	if raw, err := os.ReadFile(filepath.Join(dir, "policies.cedar")); err == nil {
+		contents["policies.cedar"] = raw
+	} else if !os.IsNotExist(err) {
+		return "", err
+	}
 	return digestOf(contents), nil
 }
 
 func digestOf(contents map[string][]byte) string {
 	h := sha256.New()
-	for _, name := range []string{"rules.json", "mask-policies.json", "registry.json", "dq.json"} {
+	for _, name := range []string{"rules.json", "mask-policies.json", "registry.json", "dq.json", "policies.cedar"} {
+		raw, ok := contents[name]
+		if !ok {
+			continue
+		}
 		h.Write([]byte(name))
 		h.Write([]byte{0})
-		h.Write(contents[name])
+		h.Write(raw)
 		h.Write([]byte{0})
 	}
 	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
+func loadCedar(src string) (string, error) {
+	files, _ := filepath.Glob(filepath.Join(src, "policies", "*.cedar"))
+	if len(files) == 0 {
+		return "", nil
+	}
+	sort.Strings(files)
+	var b strings.Builder
+	for _, f := range files {
+		raw, err := os.ReadFile(f)
+		if err != nil {
+			return "", err
+		}
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		b.Write(raw)
+		if !strings.HasSuffix(string(raw), "\n") {
+			b.WriteByte('\n')
+		}
+	}
+	return b.String(), nil
 }
 
 func readStrictJSON(path string, v any) error {

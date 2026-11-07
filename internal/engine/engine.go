@@ -90,17 +90,30 @@ type Hooks struct {
 // Engine evaluates controls for one request at a time. It is safe for
 // concurrent use.
 type Engine struct {
-	cfg   *config.Bundle
-	pol   policy.Evaluator
-	dq    *dq.Evaluator
-	pip   PIP
-	hooks Hooks
+	cfg     *config.Bundle
+	pol     policy.Evaluator
+	dq      *dq.Evaluator
+	pip     PIP
+	hooks   Hooks
+	initErr error
 }
 
-// New builds an engine from a validated bundle.
+// New builds an engine from a validated bundle. A policy-engine initialisation
+// failure is retained and surfaced by StartupError; requests fail closed.
 func New(cfg *config.Bundle, pip PIP) *Engine {
-	return &Engine{cfg: cfg, pol: policy.New(cfg), dq: dq.New(cfg), pip: pip}
+	e := &Engine{cfg: cfg, dq: dq.New(cfg), pip: pip}
+	ev, err := policy.NewEvaluator(cfg)
+	if err != nil {
+		e.initErr = err
+		e.pol = policy.DenyAll{}
+		return e
+	}
+	e.pol = ev
+	return e
 }
+
+// StartupError reports a policy engine that could not be initialised.
+func (e *Engine) StartupError() error { return e.initErr }
 
 // SetHooks installs audit/metrics hooks. Call once, before serving.
 func (e *Engine) SetHooks(h Hooks) { e.hooks = h }
@@ -108,6 +121,9 @@ func (e *Engine) SetHooks(h Hooks) { e.hooks = h }
 // ProcessRequest runs entitlement and data-quality checks.
 func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 	start := time.Now()
+	if e.initErr != nil {
+		return Result{Allowed: false, Status: 503, Reason: "policy_init_error"}
+	}
 	var endpoint *config.Endpoint
 	var pipCache string
 	var pipLag int
@@ -235,9 +251,10 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 	}
 
 	result := e.pol.Decide(ep.ResourceType, actionOf(ep), policy.Context{
-		Subject:  subjectMap(req.Subject),
-		Resource: resource,
-		Request:  map[string]any{"method": req.Method, "path": req.Path},
+		Subject:    subjectMap(req.Subject),
+		Resource:   resource,
+		ResourceID: resourceID,
+		Request:    map[string]any{"method": req.Method, "path": req.Path},
 	})
 
 	violations := e.dq.Check(ep.ResourceType, body)

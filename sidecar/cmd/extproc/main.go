@@ -63,6 +63,10 @@ func main() {
 	}
 
 	eng := engine.New(bundle, pipclient.New(*pipURL))
+	if err := eng.StartupError(); err != nil {
+		log.Error("policy engine initialisation failed", "err", err)
+		os.Exit(1)
+	}
 	registry := metrics.New()
 	observer := metrics.NewObserver(registry)
 	observer.Bundle(manifestValue(bundle, "version"), manifestValue(bundle, "digest"), manifestValue(bundle, "schema"))

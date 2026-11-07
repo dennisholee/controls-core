@@ -71,3 +71,47 @@ func TestMaskFallbackFailsClosedWithoutClassification(t *testing.T) {
 		t.Fatal("expected classification error")
 	}
 }
+
+func cedarEngineBundle() *config.Bundle {
+	b := freshnessBundle("cached", 0)
+	b.Rules.Engine = "cedar"
+	b.Rules.Rules = nil
+	b.CedarPolicies = `
+permit (principal, action == Action::"read", resource)
+when { principal.sub == resource.ownerId };
+`
+	return b
+}
+
+func TestCedarEngine(t *testing.T) {
+	e := New(cedarEngineBundle(), &fakePIP{})
+	if err := e.StartupError(); err != nil {
+		t.Fatal(err)
+	}
+	if res := e.ProcessRequest(context.Background(), Request{
+		Method: "GET", Path: "/accounts/A123", Subject: Subject{Sub: "u-1"},
+	}); !res.Allowed || res.Reason != "cedar:allow" {
+		t.Fatalf("expected cedar allow: %+v", res)
+	}
+	if res := e.ProcessRequest(context.Background(), Request{
+		Method: "GET", Path: "/accounts/A123", Subject: Subject{Sub: "u-2"},
+	}); res.Allowed {
+		t.Fatalf("expected cedar deny: %+v", res)
+	}
+}
+
+func TestCedarInitFailureFailsClosed(t *testing.T) {
+	b := freshnessBundle("cached", 0)
+	b.Rules.Engine = "cedar"
+	b.CedarPolicies = "not a policy"
+	e := New(b, &fakePIP{})
+	if e.StartupError() == nil {
+		t.Fatal("expected startup error")
+	}
+	res := e.ProcessRequest(context.Background(), Request{
+		Method: "GET", Path: "/accounts/A123", Subject: Subject{Sub: "u-1"},
+	})
+	if res.Allowed || res.Status != 503 || res.Reason != "policy_init_error" {
+		t.Fatalf("expected fail-closed 503: %+v", res)
+	}
+}

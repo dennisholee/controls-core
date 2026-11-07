@@ -56,7 +56,8 @@ type Ref struct {
 // absolute; allow rules are then OR-ed. No match falls back to DefaultEffect.
 type Rules struct {
 	Version       string `json:"version"`
-	DefaultEffect string `json:"defaultEffect"` // allow | deny
+	DefaultEffect string `json:"defaultEffect"`    // allow | deny
+	Engine        string `json:"engine,omitempty"` // rules | cedar
 	Rules         []Rule `json:"rules"`
 }
 
@@ -128,6 +129,9 @@ type Bundle struct {
 	Rules    Rules
 	Masks    MaskPolicies
 	DQ       DQConfig
+	// CedarPolicies is the content of policies.cedar when the bundle uses the
+	// Cedar engine.
+	CedarPolicies string
 	// Manifest is present when the bundle was rendered by tools/bundle.
 	Manifest *Manifest
 }
@@ -163,6 +167,11 @@ func LoadDir(dir string) (*Bundle, error) {
 		return nil, err
 	}
 	if err := readJSON(filepath.Join(dir, "dq.json"), &b.DQ); err != nil {
+		return nil, err
+	}
+	if raw, err := os.ReadFile(filepath.Join(dir, "policies.cedar")); err == nil {
+		b.CedarPolicies = string(raw)
+	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
 	if _, err := os.Stat(filepath.Join(dir, "manifest.json")); err == nil {
@@ -235,6 +244,21 @@ func (b *Bundle) Validate() error {
 	}
 	if b.Rules.DefaultEffect != "allow" && b.Rules.DefaultEffect != "deny" {
 		return fmt.Errorf("rules: defaultEffect must be allow or deny")
+	}
+	switch b.Rules.Engine {
+	case "", "rules":
+		if b.CedarPolicies != "" {
+			return fmt.Errorf("rules: policies.cedar present but engine is not cedar")
+		}
+	case "cedar":
+		if b.CedarPolicies == "" {
+			return fmt.Errorf("rules: engine cedar requires policies.cedar")
+		}
+		if len(b.Rules.Rules) > 0 {
+			return fmt.Errorf("rules: engine cedar cannot be combined with JSON rules")
+		}
+	default:
+		return fmt.Errorf("rules: engine must be rules or cedar")
 	}
 	for _, r := range b.Rules.Rules {
 		if r.ID == "" {
