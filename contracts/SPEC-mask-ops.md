@@ -73,9 +73,11 @@ masked, so clients cannot believe an update succeeded.
 
 ## 6. Non-JSON bodies
 
-Non-JSON responses are passed through unchanged by the reference engine. Any
-endpoint returning sensitive non-JSON content must be blocked at the gateway or
-converted to JSON; this is a registry/OpenAPI review item.
+When a mask policy applies, a non-JSON response is **rejected** (the request
+fails closed) unless the endpoint sets `allowNonJSON: true`. This prevents a
+content-type or serialization change from silently bypassing masking. Empty
+responses are always allowed. Any endpoint opting out must be reviewed as
+non-sensitive.
 
 ## 7. Failure behaviour
 

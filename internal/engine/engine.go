@@ -11,6 +11,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -282,6 +283,10 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 	return out
 }
 
+// ErrNonJSONResponse is returned when a masked endpoint produces a body that
+// cannot be parsed as JSON and the endpoint does not opt out.
+var ErrNonJSONResponse = errors.New("masking required but response is not JSON")
+
 // MaskResponse applies the endpoint's mask policy to a JSON response body.
 // Non-JSON bodies are returned unchanged and must be handled at the gateway.
 func (e *Engine) MaskResponse(ep *config.Endpoint, body []byte, isError bool) ([]byte, error) {
@@ -305,7 +310,10 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 	}
 	var doc map[string]any
 	if err := json.Unmarshal(body, &doc); err != nil {
-		return body, nil
+		if ep.AllowNonJSON {
+			return body, nil
+		}
+		return nil, ErrNonJSONResponse
 	}
 	if maskPolicy.Fallback == "classification" {
 		classes := map[string]string{}

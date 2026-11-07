@@ -38,7 +38,10 @@ type Endpoint struct {
 	Attributes   []string `json:"attributes"`
 	MaskPolicy   string   `json:"maskPolicy"`
 	MaskErrors   bool     `json:"maskErrors"`
-	Freshness    string   `json:"freshness"` // cached | fresh | deny-on-stale
+	// AllowNonJSON permits a non-JSON response to bypass masking. Default false:
+	// a masked endpoint fails closed instead.
+	AllowNonJSON bool   `json:"allowNonJSON,omitempty"`
+	Freshness    string `json:"freshness"` // cached | fresh | deny-on-stale
 	// MaxStalenessSeconds bounds replica lag for fresh/deny-on-stale
 	// endpoints. Zero means the default (5s).
 	MaxStalenessSeconds int  `json:"maxStalenessSeconds,omitempty"`

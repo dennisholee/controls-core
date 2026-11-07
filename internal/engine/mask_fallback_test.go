@@ -115,3 +115,16 @@ func TestCedarInitFailureFailsClosed(t *testing.T) {
 		t.Fatalf("expected fail-closed 503: %+v", res)
 	}
 }
+
+func TestNonJSONResponseFailsClosed(t *testing.T) {
+	e := New(fallbackBundle(), classPIP{})
+	ep := e.Endpoint("POST", "/x")
+	if _, err := e.MaskResponseCtx(context.Background(), ep, []byte("not json"), false); err == nil {
+		t.Fatal("expected non-JSON masking error")
+	}
+	allowed := *ep
+	allowed.AllowNonJSON = true
+	if _, err := e.MaskResponseCtx(context.Background(), &allowed, []byte("not json"), false); err != nil {
+		t.Fatalf("allowNonJSON should pass: %v", err)
+	}
+}

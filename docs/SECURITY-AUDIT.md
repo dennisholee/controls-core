@@ -140,9 +140,13 @@ Go and Alpine base digests could not be resolved from this environment (Docker
 Hub unreachable); pin them in CI where the registry is available.
 
 ### M4 — Non-JSON responses bypass masking
-[`engine.go:287`](../internal/engine/engine.go#L287) returns non-JSON bodies
-unchanged. Any sensitive endpoint that can emit non-JSON must be blocked at the
-gateway; this is documented but not enforced by the registry.
+[`engine.go:287`](../internal/engine/engine.go#L287) returned non-JSON bodies
+unchanged. Any sensitive endpoint that can emit non-JSON had to be blocked at
+the gateway; this was documented but not enforced by the registry.
+
+Status: **remediated.** A masked endpoint now returns an error (fail closed)
+for a non-JSON body unless it explicitly sets `allowNonJSON: true`. The option
+is part of the registry contract and covered by a test.
 
 ### M5 — No TLS or authentication on the Envoy listener or ext_proc gRPC
 The standalone reference listens on `0.0.0.0:8080` and the adapter on

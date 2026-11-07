@@ -69,6 +69,11 @@
           "default": true,
           "description": "Apply masking to error responses as well."
         },
+        "allowNonJSON": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit a non-JSON response to bypass masking. When false (default), a masked endpoint fails closed on non-JSON bodies."
+        },
         "freshness": {
           "enum": ["cached", "fresh", "deny-on-stale"],
           "default": "cached",

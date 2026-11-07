@@ -43,6 +43,7 @@ This prevents a caller from selecting the policy that applies to them.
 | `attributes` | no | Field projection requested from the PIP. |
 | `maskPolicy` | no | Key in the mask-policies document. |
 | `maskErrors` | no | Apply masking to error responses (default `true`). |
+| `allowNonJSON` | no | Permit non-JSON responses to bypass masking (default `false`; masked endpoints fail closed). |
 | `freshness` | no | `cached` (default), `fresh`, `deny-on-stale`. |
 | `maxStalenessSeconds` | no | Lag bound for fresh/deny-on-stale; default 5. |
 | `selfDescribing` | no | Require payload `_type`/`_id` to match this entry. |
