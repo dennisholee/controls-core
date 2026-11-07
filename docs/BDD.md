@@ -1,6 +1,6 @@
 # BDD and acceptance criteria
 
-Status: adopted for the reference implementation (`v0.28.0`). Owner: core
+Status: adopted for the reference implementation (`v0.28.1`). Owner: core
 engineering for the harness, delivery for the journeys.
 
 ## 1. Why BDD here
@@ -170,3 +170,10 @@ without an acceptance criterion noticing.
   save.
 - Gherkin is not a specification language for the rule grammar. The normative
   rule and mask semantics remain in `contracts/`.
+
+## Status assertions
+
+Engine scenarios assert only decision statuses (`403`, `503`). Upstream status
+codes (200/201/500) are asserted by `make smoke` against the live entrypoint;
+the in-process engine has no upstream HTTP response to observe, so asserting a
+scenario-declared value there would be tautological.

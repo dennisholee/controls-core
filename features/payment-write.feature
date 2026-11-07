@@ -20,7 +20,6 @@ Feature: Authorized writes and request data quality
       {"_type":"payment","_id":"P-9001","amount":10,"currency":"USD","ownerId":"u-1"}
       """
     Then the request is allowed
-    And the status is 201
     And the response body is masked as:
       | path   | value    |
       | id     | P-9001   |

@@ -31,7 +31,6 @@ Feature: Failure behaviour is explicit
       """
     When they GET "/accounts/A123"
     Then the request is allowed
-    And the status is 500
     And the response body is masked as:
       | path | value      |
       | ssn  | [REDACTED] |

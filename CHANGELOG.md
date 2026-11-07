@@ -20,6 +20,14 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.28.1] — 2026-11-07
+
+### Changed
+
+- Removed tautological upstream-status assertions from engine BDD scenarios;
+  `make smoke` already asserts real 200/201/403 statuses through Envoy. Engine
+  scenarios keep decision statuses (403/503).
+
 ## [0.28.0] — 2026-11-07
 
 ### Added

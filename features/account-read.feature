@@ -16,7 +16,6 @@ Feature: Data-level entitlement for account reads
     Given subject "u-1"
     When they GET "/accounts/A123"
     Then the request is allowed
-    And the status is 200
     And the response body is masked as:
       | path          | value           |
       | accountNumber | ******7890      |
@@ -28,7 +27,6 @@ Feature: Data-level entitlement for account reads
     Given subject "u-9" with claim "region" = "US"
     When they GET "/accounts/A123"
     Then the request is allowed
-    And the status is 200
 
   Scenario: A subject outside the account's region is denied
     Given subject "u-2" with claim "region" = "EU"
