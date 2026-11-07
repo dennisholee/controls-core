@@ -7,7 +7,7 @@ envoy:
   resources: {}
 
 extproc:
-  image: controls-extproc:0.25.0
+  image: controls-extproc:0.26.0
   pullPolicy: IfNotPresent
   port: 50051
   metricsPort: 9090
@@ -22,6 +22,8 @@ extproc:
   allowUnsigned: false
   auditSample: "0.01"
   auditBuffer: "4096"
+  # Optional dedicated audit file (parent must mount the path). Empty = stdout.
+  auditOut: ""
 
 volumes:
   envoyConfig: controls-envoy-config

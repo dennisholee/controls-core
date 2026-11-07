@@ -46,7 +46,7 @@ fixed in 0.18.0.
 | C1 | PIP defaults to plaintext; `-require-mtls` / `-require-caller` are opt-in | Platform + core | `pip.tls.required`, `allowedCallers` on every source |
 | H | Unsigned bundle mode now requires explicit `-allow-unsigned` | Core | Remove dev escape from production manifests |
 | — | Contract major and full manifest are now signed | Core | Done in 0.21.0 |
-| — | Audit async queue + drop/write-failure metrics added | Core | Done in 0.20.0 |
+| — | Audit async queue, failure metrics and dedicated `-audit-out` sink | Core | Done in 0.20.0/0.26.0 |
 | — | Fresh/deny-on-stale require reported lag; missing lag denies | Core | Done in 0.25.0 |
 | — | PIP readiness now probes configured source health URLs | Core | Done in 0.22.0 |
 | H | Sidecar/Envoy deployment manifest is unowned (service chart absent) | Platform | Reproducible install with pubkey/salt/ext_proc |

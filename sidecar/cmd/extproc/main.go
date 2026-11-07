@@ -4,6 +4,7 @@ package main
 
 import (
 	"flag"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -38,6 +39,7 @@ func main() {
 	bundlePubKey := flag.String("bundle-pubkey", os.Getenv("CONTROLS_BUNDLE_PUBKEY"), "Ed25519 public key for bundle signature verification")
 	allowUnsigned := flag.Bool("allow-unsigned", false, "allow a bundle without -bundle-pubkey (development only)")
 	auditBuffer := flag.Int("audit-buffer", 4096, "async audit queue size (0 = synchronous)")
+	auditOut := flag.String("audit-out", "", "audit log file (empty = stdout)")
 	opaURL := flag.String("opa-url", os.Getenv("CONTROLS_OPA_URL"), "OPA base URL (required for the opa policy engine)")
 	pipCA := flag.String("pip-ca", os.Getenv("CONTROLS_PIP_CA"), "CA bundle for PIP TLS")
 	pipCert := flag.String("pip-cert", os.Getenv("CONTROLS_PIP_CERT"), "client certificate for PIP mTLS")
@@ -78,8 +80,18 @@ func main() {
 	}
 	pip := pipclient.New(*pipURL, pipOpts...)
 	registry := metrics.New()
+	var auditWriter io.Writer = os.Stdout
+	if *auditOut != "" {
+		f, err := os.OpenFile(*auditOut, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			log.Error("open audit sink", "err", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+		auditWriter = f
+	}
 	al := audit.New(audit.Config{
-		Out:         os.Stdout,
+		Out:         auditWriter,
 		Buffer:      *auditBuffer,
 		Salt:        *auditSalt,
 		AllowSample: *auditSample,

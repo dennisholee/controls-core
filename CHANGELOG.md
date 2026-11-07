@@ -20,6 +20,14 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.26.0] — 2026-11-07
+
+### Added
+
+- `-audit-out` writes decisions to a dedicated file (0600, append) instead of
+  sharing stdout with application logs; the sidecar library exposes
+  `extproc.auditOut`.
+
 ## [0.25.0] — 2026-11-07
 
 ### Security

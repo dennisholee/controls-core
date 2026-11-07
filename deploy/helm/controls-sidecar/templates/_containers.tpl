@@ -42,6 +42,10 @@
     - {{ .Values.extproc.auditSample | quote }}
     - -audit-buffer
     - {{ .Values.extproc.auditBuffer | quote }}
+    {{- if .Values.extproc.auditOut }}
+    - -audit-out
+    - {{ .Values.extproc.auditOut | quote }}
+    {{- end }}
     {{- if .Values.extproc.pipCA }}
     - -pip-ca
     - /etc/controls/secrets/{{ .Values.extproc.pipCA }}
