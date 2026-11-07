@@ -3,6 +3,13 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.38.1] — 2026-11-07
+
+### Fixed
+
+- `openapi-registry` and `controls-check` are built by `make build` and included
+  in the published tools image, not only invoked via `go run` from examples.
+
 ## [0.38.0] — 2026-11-07
 
 ### Added

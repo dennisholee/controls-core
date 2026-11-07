@@ -32,6 +32,8 @@ build:
 	$(GO) build -o bin/sidecar ./sidecar/cmd/sidecar
 	$(GO) build -o bin/extproc ./sidecar/cmd/extproc
 	$(GO) build -o bin/openapi-diff ./tools/openapi-diff
+	$(GO) build -o bin/openapi-registry ./tools/openapi-registry
+	$(GO) build -o bin/controls-check ./tools/controls-check
 	$(GO) build -o bin/bundle ./tools/bundle
 	$(GO) build -o bin/conformance ./tools/conformance
 	$(GO) build -o bin/bundle-sign ./tools/bundle-sign
