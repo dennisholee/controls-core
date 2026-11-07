@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "policies": {
+    "account.read": {
+      "default": "none",
+      "fields": {
+        "accountNumber": {
+          "mode": "partial",
+          "keepSuffix": 4
+        },
+        "holder.email": {
+          "mode": "partial",
+          "keepPrefix": 1,
+          "preserveDomain": true
+        },
+        "ssn": {
+          "mode": "full"
+        }
+      }
+    }
+  }
+}

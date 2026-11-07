@@ -19,6 +19,8 @@ The entrypoint expects:
 | `PIP_URL` | PIP base URL |
 | `CONTROLS_AUDIT_SALT` | audit hash salt |
 | `SERVICE_NAME` | Envoy service cluster (optional) |
+| `PIP_CA` / `PIP_CERT` / `PIP_KEY` | PIP TLS / client certificate files |
+| `PIP_SERVER_NAME` | expected PIP server name for TLS |
 
 For production, prefer two containers (Envoy + extproc) managed by the Helm
 library chart; this combined image exists so samples and local compose are

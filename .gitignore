@@ -11,3 +11,6 @@ dist/
 /steward
 deploy/examples/*/charts/
 .tmp/
+examples/mtls-caller/certs/*.key
+examples/mtls-caller/certs/*.crt
+examples/mtls-caller/certs/*.srl

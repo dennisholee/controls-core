@@ -37,8 +37,14 @@ func CallerIdentity(cert *x509.Certificate) string {
 
 func callerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.TLS != nil && len(r.TLS.PeerCertificates) > 0 {
-			if id := CallerIdentity(r.TLS.PeerCertificates[0]); id != "" {
+		if r.TLS != nil {
+			var cert *x509.Certificate
+			if len(r.TLS.PeerCertificates) > 0 {
+				cert = r.TLS.PeerCertificates[0]
+			} else if len(r.TLS.VerifiedChains) > 0 && len(r.TLS.VerifiedChains[0]) > 0 {
+				cert = r.TLS.VerifiedChains[0][0]
+			}
+			if id := CallerIdentity(cert); id != "" {
 				r = r.WithContext(WithCaller(r.Context(), id))
 			}
 		}

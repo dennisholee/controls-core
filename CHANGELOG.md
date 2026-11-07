@@ -3,6 +3,23 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.31.0] — 2026-11-07
+
+### Added
+
+- `examples/pip-outage`: fail-closed sample proving a PIP outage returns 503
+  and never calls the upstream.
+- `examples/mtls-caller`: sidecar → PIP mutual TLS sample with generated
+  test certificates.
+- Sidecar runtime entrypoint accepts `PIP_CA`/`PIP_CERT`/`PIP_KEY`/
+  `PIP_SERVER_NAME`.
+
+### Fixed
+
+- PIP caller identity was extracted after the `require-caller` check, so
+  authenticated mTLS requests were rejected with `caller_required`. Identity
+  extraction now runs first.
+
 ## [0.30.0] — 2026-11-07
 
 ### Added

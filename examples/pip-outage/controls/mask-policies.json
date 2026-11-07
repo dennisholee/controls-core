@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "policies": {
+    "account.read": {
+      "default": "none",
+      "fields": {"ssn": {"mode": "full"}}
+    }
+  }
+}

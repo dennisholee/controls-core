@@ -90,7 +90,7 @@ func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 // Handler returns the HTTP handler, with caller identity and the concurrency
 // limit applied when configured.
 func (s *Server) Handler() http.Handler {
-	base := callerMiddleware(s.mux)
+	base := http.Handler(s.mux)
 	if s.requireCaller {
 		next := base
 		base = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,6 +101,8 @@ func (s *Server) Handler() http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+	// Identity must be extracted before the caller-required check runs.
+	base = callerMiddleware(base)
 	if s.rateLimit > 0 {
 		next := base
 		base = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

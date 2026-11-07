@@ -1,0 +1,19 @@
+name: controls-example-pip-outage
+services:
+  app:
+    image: pip-outage-app:dev
+    expose:
+      - "8080"
+  sidecar:
+    image: controls-sidecar:dev
+    ports:
+      - "18002:8080"
+    environment:
+      PIP_URL: http://127.0.0.1:9
+      CONTROLS_AUDIT_SALT: sample-salt
+      SERVICE_NAME: pip-outage
+    volumes:
+      - ./controls:/etc/controls/bundle:ro
+      - ./envoy/envoy.yaml:/etc/controls/envoy.yaml:ro
+    depends_on:
+      - app
