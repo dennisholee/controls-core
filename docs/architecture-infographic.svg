@@ -47,10 +47,11 @@
 <rect x="550" y="230" width="560" height="280" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="8 6" />
 <text x="570" y="258" class="h3" text-anchor="start" >Service pod</text>
 <text x="570" y="280" class="small" text-anchor="start" >app code unchanged</text>
+<text x="760" y="280" class="small" text-anchor="start" >bundle: /etc/controls/bundle/registry.json</text>
 <rect x="575" y="292" width="230" height="190" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6" />
 <text x="595" y="320" class="card" text-anchor="start" >Envoy + ext_proc</text>
 <text x="595" y="344" class="small" text-anchor="start" >sidecar</text>
-<text x="595" y="370" class="body" text-anchor="start" >registry match</text>
+<text x="595" y="370" class="body" text-anchor="start" >registry.json match</text>
 <text x="595" y="391" class="body" text-anchor="start" >identity check</text>
 <text x="595" y="412" class="body" text-anchor="start" >PIP attributes</text>
 <text x="595" y="433" class="body" text-anchor="start" >policy + DQ</text>
@@ -173,7 +174,7 @@
 <text x="1052" y="1042" class="h3" text-anchor="start" >Signed runtime bundle</text>
 <text x="1052" y="1066" class="small" text-anchor="start" >mount at /etc/controls/bundle</text>
 <rect x="1052" y="1080" width="466" height="170" rx="12" fill="#f5f3ff" stroke="#c4b5fd" stroke-width="1.5" />
-<text x="1070" y="1106" class="mono" text-anchor="start" >registry.json          route binding</text>
+<text x="1070" y="1106" class="mono" text-anchor="start" >registry.json  mounted at /etc/controls/bundle</text>
 <text x="1070" y="1130" class="mono" text-anchor="start" >rules.json             authz engine</text>
 <text x="1070" y="1154" class="mono" text-anchor="start" >mask-policies.json     field modes</text>
 <text x="1070" y="1178" class="mono" text-anchor="start" >dq.json                request checks</text>
