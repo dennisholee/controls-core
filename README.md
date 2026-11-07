@@ -30,6 +30,7 @@ internal/           config, policy, mask, dq, pipclient, engine, openapidiff
 contracts/          normative schemas, specs and PIP OpenAPI
 features/           BDD acceptance criteria, one file per journey
 integration/        end-to-end tests, BDD runner and benchmarks
+hack/               smoke stack, fixture app and load generator
 tools/bundle/       deterministic bundle renderer (Jenkins entry point)
 tools/conformance/  executes fixtures against a rendered bundle
 tools/openapi-diff/ registry ↔ OpenAPI coverage gate
@@ -98,7 +99,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.10.1` — engine, masking with classification fallback, DQ, replica-lag
+`v0.11.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

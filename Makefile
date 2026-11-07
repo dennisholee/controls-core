@@ -2,6 +2,8 @@ GO ?= go
 HELM ?= helm
 HELM_ARGS ?=
 CONTROLS_NAMESPACE ?= controls
+LOADTEST_URL ?= http://127.0.0.1:18000/accounts/A123
+LOADTEST_ARGS ?=
 ENV ?= prod
 SERVICE ?= accounts
 GOCACHE ?= $(CURDIR)/.gocache
@@ -65,6 +67,10 @@ acceptance:
 
 smoke:
 	./hack/envoy-smoke.sh
+
+loadtest:
+	$(GO) run ./hack/loadtest -url $(LOADTEST_URL) \
+		-H 'x-subject: u-1' -H 'x-claim-region: US' $(LOADTEST_ARGS)
 
 chart:
 	$(HELM) lint deploy/helm/controls-plane

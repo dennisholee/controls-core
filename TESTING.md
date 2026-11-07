@@ -147,6 +147,21 @@ payloads and record: p50/p99 added latency, CPU per 1k RPS, memory, PIP cache
 hit rate and PIP QPS. Store results in the release notes; regressions block
 release.
 
+`hack/loadtest` drives a fixed RPS for a duration and reports p50/p95/p99 and
+status counts. The smoke test can run it through the real Envoy chain:
+
+```bash
+CONTROLS_LOADTEST=1 make smoke
+# or against an existing stack:
+make loadtest LOADTEST_URL=http://127.0.0.1:18000/accounts/A123 \
+  LOADTEST_ARGS='-duration 10s -rps 1000 -concurrency 100'
+```
+
+Reference run (M2, Docker Desktop, Envoy 1.40, fixture app/PIP): ~994 RPS
+achieved, p95 1.7 ms, p99 13 ms, 0 errors. The smoke gate fails above p99
+100 ms; production runs should use the 1,200 RPS/pod profile and record the
+same fields.
+
 ## 9. Acceptance criteria (BDD)
 
 `features/*.feature` holds the business acceptance criteria, one file per

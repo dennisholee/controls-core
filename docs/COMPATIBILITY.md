@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.11.x | 1.0.x | 1.0.x | 1.0.x | load-test gate |
 | 0.10.x | 1.0.x | 1.0.x | 1.0.x | OPA engine |
 | 0.9.x | 1.0.x | 1.0.x | 1.0.x | bundle reload, non-JSON fail-closed |
 | 0.8.x | 1.0.x | 1.0.x | 1.0.x | Cedar policy engine |

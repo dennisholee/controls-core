@@ -157,4 +157,13 @@ grep -q 'controls_pip_cache_total' "$TMP/metrics" || fail "pip cache metric miss
 grep -q '"subjectHash"' "$TMP/extproc.log" || fail "audit log missing"
 grep -q '"decision":"deny"' "$TMP/extproc.log" || fail "audit deny missing"
 
+# 8. Optional throughput/latency gate through the real Envoy chain.
+if [ "${CONTROLS_LOADTEST:-0}" = "1" ]; then
+  echo "running load test (1000 rps, 10s)"
+  (cd "$ROOT" && go build -o "$TMP/loadtest" ./hack/loadtest)
+  "$TMP/loadtest" -url "http://127.0.0.1:$ENVOY_PORT/accounts/A123" \
+    -H 'x-subject: u-1' -H 'x-claim-region: US' \
+    -duration 10s -concurrency 100 -rps 1000 -max-p99 100ms
+fi
+
 echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD, audit+metrics"
