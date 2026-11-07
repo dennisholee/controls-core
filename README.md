@@ -47,7 +47,7 @@ Requires Go 1.26+.
 ```bash
 make test          # go test ./... (integration tests spin up a fake PIP)
 make testdrive     # one-command local check; no Docker needed
-make demo          # keep the Envoy + smokeapp stack running (Docker)
+make demo          # keep the Envoy + smokeapp stack running (Docker); :18000 is controlled, :18080 is the unmasked upstream
 make acceptance    # BDD acceptance criteria against the engine
 make bench         # engine latency/memory benchmarks
 make api           # :8081 test API + in-process PIP, console at /docs

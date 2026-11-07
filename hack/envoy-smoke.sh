@@ -180,7 +180,7 @@ if [ "${CONTROLS_DEMO:-0}" = "1" ]; then
   echo
   echo "DEMO stack is running. Ctrl-C to stop."
   echo "  Envoy (front door)   http://127.0.0.1:${ENVOY_PORT}"
-  echo "  smokeapp (upstream)  http://127.0.0.1:${APP_PORT}/accounts/A123"
+  echo "  smokeapp (upstream)  http://127.0.0.1:${APP_PORT}/accounts/A123  (UNMASKED; bypasses controls)"
   echo "  PIP                  http://127.0.0.1:${PIP_PORT}/healthz"
   echo "  extproc metrics      http://127.0.0.1:19090/metrics"
   echo
