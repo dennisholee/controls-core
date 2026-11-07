@@ -3,15 +3,6 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
-## [0.13.0] — 2026-11-07
-
-### Added
-
-- PIP Prometheus metrics on `-metrics-addr` (default `:9090`): requests,
-  errors, latency histogram, attribute outcomes and replica lag.
-- Chart exposes the PIP metrics port and restricts it to the monitoring
-  namespace.
-
 ## [0.13.1] — 2026-11-07
 
 ### Fixed
@@ -25,9 +16,10 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ### Added
 
-- PIP metrics and a separate admin listener (`-metrics-addr`): attribute
-  resolutions, lookups by resource type, classification requests, replica lag
-  and request latency.
+- PIP Prometheus metrics on `-metrics-addr` (default `:9090`): requests,
+  errors, latency histogram, attribute outcomes and replica lag.
+- Chart exposes the PIP metrics port and restricts it to the monitoring
+  namespace.
 
 ## [0.12.1] — 2026-11-07
 

@@ -12,7 +12,7 @@ imagePullSecrets: []
 pip:
   enabled: true
   image: registry.example.com/controls-pip
-  tag: "0.13.0"
+  tag: "0.13.1"
   pullPolicy: IfNotPresent
   replicas: 2
   port: 8082
