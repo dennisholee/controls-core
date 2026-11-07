@@ -7,7 +7,7 @@ pipeline {
   agent {
     docker {
       image 'registry.example.com/controls-tools@sha256:REPLACE_WITH_DIGEST'
-      args '-u root'
+      args '--user 1000:1000'
     }
   }
 

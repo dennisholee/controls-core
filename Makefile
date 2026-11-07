@@ -17,6 +17,9 @@ test:
 vet:
 	$(GO) vet ./...
 
+vulncheck:
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+
 build:
 	$(GO) build -o bin/pip ./pip/cmd/pip
 	$(GO) build -o bin/sidecar ./sidecar/cmd/sidecar

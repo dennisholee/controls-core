@@ -124,14 +124,20 @@ Status: **remediated.** Overlays are decoded with `DisallowUnknownFields` and
 an unknown key fails the render.
 
 ### M2 — Tools container runs as root
-[`Dockerfile.tools:16`](../deploy/Dockerfile.tools#L16) has no `USER`, and the
-Jenkinsfile runs the agent with `-u root`
-([`Jenkinsfile:10`](../ci/Jenkinsfile#L10)). Add a non-root user and drop the
-root arg unless a workspace permission requires it.
+[`Dockerfile.tools:16`](../deploy/Dockerfile.tools#L16) had no `USER`, and the
+Jenkinsfile ran the agent with `-u root`
+([`Jenkinsfile:10`](../ci/Jenkinsfile#L10)).
+
+Status: **remediated.** The tools image creates and runs as UID 10001, and the
+Jenkins agent runs as the workspace UID (`--user 1000:1000`) instead of root.
 
 ### M3 — Base images are tag-pinned, not digest-pinned
 `golang:1.26`, `alpine:3.20` ([`Dockerfile.tools:7`](../deploy/Dockerfile.tools#L7))
 and the smoke Envoy tag are mutable. Pin by digest in the image build and CI.
+
+Status: **partially remediated.** The smoke test now pins the Envoy digest. The
+Go and Alpine base digests could not be resolved from this environment (Docker
+Hub unreachable); pin them in CI where the registry is available.
 
 ### M4 — Non-JSON responses bypass masking
 [`engine.go:287`](../internal/engine/engine.go#L287) returns non-JSON bodies
@@ -150,8 +156,11 @@ the shared controls plane. Add local or gateway rate limits per identity.
 ### M7 — Dependency advisory scan not executed
 `govulncheck` could not reach `proxy.golang.org` from this environment. The
 direct dependencies are recent (`envoy v1.40.0`, `grpc v1.85.0`,
-`protobuf v1.36.12`), but this is not a clean advisory result. Run
-`govulncheck ./...` in CI as a release gate.
+`protobuf v1.36.12`), but this is not a clean advisory result.
+
+Status: **CI gate added.** `make vulncheck` runs
+`govulncheck@v1.1.4 ./...`, and the GitHub Actions test job enforces it. The
+first CI run will establish the clean-or-not result.
 
 ### M8 — Audit salt can silently fall back to a known value
 [`extproc/main.go:49`](../sidecar/cmd/extproc/main.go#L49) warns and uses

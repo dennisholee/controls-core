@@ -10,6 +10,9 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - Ed25519 bundle signing (`bundle-sign`, `bundle-keygen`) and sidecar
   verification via `-bundle-pubkey`; the digest is recomputed from the four
   files, so any modification fails startup.
+- Tools image runs as a non-root user (UID 10001); the Jenkins agent no longer
+  runs as root. The smoke Envoy image is pinned by digest.
+- `make vulncheck` / CI `govulncheck` step.
 - Bundle overlays reject `defaultUnregistered: allow`; overlay documents are
   decoded strictly, so unknown keys fail the render.
 - PIP enforces a 64 KiB body limit and a 100-resource batch cap.

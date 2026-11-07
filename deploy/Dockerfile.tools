@@ -16,7 +16,11 @@ RUN CGO_ENABLED=0 go build -o /out/bundle ./tools/bundle \
  && CGO_ENABLED=0 go build -o /out/bundle-keygen ./tools/bundle-keygen
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+ && adduser -D -u 10001 controls \
+ && mkdir -p /work \
+ && chown controls /work
 COPY --from=build /out/ /usr/local/bin/
 WORKDIR /work
+USER controls
 ENTRYPOINT ["/usr/local/bin/bundle"]
