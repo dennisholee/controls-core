@@ -45,13 +45,29 @@ Status: reference implementation `v0.38.3`.
 | Bundle renderer | `internal/bundle`, `tools/bundle` | Merge sources/overlays into a validated, digest-bearing bundle |
 | Conformance | `internal/conformance`, `tools/conformance` | Execute delivery fixtures against a rendered bundle |
 | OpenAPI gate | `internal/openapidiff`, `tools/openapi-diff` | Registry ↔ OpenAPI coverage check |
+| Registry generator | `internal/openapiregistry`, `tools/openapi-registry` | Derive registry entries from `x-resource-*` annotations |
+| Controls check | `internal/controlscheck`, `tools/controls-check` | Rules/DQ/masks/attributes vs registry and OpenAPI schemas |
+| Sidecar runtime | `deploy/sidecar` | Combined Envoy + extproc sample image |
+| Sidecar Helm library | `deploy/helm/controls-sidecar` | Inject the two containers into service pods |
 | Pipeline integration | `ci/Jenkinsfile`, `docs/PIPELINE.md` | Contract for the centrally managed Jenkins job |
 | Benchmark | `integration/bench_test.go` | Decision/mask overhead regression signal |
+
+### Artifacts
+
+- **Bundle**: `registry.json`, `rules.json`, `mask-policies.json`, `dq.json`,
+  `manifest.json`, optional `policies.cedar`, `manifest.sig`.
+- **Contracts**: registry/mask schemas, PIP OpenAPI, decision-log schema,
+  test-API contract (`contracts/`).
+- **Runtime**: sidecar image, PIP image, rendered bundle; the service image is
+  unchanged.
+- **Pipeline outputs**: signed bundle and digest; deployment pins the digest.
 
 ## 3. Request flow
 
 1. **Gateway** authenticates, authorizes the route/scope, and injects verified
-   `x-subject`/claim headers. Client-supplied equivalents are stripped.
+   identity. With `CONTROLS_IDENTITY_HMAC_KEY` set, the sidecar requires the
+   signed `x-controls-identity` envelope; raw `x-subject`/`x-claim-*` are a
+   development fallback only.
 2. **Registry match.** No match ⇒ `defaultUnregistered` (production: deny).
 3. **Self-description cross-check.** With `selfDescribing`, payload `_type`
    must equal the registry `resourceType` and `_id` must equal the derived
@@ -61,7 +77,8 @@ Status: reference implementation `v0.38.3`.
 6. **Resource attributes.** `resourceSource` selects body, PIP, or both. PIP
    calls request only the registry's `attributes` projection. `freshness`
    controls cache bypass and the replica-lag bound (`maxStalenessSeconds`,
-   default 5s); a violation is `503 stale_attributes`.
+   default 5s). Missing lag (`lagKnown: false`) is `503 lag_unknown`; exceeding
+   the bound is `503 stale_attributes`.
 7. **Policy.** The bundle selects `rules` (deny rules absolute, allow rules
    OR-ed, default deny), `cedar` (entity evaluation, deny by default), or `opa`
    (external decision API, fail closed).
@@ -86,6 +103,9 @@ At 1,000 RPS/pod with 4 KB p99:
 CPU: roughly 0.1–0.3 vCPU per 1,000 RPS for the sidecar. At 5 pods, budget ~2
 vCPU and ~250 MB across the fleet for controls.
 
+End-to-end (Apple M2, Envoy 1.40, 15 s, 1,200 target RPS): 1,194 RPS, p50 1.0 ms,
+p95 2.1 ms, p99 6.0 ms, 0 errors (single host; `TESTING.md`).
+
 Measured engine-only (Apple M2, Go 1.27, `make bench`): ~7 µs per decision
 without PIP, ~1.5 µs per read on a warm cache, ~11 µs to mask a 4 KB document.
 These exclude the Envoy ext_proc hop (~0.3–1 ms), which is the dominant term.
@@ -100,11 +120,13 @@ cache is keyed by type, id and field projection.
 | Failure | Behaviour |
 |---|---|
 | PIP timeout / unavailable | **Deny** (503 `pip_unavailable`) — fail closed |
+| PIP lag unknown | **Deny** (503 `lag_unknown`) for `fresh`/`deny-on-stale` |
+| OPA unavailable or error | **Deny** (`opa:error`) — fail closed |
 | PIP resource not found | 404 `resource_not_found` |
 | Invalid bundle at boot | Pod does not become ready |
 | Invalid bundle on reload | Keep last-known-good, alert |
 | Policy bundle missing/corrupt | Deny on next start; never run partially configured |
-| Mask policy missing at runtime | Deny rather than return unmasked |
+| Mask policy missing at runtime | Request fails closed (gRPC error → 500); never returns unmasked |
 | Unregistered route | Deny (`defaultUnregistered: deny`) |
 | DQ violation, non-blocking | Allow; log + metric |
 | DQ violation, blocking | 403 `dq_blocking:<rule>` |
@@ -118,11 +140,12 @@ cache is keyed by type, id and field projection.
   APIs own replica credentials and query shape. Size for cache-miss QPS
   (~5% of 5,000 = 250 RPS).
 - **Observability**: ext_proc exposes `/metrics`, `/healthz` and `/readyz` on
-  `:9090`; decision logs are stdout JSON with hashed identifiers. Scrape the
-  admin port and ship stdout to the platform log store.
+  `:9090`; decision logs are hashed JSON on stdout or `-audit-out <file>`.
+  Scrape the admin port and ship the audit stream to the platform log store.
 - **Bundle integrity**: the sidecar verifies `manifest.sig` against the
   recomputed digest when `-bundle-pubkey` is set, and refuses to start when the
-  bundle is modified or unsigned.
+  bundle is modified or unsigned. `-allow-unsigned` is a development-only
+  escape.
 - **Reload**: the bundle directory is polled every 30s (configurable) and
   `SIGHUP` forces a reload. Each reload re-verifies the signature, rebuilds the
   engine and atomically swaps it; failures keep the last-known-good bundle.
@@ -130,7 +153,9 @@ cache is keyed by type, id and field projection.
   ([`deploy/helm/controls-plane`](deploy/helm/controls-plane)) deploys the PIP
   with NetworkPolicies (gateway → sidecar, sidecar → PIP, monitoring → metrics)
   and optional Istio `PeerAuthentication: STRICT` plus a PIP
-  `AuthorizationPolicy` limited to sidecar service accounts.
+  `AuthorizationPolicy` limited to sidecar service accounts. The
+  [`controls-sidecar`](deploy/helm/controls-sidecar) library chart injects the
+  Envoy/extproc containers; `deploy/sidecar` packages them for samples.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 
@@ -160,12 +185,15 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 - `ext_authz` remains available for coarse checks but is expected to be a no-op
   while the gateway owns route authz.
 
+See [`docs/PIPELINE.md`](docs/PIPELINE.md), [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
+and [`docs/adr/`](docs/adr/) for pipeline, versioning and decision records.
+
 ## 8. Known gaps
 
 | Gap | Impact | Plan |
 |---|---|---|
 | Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
-| PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
+| PIP lag must be reported by adapters | Missing lag now fails closed (`lag_unknown`), but end-to-end measurement/alerting is not built | Adapter contract test + lag alerting |
 | Classification tag completeness | Untagged sensitive fields are not masked by the fallback | Catalog review + classification coverage check before pilot |
 | OPA policies live outside the signed bundle | Policy changes are not covered by bundle signing | Keep OPA under its own change control, or move rules into the bundle |
 | Jenkins job adoption | Reference jobs and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
