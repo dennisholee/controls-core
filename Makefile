@@ -45,7 +45,7 @@ fmt-check:
 	@out=$$(gofmt -l $$(git ls-files '*.go')); if [ -n "$$out" ]; then echo "gofmt needed:"; echo "$$out"; exit 1; fi
 
 pip:
-	$(GO) run ./pip/cmd/pip -addr :8082 -fixtures pip/fixtures/attributes.json
+	$(GO) run ./pip/cmd/pip -addr :8082 -metrics-addr :9091 -fixtures pip/fixtures/attributes.json
 
 sidecar:
 	$(GO) run ./sidecar/cmd/sidecar -addr :8081 -config integration/testdata/config -pip http://127.0.0.1:8082
