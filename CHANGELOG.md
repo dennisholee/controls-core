@@ -20,6 +20,13 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.28.0] — 2026-11-07
+
+### Added
+
+- Reload tests: rebuilding a runtime keeps the process-lifetime PIP client
+  (cache/breaker) and rejects an invalid bundle directory.
+
 ## [0.27.0] — 2026-11-07
 
 ### Added

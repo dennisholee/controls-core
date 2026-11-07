@@ -207,6 +207,7 @@ func main() {
 
 type runtimeState struct {
 	engine      *engine.Engine
+	pip         engine.PIP
 	version     string
 	digest      string
 	fingerprint string
@@ -245,7 +246,7 @@ func buildRuntime(cfgDir, pubkey, opaURL string, opaTimeout time.Duration, pip e
 	if err != nil {
 		return nil, err
 	}
-	return &runtimeState{engine: eng, version: version, digest: digest, fingerprint: fp}, nil
+	return &runtimeState{engine: eng, pip: pip, version: version, digest: digest, fingerprint: fp}, nil
 }
 
 func manifestValue(b *config.Bundle, field string) string {
