@@ -84,6 +84,9 @@ smoke:
 steward:
 	$(GO) run ./tools/steward -root .
 
+version-check:
+	@test -n "$$(cat VERSION)" && echo "version $$(cat VERSION)"
+
 loadtest:
 	$(GO) run ./hack/loadtest -url $(LOADTEST_URL) \
 		-H 'x-subject: u-1' -H 'x-claim-region: US' $(LOADTEST_ARGS)

@@ -12,6 +12,7 @@ prose documents explain the machine-readable files, not the other way around.
 | [`SPEC-mask-ops.md`](SPEC-mask-ops.md) | Normative mask semantics, locked fields, failure behaviour | with mask |
 | [`decision-log.schema.json`](decision-log.schema.json) | Decision log line (hashed identifiers, no payloads) | yes |
 | [`pip-api.yaml`](pip-api.yaml) | PIP HTTP API | yes |
+| [`test-api.yaml`](test-api.yaml) | Local test API: request simulator and conformance fixture runner | no (developer tooling) |
 
 ## Versioning
 

@@ -18,20 +18,34 @@ Envoy
 The engine lives in [`../internal/engine`](../internal/engine). The transport
 adapter is intentionally thin so the engine can be tested without Envoy.
 
-## Local harness
+## Test API
 
-`cmd/sidecar` exposes the same engine over HTTP:
+`cmd/sidecar` exposes the same engine over HTTP so the solution can be tested
+without Envoy:
 
 ```bash
-go run ./sidecar/cmd/sidecar \
-  -config integration/testdata/config \
-  -pip http://127.0.0.1:8082
+make api
+# or, with an external PIP:
+go run ./sidecar/cmd/sidecar -config integration/testdata/config -pip http://127.0.0.1:8082
 ```
 
-`POST /v1/process` takes a request/response envelope and returns the decision
-plus the masked response. Subject and claims come from `x-subject` and
-`x-claim-*` headers — **harness only**; production identity comes from the
-gateway trust chain.
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/v1/process` | request envelope → decision + masked response |
+| `POST` | `/v1/test` | conformance fixture → pass/fail checks |
+| `GET` | `/v1/endpoints` | registered routes and masking configuration |
+| `GET` | `/v1/info` | bundle, engine and PIP mode |
+| `GET` | `/docs` | browser console |
+| `GET` | `/openapi.yaml` | OpenAPI contract |
+
+`-fixtures <file>` serves the PIP in-process (single process, no external PIP);
+`-pip <url>` uses the real PIP over HTTP. Subject and claims come from
+`x-subject` and `x-claim-*` headers — **harness only**; production identity
+comes from the gateway trust chain. The default listener is
+`127.0.0.1:8081`.
+
+See [`../docs/TEST-API.md`](../docs/TEST-API.md) and the
+[`../contracts/test-api.yaml`](../contracts/test-api.yaml) contract.
 
 ## Configuration injection
 

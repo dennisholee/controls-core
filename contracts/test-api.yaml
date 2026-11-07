@@ -1,0 +1,479 @@
+openapi: 3.0.3
+info:
+  title: Controls Test API
+  version: "1.0"
+  description: |
+    A local test interface for the controls engine (entitlements, masking and
+    data quality). It runs the same engine as the production Envoy `ext_proc`
+    adapter, without Envoy or the gateway.
+
+    Identity is taken from `x-subject` and `x-claim-*` headers or from the
+    optional `subject` object. This is a harness convention only: the test API
+    must never be exposed outside a developer machine or a CI network.
+
+    Two workflows are supported:
+
+    * `POST /v1/process` — send a request envelope plus an upstream response
+      and get the decision and the masked body.
+    * `POST /v1/test` — post a conformance fixture (the same JSON format used
+      by `tools/conformance`) and get pass/fail checks.
+
+    A self-contained browser console is served at `/docs`.
+servers:
+  - url: http://127.0.0.1:8081
+    description: Default local address (`make api`)
+tags:
+  - name: health
+  - name: discovery
+  - name: evaluate
+  - name: fixtures
+components:
+  securitySchemes:
+    harnessIdentity:
+      type: apiKey
+      in: header
+      name: x-subject
+      description: |
+        Harness-only caller identity. Claims use `x-claim-<name>`. In
+        production the gateway supplies a verified identity instead.
+  schemas:
+    Request:
+      type: object
+      required: [method, path]
+      additionalProperties: false
+      properties:
+        method:
+          type: string
+          example: GET
+        path:
+          type: string
+          example: /accounts/A123
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            x-subject: u-1
+            x-claim-region: US
+        body:
+          description: JSON request body, if the route has one.
+          nullable: true
+    Response:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+          example: 200
+        body:
+          description: Upstream JSON body. It is masked when the request is allowed.
+          nullable: true
+    Subject:
+      type: object
+      properties:
+        sub:
+          type: string
+          example: u-1
+        claims:
+          type: object
+          additionalProperties:
+            type: string
+          example:
+            region: US
+    Envelope:
+      type: object
+      required: [request]
+      properties:
+        request:
+          $ref: "#/components/schemas/Request"
+        response:
+          $ref: "#/components/schemas/Response"
+        subject:
+          $ref: "#/components/schemas/Subject"
+    Decision:
+      type: object
+      required: [allowed, status, reason]
+      properties:
+        allowed:
+          type: boolean
+        status:
+          type: integer
+        reason:
+          type: string
+          example: allow:account.read.owner-or-region
+        endpointId:
+          type: string
+        resourceType:
+          type: string
+        resourceId:
+          type: string
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+    Violation:
+      type: object
+      properties:
+        ruleId:
+          type: string
+        field:
+          type: string
+        message:
+          type: string
+        blocking:
+          type: boolean
+    ProcessResult:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          $ref: "#/components/schemas/Decision"
+        response:
+          $ref: "#/components/schemas/Response"
+    FixtureExpect:
+      type: object
+      properties:
+        allowed:
+          type: boolean
+        status:
+          type: integer
+        reason:
+          type: string
+        masked:
+          type: object
+          description: Field path (dot notation) to expected masked value.
+          additionalProperties: true
+    Fixture:
+      type: object
+      required: [request, expect]
+      properties:
+        name:
+          type: string
+        service:
+          type: string
+        pip:
+          type: object
+          description: |
+            Per-fixture resource attributes. Resource type -> resource id ->
+            attribute map. Overrides the running PIP for these resources.
+          additionalProperties: true
+        request:
+          $ref: "#/components/schemas/Request"
+        response:
+          $ref: "#/components/schemas/Response"
+        expect:
+          $ref: "#/components/schemas/FixtureExpect"
+    Check:
+      type: object
+      required: [check, ok]
+      properties:
+        check:
+          type: string
+          example: masked.holder.email
+        ok:
+          type: boolean
+        got:
+          nullable: true
+        want:
+          nullable: true
+    Evaluation:
+      type: object
+      required: [name, pass, decision, checks]
+      properties:
+        name:
+          type: string
+        pass:
+          type: boolean
+        decision:
+          $ref: "#/components/schemas/Decision"
+        response:
+          $ref: "#/components/schemas/Response"
+        checks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Check"
+    Endpoint:
+      type: object
+      properties:
+        id:
+          type: string
+        method:
+          type: string
+        path:
+          type: string
+        resourceType:
+          type: string
+        action:
+          type: string
+        resourceId:
+          type: object
+          additionalProperties: true
+        resourceSource:
+          type: string
+          enum: [pip, body, both]
+        attributes:
+          type: array
+          items:
+            type: string
+        maskPolicy:
+          type: string
+        mask:
+          type: object
+          additionalProperties: true
+        freshness:
+          type: string
+          enum: [cached, fresh, deny-on-stale]
+        maxStalenessSeconds:
+          type: integer
+        selfDescribing:
+          type: boolean
+    Endpoints:
+      type: object
+      properties:
+        defaultUnregistered:
+          type: string
+          enum: [allow, deny]
+        endpoints:
+          type: array
+          items:
+            $ref: "#/components/schemas/Endpoint"
+    Info:
+      type: object
+      properties:
+        api:
+          type: string
+        apiVersion:
+          type: string
+        bundle:
+          type: object
+          properties:
+            dir:
+              type: string
+            version:
+              type: string
+            environment:
+              type: string
+            service:
+              type: string
+            digest:
+              type: string
+            policyEngine:
+              type: string
+            endpoints:
+              type: integer
+            rules:
+              type: integer
+            maskPolicies:
+              type: integer
+            dqRules:
+              type: integer
+        pip:
+          type: object
+          properties:
+            mode:
+              type: string
+              enum: [fixtures, http]
+        startedAt:
+          type: string
+          format: date-time
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: invalid_request
+        message:
+          type: string
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      operationId: health
+      summary: Liveness
+      responses:
+        "200":
+          description: ok
+          content:
+            text/plain:
+              schema:
+                type: string
+  /readyz:
+    get:
+      tags: [health]
+      operationId: ready
+      summary: Readiness (fails when the policy engine could not initialise)
+      responses:
+        "200":
+          description: ready
+        "503":
+          description: policy engine unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/info:
+    get:
+      tags: [discovery]
+      operationId: getInfo
+      summary: Bundle, policy engine and PIP mode
+      responses:
+        "200":
+          description: Runtime information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Info"
+  /v1/endpoints:
+    get:
+      tags: [discovery]
+      operationId: listEndpoints
+      summary: Registered endpoints and their masking configuration
+      responses:
+        "200":
+          description: Registry view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Endpoints"
+  /v1/process:
+    post:
+      tags: [evaluate]
+      operationId: process
+      summary: Evaluate one request and mask the supplied upstream response
+      description: |
+        Runs the same pipeline as production: registry match, identity
+        cross-check, PIP attributes, policy, DQ, then response masking. When the
+        request is denied the response body is not masked or returned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Envelope"
+            example:
+              request:
+                method: GET
+                path: /accounts/A123
+                headers:
+                  x-subject: u-1
+                  x-claim-region: US
+              response:
+                status: 200
+                body:
+                  accountNumber: "1234567890"
+                  holder:
+                    email: jane.doe@example.com
+                  ssn: "111-22-3333"
+      responses:
+        "200":
+          description: Decision, plus the masked response when allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessResult"
+        "400":
+          description: Malformed envelope or request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Body too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Masking failed (fails closed)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /v1/test:
+    post:
+      tags: [fixtures]
+      operationId: runFixture
+      summary: Run a conformance fixture and return pass/fail checks
+      description: |
+        Accepts the fixture format under `controls-rules/tests/fixtures` and
+        used by `tools/conformance`. The fixture's `pip` block overrides the
+        running PIP; resources it does not declare fall back to the running PIP.
+        The HTTP status is 200 whether the fixture passes or fails; inspect
+        `pass` and `checks`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Fixture"
+            example:
+              name: account-owner-masked
+              request:
+                method: GET
+                path: /accounts/A123
+                headers:
+                  x-subject: u-1
+                  x-claim-region: US
+              response:
+                status: 200
+                body:
+                  accountNumber: "1234567890"
+                  ssn: "111-22-3333"
+              expect:
+                allowed: true
+                status: 200
+                masked:
+                  accountNumber: "******7890"
+                  ssn: "[REDACTED]"
+      responses:
+        "200":
+          description: Evaluation with per-check results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Evaluation"
+        "400":
+          description: Malformed fixture
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: Body too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          description: Evaluation failed (for example masking could not run)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /openapi.yaml:
+    get:
+      tags: [discovery]
+      operationId: getOpenAPI
+      summary: This document
+      responses:
+        "200":
+          description: OpenAPI contract
+          content:
+            application/yaml:
+              schema:
+                type: string
+  /docs:
+    get:
+      tags: [discovery]
+      operationId: getConsole
+      summary: Browser console for the API
+      responses:
+        "200":
+          description: HTML console
+          content:
+            text/html:
+              schema:
+                type: string

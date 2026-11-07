@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controls Test API</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --card: #ffffff;
+    --line: #dfe3e8;
+    --ink: #1b2430;
+    --muted: #5d6b7a;
+    --accent: #2f6feb;
+    --accent-soft: #e8f0fe;
+    --ok: #1a7f37;
+    --ok-soft: #e6f4ea;
+    --bad: #c62828;
+    --bad-soft: #fdecec;
+    --code: #0f172a;
+    --code-ink: #e2e8f0;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 28px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: -0.01em; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+  .badge {
+    font-size: 12px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border: 1px solid #cfe0ff;
+    white-space: nowrap;
+  }
+  main { max-width: 1240px; margin: 0 auto; padding: 22px 28px 48px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+  .tab {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  .tab.active { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    min-width: 0;
+  }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 14px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 12px 0 5px; }
+  input, select, textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font: inherit;
+    color: var(--ink);
+    background: #fff;
+  }
+  textarea { font-family: var(--mono); font-size: 12.5px; line-height: 1.45; resize: vertical; }
+  textarea.code { min-height: 140px; }
+  .row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  button {
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.55; cursor: default; }
+  pre {
+    background: var(--code);
+    color: var(--code-ink);
+    border-radius: 9px;
+    padding: 13px;
+    overflow: auto;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin: 8px 0 0;
+    min-height: 44px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .decision { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 4px; }
+  .pill { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .kv { font-size: 13px; color: var(--muted); margin: 2px 0; }
+  .kv b { color: var(--ink); font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .error { color: var(--bad); font-size: 13px; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  td.mono { font-family: var(--mono); font-size: 12px; }
+  .hidden { display: none; }
+  details { margin-top: 14px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  footer { color: var(--muted); font-size: 12px; margin-top: 26px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Controls Test API</h1>
+    <div class="sub">Evaluate entitlements, masking and data quality without Envoy.</div>
+  </div>
+  <div class="badges" id="badges"></div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" data-tab="sim" type="button">Request simulator</button>
+    <button class="tab" data-tab="fixture" type="button">Conformance fixture</button>
+  </div>
+
+  <section id="tab-sim">
+    <div class="grid">
+      <div class="card">
+        <h2>Request</h2>
+        <label for="endpoint">Registered endpoint</label>
+        <select id="endpoint"></select>
+
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label for="method">Method</label>
+            <input id="method" value="GET" spellcheck="false">
+          </div>
+          <div>
+            <label for="path">Path</label>
+            <input id="path" value="/accounts/A123" spellcheck="false">
+          </div>
+        </div>
+
+        <div class="row-3">
+          <div>
+            <label for="subject">Subject (x-subject)</label>
+            <input id="subject" value="u-1" spellcheck="false">
+          </div>
+          <div style="grid-column: span 2">
+            <label for="claims">Claims (JSON, x-claim-*)</label>
+            <input id="claims" value='{"region":"US"}' spellcheck="false">
+          </div>
+        </div>
+
+        <label for="status">Upstream response status</label>
+        <input id="status" type="number" value="200" min="100" max="599">
+
+        <label for="respBody">Upstream response body (masked when allowed)</label>
+        <textarea id="respBody" class="code" spellcheck="false">{
+  "accountNumber": "1234567890",
+  "holder": {"email": "jane.doe@example.com", "phone": "+15551234567"},
+  "ssn": "111-22-3333",
+  "dateOfBirth": "1990-01-02",
+  "status": "active"
+}</textarea>
+
+        <div class="actions">
+          <button class="primary" id="send" type="button">Send request</button>
+          <button id="copy" type="button">Copy as curl</button>
+        </div>
+        <div class="error" id="simError"></div>
+      </div>
+
+      <div class="card">
+        <h2>Result</h2>
+        <div id="simResult">
+          <p class="muted">Send a request to see the decision and the masked response.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-fixture" class="hidden">
+    <div class="grid">
+      <div class="card">
+        <h2>Fixture</h2>
+        <p class="muted">Paste a conformance fixture (the same file format used by <code>tools/conformance</code>). The fixture's <code>pip</code> block overrides the running fixtures.</p>
+        <textarea id="fixtureBody" class="code" style="min-height:360px" spellcheck="false"></textarea>
+        <div class="actions">
+          <button class="primary" id="runFixture" type="button">Run fixture</button>
+          <button id="loadExample" type="button">Reset example</button>
+        </div>
+        <div class="error" id="fixtureError"></div>
+      </div>
+      <div class="card">
+        <h2>Checks</h2>
+        <div id="fixtureResult">
+          <p class="muted">Run a fixture to see pass/fail and the masked body.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    This harness derives identity from <code>x-subject</code> and <code>x-claim-*</code>. It is for local and CI use only.
+    API contract: <a href="/openapi.yaml">/openapi.yaml</a>.
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const state = { endpoints: [], info: null };
+
+  const EXAMPLE_FIXTURE = {
+    name: "account-owner-masked",
+    request: {
+      method: "GET",
+      path: "/accounts/A123",
+      headers: { "x-subject": "u-1", "x-claim-region": "US" }
+    },
+    response: {
+      status: 200,
+      body: {
+        accountNumber: "1234567890",
+        holder: { email: "jane.doe@example.com" },
+        ssn: "111-22-3333"
+      }
+    },
+    expect: {
+      allowed: true,
+      status: 200,
+      masked: {
+        "accountNumber": "******7890",
+        "holder.email": "j***@example.com",
+        "ssn": "[REDACTED]"
+      }
+    }
+  };
+
+  function el(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function pretty(value) {
+    return JSON.stringify(value, null, 2);
+  }
+
+  function parseJSON(text, label) {
+    if (!text || !text.trim()) return undefined;
+    try {
+      return JSON.parse(text);
+    } catch (err) {
+      throw new Error(label + ": " + err.message);
+    }
+  }
+
+  function setError(node, message) {
+    node.textContent = message || "";
+  }
+
+  async function loadInfo() {
+    const res = await fetch("/v1/info");
+    if (!res.ok) throw new Error("GET /v1/info failed: " + res.status);
+    state.info = await res.json();
+    const b = state.info.bundle;
+    const badges = $("badges");
+    badges.textContent = "";
+    const items = [
+      b.environment ? "env " + b.environment : null,
+      b.service ? "service " + b.service : null,
+      b.policyEngine + " engine",
+      b.endpoints + " endpoints",
+      state.info.pip.mode + " PIP"
+    ].filter(Boolean);
+    items.forEach((text) => badges.appendChild(el("span", "badge", text)));
+  }
+
+  async function loadEndpoints() {
+    const res = await fetch("/v1/endpoints");
+    if (!res.ok) throw new Error("GET /v1/endpoints failed: " + res.status);
+    const doc = await res.json();
+    state.endpoints = doc.endpoints || [];
+    const select = $("endpoint");
+    select.textContent = "";
+    state.endpoints.forEach((ep, i) => {
+      const option = el("option", null, ep.method + " " + ep.path + "  (" + ep.id + ")");
+      option.value = String(i);
+      select.appendChild(option);
+    });
+    if (state.endpoints.length > 0) applyEndpoint(0);
+  }
+
+  function applyEndpoint(index) {
+    const ep = state.endpoints[index];
+    if (!ep) return;
+    $("method").value = ep.method;
+    $("path").value = ep.path.replace("{accountId}", "A123").replace(/\{[^}]+\}/g, "A123");
+  }
+
+  function buildEnvelope() {
+    const claims = parseJSON($("claims").value || "{}", "claims");
+    if (claims && (typeof claims !== "object" || Array.isArray(claims))) {
+      throw new Error("claims must be a JSON object");
+    }
+    const headers = { "x-subject": $("subject").value.trim() };
+    Object.entries(claims || {}).forEach(([k, v]) => {
+      headers["x-claim-" + k] = String(v);
+    });
+    const body = parseJSON($("respBody").value, "response body");
+    const env = {
+      request: {
+        method: $("method").value.trim(),
+        path: $("path").value.trim(),
+        headers
+      }
+    };
+    if (body !== undefined) {
+      env.response = { status: Number($("status").value) || 200, body };
+    }
+    return env;
+  }
+
+  function decisionBlock(result) {
+    const d = result.decision || {};
+    const wrap = document.createDocumentFragment();
+    const line = el("div", "decision");
+    line.appendChild(el("span", "pill " + (d.allowed ? "ok" : "bad"), d.allowed ? "ALLOWED" : "DENIED"));
+    line.appendChild(el("span", "badge", "status " + d.status));
+    wrap.appendChild(line);
+    const details = [
+      ["reason", d.reason],
+      ["endpoint", d.endpointId],
+      ["resource", d.resourceType ? d.resourceType + "/" + d.resourceId : ""],
+      ["violations", d.violations && d.violations.length ? JSON.stringify(d.violations) : ""]
+    ];
+    details.forEach(([k, v]) => {
+      if (!v) return;
+      const row = el("div", "kv");
+      row.appendChild(el("b", null, k + ": "));
+      row.appendChild(document.createTextNode(v));
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+
+  function renderSim(result) {
+    const root = $("simResult");
+    root.textContent = "";
+    root.appendChild(decisionBlock(result));
+    const label = el("label", null, "Masked response");
+    root.appendChild(label);
+    root.appendChild(el("pre", null, result.response ? pretty(result.response.body) : "(no response body)"));
+    const details = el("details");
+    details.appendChild(el("summary", null, "Raw API response"));
+    details.appendChild(el("pre", null, pretty(result)));
+    root.appendChild(details);
+  }
+
+  async function send() {
+    setError($("simError"), "");
+    $("send").disabled = true;
+    try {
+      const env = buildEnvelope();
+      const res = await fetch("/v1/process", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(env)
+      });
+      const doc = await res.json();
+      if (!res.ok) throw new Error((doc.error || "request failed") + ": " + (doc.message || res.status));
+      renderSim(doc);
+    } catch (err) {
+      setError($("simError"), err.message);
+    } finally {
+      $("send").disabled = false;
+    }
+  }
+
+  async function copyCurl() {
+    setError($("simError"), "");
+    try {
+      const env = buildEnvelope();
+      const cmd = "curl -s " + location.origin + "/v1/process \\\n" +
+        "  -H 'content-type: application/json' \\\n" +
+        "  -d '" + JSON.stringify(env) + "'";
+      await navigator.clipboard.writeText(cmd);
+      $("copy").textContent = "Copied";
+      setTimeout(() => { $("copy").textContent = "Copy as curl"; }, 1400);
+    } catch (err) {
+      setError($("simError"), "clipboard unavailable: " + err.message);
+    }
+  }
+
+  function renderFixture(result) {
+    const root = $("fixtureResult");
+    root.textContent = "";
+    const line = el("div", "decision");
+    line.appendChild(el("span", "pill " + (result.pass ? "ok" : "bad"), result.pass ? "PASS" : "FAIL"));
+    line.appendChild(el("span", "badge", result.name || "fixture"));
+    root.appendChild(line);
+
+    const table = el("table");
+    const head = el("tr");
+    ["check", "ok", "got", "want"].forEach((h) => head.appendChild(el("th", null, h)));
+    table.appendChild(head);
+    (result.checks || []).forEach((c) => {
+      const tr = el("tr");
+      tr.appendChild(el("td", "mono", c.check));
+      tr.appendChild(el("td", null, c.ok ? "yes" : "no"));
+      tr.appendChild(el("td", "mono", JSON.stringify(c.got)));
+      tr.appendChild(el("td", "mono", JSON.stringify(c.want)));
+      table.appendChild(tr);
+    });
+    root.appendChild(table);
+
+    root.appendChild(el("label", null, "Decision"));
+    root.appendChild(decisionBlock(result));
+
+    if (result.response) {
+      root.appendChild(el("label", null, "Masked response"));
+      root.appendChild(el("pre", null, pretty(result.response.body)));
+    }
+  }
+
+  async function runFixture() {
+    setError($("fixtureError"), "");
+    $("runFixture").disabled = true;
+    try {
+      const fixture = parseJSON($("fixtureBody").value, "fixture");
+      const res = await fetch("/v1/test", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(fixture)
+      });
+      const doc = await res.json();
+      if (!res.ok) throw new Error((doc.error || "fixture failed") + ": " + (doc.message || res.status));
+      renderFixture(doc);
+    } catch (err) {
+      setError($("fixtureError"), err.message);
+    } finally {
+      $("runFixture").disabled = false;
+    }
+  }
+
+  function resetFixture() {
+    $("fixtureBody").value = pretty(EXAMPLE_FIXTURE);
+  }
+
+  function activate(tab) {
+    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    $("tab-sim").classList.toggle("hidden", tab !== "sim");
+    $("tab-fixture").classList.toggle("hidden", tab !== "fixture");
+  }
+
+  document.querySelectorAll(".tab").forEach((b) => {
+    b.addEventListener("click", () => activate(b.dataset.tab));
+  });
+  $("endpoint").addEventListener("change", (e) => applyEndpoint(Number(e.target.value)));
+  $("send").addEventListener("click", send);
+  $("copy").addEventListener("click", copyCurl);
+  $("runFixture").addEventListener("click", runFixture);
+  $("loadExample").addEventListener("click", resetFixture);
+
+  resetFixture();
+  loadInfo().catch((err) => setError($("simError"), err.message));
+  loadEndpoints().catch((err) => setError($("simError"), err.message));
+})();
+</script>
+</body>
+</html>
