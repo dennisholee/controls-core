@@ -39,7 +39,82 @@ openapi-registry -openapi openapi.yaml -service accounts -out controls/registry.
 The service owns routes, schemas, resource identity and the mask-policy name.
 Delivery owns the rules, mask modes and DQ.
 
-## 2. Controls
+## 2. Controls and policy configuration
+
+The service names the policy; delivery defines it.
+
+| File | Owner | Content |
+|---|---|---|
+| `registry.json` | service (generated) | route → resource type/id, mask-policy name |
+| `rules.json` | delivery | entitlement rules (`engine: rules`) or selector for Cedar/OPA |
+| `mask-policies.json` | delivery | full/partial modes, reject fields, locked fields |
+| `dq.json` | delivery | request validation and blocking behavior |
+
+### Entitlement rules
+
+```json
+{
+  "version": "1.0",
+  "defaultEffect": "deny",
+  "rules": [
+    {
+      "id": "account.read.owner",
+      "effect": "allow",
+      "resourceType": "account",
+      "action": "read",
+      "when": {"field": "subject.sub", "op": "eq", "value": "$resource.ownerId"}
+    }
+  ]
+}
+```
+
+- deny rules are absolute; allow rules are OR-ed; no match falls back to `deny`;
+- `resourceType`/`action` may be `"*"`;
+- conditions compose with `all`/`any`;
+- ops: `eq`, `neq`, `in`, `contains`, `exists`, `gt`, `gte`, `lt`, `lte`;
+- `$resource.*` / `$subject.*` are references, not literals.
+
+Cedar replaces JSON rules with `engine: cedar`; OPA uses `engine: opa` plus a
+decision path. They are mutually exclusive.
+
+### Mask policy
+
+```json
+{
+  "version": "1.0",
+  "policies": {
+    "account.read": {
+      "default": "none",
+      "fields": {
+        "ssn": {"mode": "full"},
+        "accountNumber": {"mode": "partial", "keepSuffix": 4},
+        "holder.email": {"mode": "partial", "keepPrefix": 1, "preserveDomain": true}
+      }
+    }
+  }
+}
+```
+
+Locked fields (`ssn`, `pan`, `cvv`, `cardNumber`) must be `full`.
+`rejectFields` blocks write fields before the upstream.
+
+### DQ rules
+
+```json
+{
+  "version": "1.0",
+  "rules": [
+    {"id": "payment.amount.positive", "resourceType": "payment",
+     "field": "amount", "op": "gt", "value": 0, "blocking": true}
+  ]
+}
+```
+
+Non-blocking violations are recorded; blocking violations return
+`403 dq_blocking:<rule>`. DQ paths and mask fields are checked against the
+OpenAPI schemas by `controls-check`.
+
+### Local vs production
 
 For local development, keep a minimal fixture under `controls/`:
 
@@ -52,7 +127,19 @@ dq.json
 
 For production, do not copy rules into the service repo. The central pipeline
 merges the generated registry fragment with `controls-rules`, validates, signs
-and publishes the bundle.
+and publishes the bundle. Authoring reference:
+[`controls-rules/docs/AUTHORING.md`](../../controls-rules/docs/AUTHORING.md);
+normative semantics:
+[`../contracts/SPEC-registry.md`](../contracts/SPEC-registry.md) and
+[`../contracts/SPEC-mask-ops.md`](../contracts/SPEC-mask-ops.md).
+
+Validate before shipping:
+
+```bash
+openapi-diff -openapi openapi.yaml -registry controls/registry.json
+controls-check -openapi openapi.yaml -bundle controls
+```
+
 
 ## 3. Deployment
 
