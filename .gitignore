@@ -14,4 +14,5 @@ deploy/examples/*/charts/
 examples/mtls-caller/certs/*.key
 examples/mtls-caller/certs/*.crt
 examples/mtls-caller/certs/*.srl
-examples/spring-accounts/target/
+**/target/
+.m2-repo/
