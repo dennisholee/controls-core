@@ -151,14 +151,15 @@ release.
 status counts. The smoke test can run it through the real Envoy chain:
 
 ```bash
-CONTROLS_LOADTEST=1 make smoke
+CONTROLS_LOADTEST=1 LOADTEST_RPS=1200 LOADTEST_DURATION=15s make smoke
 # or against an existing stack:
 make loadtest LOADTEST_URL=http://127.0.0.1:18000/accounts/A123 \
   LOADTEST_ARGS='-duration 10s -rps 1000 -concurrency 100'
 ```
 
-Reference run (M2, Docker Desktop, Envoy 1.40, fixture app/PIP): ~994 RPS
-achieved, p95 1.7 ms, p99 13 ms, 0 errors. The smoke gate fails above p99
+Reference run (M2, Docker Desktop, Envoy 1.40, fixture app/PIP, 15 s):
+**~1,194 RPS achieved, p50 1.0 ms, p95 2.1 ms, p99 6.0 ms, 0 errors**.
+The smoke gate fails above p99 100 ms. The smoke gate fails above p99
 100 ms; production runs should use the 1,200 RPS/pod profile and record the
 same fields.
 

@@ -161,11 +161,16 @@ grep -q 'pip_requests_total' "$TMP/pip-metrics" || fail "PIP requests metric mis
 
 # 8. Optional throughput/latency gate through the real Envoy chain.
 if [ "${CONTROLS_LOADTEST:-0}" = "1" ]; then
-  echo "running load test (1000 rps, 10s)"
+  LOADTEST_RPS="${LOADTEST_RPS:-1000}"
+  LOADTEST_DURATION="${LOADTEST_DURATION:-10s}"
+  LOADTEST_P99="${LOADTEST_P99:-100ms}"
+  LOADTEST_CONCURRENCY="${LOADTEST_CONCURRENCY:-100}"
+  echo "running load test (${LOADTEST_RPS} rps, ${LOADTEST_DURATION})"
   (cd "$ROOT" && go build -o "$TMP/loadtest" ./hack/loadtest)
   "$TMP/loadtest" -url "http://127.0.0.1:$ENVOY_PORT/accounts/A123" \
     -H 'x-subject: u-1' -H 'x-claim-region: US' \
-    -duration 10s -concurrency 100 -rps 1000 -max-p99 100ms
+    -duration "$LOADTEST_DURATION" -concurrency "$LOADTEST_CONCURRENCY" \
+    -rps "$LOADTEST_RPS" -max-p99 "$LOADTEST_P99"
 fi
 
 echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD, audit+metrics"

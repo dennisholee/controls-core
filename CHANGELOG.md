@@ -3,6 +3,16 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.16.1] — 2026-11-07
+
+### Added
+
+- Load-test parameters in the smoke gate (`LOADTEST_RPS`, `LOADTEST_DURATION`,
+  `LOADTEST_P99`, `LOADTEST_CONCURRENCY`); 1,200 RPS reference run recorded in
+  TESTING.
+- [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md): cluster prerequisites,
+  install order, verification, rollback and open risks.
+
 ## [0.16.0] — 2026-11-07
 
 ### Added
