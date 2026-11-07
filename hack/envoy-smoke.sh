@@ -26,6 +26,7 @@ cleanup() {
   rm -rf "$TMP"
 }
 trap cleanup EXIT
+trap 'cleanup; exit 130' INT TERM
 
 fail() {
   echo "SMOKE FAILED: $*" >&2
@@ -174,3 +175,14 @@ if [ "${CONTROLS_LOADTEST:-0}" = "1" ]; then
 fi
 
 echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD, audit+metrics"
+
+if [ "${CONTROLS_DEMO:-0}" = "1" ]; then
+  echo
+  echo "DEMO stack is running. Ctrl-C to stop."
+  echo "  Envoy (front door)   http://127.0.0.1:${ENVOY_PORT}"
+  echo "  smokeapp (upstream)  http://127.0.0.1:${APP_PORT}/accounts/A123"
+  echo "  PIP                  http://127.0.0.1:${PIP_PORT}/healthz"
+  echo "  extproc metrics      http://127.0.0.1:19090/metrics"
+  echo
+  wait
+fi

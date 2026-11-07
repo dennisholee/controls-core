@@ -7,6 +7,11 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ### Added
 
+- `make demo`: runs the Envoy + smokeapp + PIP + extproc stack and keeps it
+  running for interactive testing (Ctrl-C stops it).
+
+### Added
+
 - Local test API (`make api`): `POST /v1/process` evaluates a request and masks
   the supplied upstream response, `POST /v1/test` runs a conformance fixture,
   and `GET /v1/endpoints`, `GET /v1/info`, `/docs` and `/openapi.yaml` make the
