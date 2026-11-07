@@ -20,6 +20,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8082", "listen address")
 	fixtures := flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
+	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -30,7 +31,7 @@ func main() {
 	}
 	srv := &http.Server{
 		Addr:              *addr,
-		Handler:           server.New(repo, log).Handler(),
+		Handler:           server.New(repo, log, server.WithLagSeconds(*lagSeconds)).Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

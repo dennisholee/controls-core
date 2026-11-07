@@ -27,6 +27,16 @@ type PIP interface {
 	Classification(ctx context.Context, resourceType string) (map[string]string, error)
 }
 
+// freshPIP is implemented by clients that can bypass the local cache. The
+// engine falls back to Resolve when a PIP does not support it.
+type freshPIP interface {
+	ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error)
+}
+
+// defaultMaxStalenessSeconds applies to fresh/deny-on-stale endpoints that do
+// not declare a bound.
+const defaultMaxStalenessSeconds = 5
+
 // Subject is the verified caller identity supplied by the gateway. The sidecar
 // never derives this from a client-controlled header.
 type Subject struct {
@@ -122,9 +132,24 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) Result {
 		}
 	}
 	if source == "pip" || source == "both" {
-		attrs, err := e.pip.Resolve(ctx, []pipclient.Ref{{
-			Type: ep.ResourceType, ID: resourceID, Fields: ep.Attributes,
-		}})
+		refs := []pipclient.Ref{{Type: ep.ResourceType, ID: resourceID, Fields: ep.Attributes}}
+		freshness := ep.Freshness
+		if freshness == "" {
+			freshness = "cached"
+		}
+		var (
+			attrs map[string]pipclient.Attribute
+			err   error
+		)
+		if freshness == "fresh" {
+			if fp, ok := e.pip.(freshPIP); ok {
+				attrs, err = fp.ResolveFresh(ctx, refs)
+			} else {
+				attrs, err = e.pip.Resolve(ctx, refs)
+			}
+		} else {
+			attrs, err = e.pip.Resolve(ctx, refs)
+		}
 		if err != nil {
 			return Result{Allowed: false, Status: 503, Reason: "pip_unavailable",
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
@@ -133,6 +158,16 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) Result {
 		if !found || !attr.Found {
 			return Result{Allowed: false, Status: 404, Reason: "resource_not_found",
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
+		}
+		if freshness != "cached" {
+			maxStale := ep.MaxStalenessSeconds
+			if maxStale == 0 {
+				maxStale = defaultMaxStalenessSeconds
+			}
+			if attr.LagSeconds > maxStale {
+				return Result{Allowed: false, Status: 503, Reason: "stale_attributes",
+					EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
+			}
 		}
 		for k, v := range attr.Attributes {
 			resource[k] = v

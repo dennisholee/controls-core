@@ -28,7 +28,8 @@ sidecar/cmd/        extproc server + local HTTP harness
 pip/                Policy Information Point (HTTP API over read replicas)
 internal/           config, policy, mask, dq, pipclient, engine, openapidiff
 contracts/          normative schemas, specs and PIP OpenAPI
-integration/        end-to-end tests and benchmarks
+features/           BDD acceptance criteria, one file per journey
+integration/        end-to-end tests, BDD runner and benchmarks
 tools/openapi-diff/ registry ↔ OpenAPI coverage gate
 docs/adr/           architecture decisions
 ```
@@ -39,6 +40,7 @@ Requires Go 1.26+.
 
 ```bash
 make test          # go test ./... (integration tests spin up a fake PIP)
+make acceptance    # BDD acceptance criteria against the engine
 make bench         # engine latency/memory benchmarks
 make pip           # :8082, fixtures in pip/fixtures/attributes.json
 make sidecar       # :8081, local HTTP harness
@@ -69,6 +71,8 @@ sidecar must strip any client-supplied values.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — components, flows, failure matrix, latency budget
 - [SECURITY.md](SECURITY.md) — threat model and controls
 - [TESTING.md](TESTING.md) — test strategy, fixture format, gates
+- [docs/BDD.md](docs/BDD.md) — acceptance criteria, BDD model, adoption plan
+- [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
 - [RUNBOOK.md](RUNBOOK.md) — alerts and incident procedures
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md) — ownership, review, break-glass
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) — version matrix
@@ -77,7 +81,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.2.0` — engine, masking, DQ, PIP contract, ext_proc adapter (exercised
-against a live Envoy via `make smoke`) and OpenAPI coverage gate. `freshness`
-enforcement and classification-driven fail-safe masking remain outstanding. See
-[ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).
+`v0.2.0` — engine, masking, DQ, PIP contract with replica-lag freshness
+enforcement, ext_proc adapter (exercised against a live Envoy via `make smoke`)
+and OpenAPI coverage gate. Classification-driven fail-safe masking remains
+outstanding. See [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

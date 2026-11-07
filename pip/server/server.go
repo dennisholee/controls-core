@@ -11,14 +11,26 @@ import (
 
 // Server exposes the PIP HTTP API.
 type Server struct {
-	repo Repository
-	log  *slog.Logger
-	mux  *http.ServeMux
+	repo       Repository
+	log        *slog.Logger
+	mux        *http.ServeMux
+	lagSeconds int
 }
 
+// Option configures the PIP server.
+type Option func(*Server)
+
+// WithLagSeconds reports the given replica lag on every attribute response.
+// Production adapters should derive this from the replica's applied position;
+// the fixture implementation uses a constant for tests and smoke runs.
+func WithLagSeconds(n int) Option { return func(s *Server) { s.lagSeconds = n } }
+
 // New builds a PIP server.
-func New(repo Repository, log *slog.Logger) *Server {
+func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 	s := &Server{repo: repo, log: log, mux: http.NewServeMux()}
+	for _, opt := range opts {
+		opt(s)
+	}
 	s.mux.HandleFunc("POST /v1/attributes:batch", s.handleBatch)
 	s.mux.HandleFunc("GET /v1/classification/{type}", s.handleClassification)
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -57,6 +69,7 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 			Attributes: attrs,
 			Version:    "fixture-v1",
 			TTLSeconds: 30,
+			LagSeconds: s.lagSeconds,
 		})
 	}
 	s.log.Info("pip batch", "refs", len(req.Requests), "ms", time.Since(start).Milliseconds())

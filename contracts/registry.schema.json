@@ -67,7 +67,14 @@
         },
         "freshness": {
           "enum": ["cached", "fresh", "deny-on-stale"],
-          "default": "cached"
+          "default": "cached",
+          "description": "cached ignores replica lag; fresh bypasses the sidecar cache; deny-on-stale returns 503 when the PIP's lag exceeds maxStalenessSeconds."
+        },
+        "maxStalenessSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5,
+          "description": "Lag bound for fresh/deny-on-stale endpoints. Zero means the engine default (5s)."
         },
         "selfDescribing": {
           "type": "boolean",

@@ -44,6 +44,7 @@ This prevents a caller from selecting the policy that applies to them.
 | `maskPolicy` | no | Key in the mask-policies document. |
 | `maskErrors` | no | Apply masking to error responses (default `true`). |
 | `freshness` | no | `cached` (default), `fresh`, `deny-on-stale`. |
+| `maxStalenessSeconds` | no | Lag bound for fresh/deny-on-stale; default 5. |
 | `selfDescribing` | no | Require payload `_type`/`_id` to match this entry. |
 
 ### resourceSource
@@ -57,15 +58,19 @@ This prevents a caller from selecting the policy that applies to them.
 
 ### freshness
 
-- `cached` — sidecar cache and PIP cache may serve the value.
-- `fresh` — bypass sidecar cache; PIP must serve a non-stale value.
-- `deny-on-stale` — deny when replica lag or attribute version exceeds the
-  journey threshold.
+- `cached` (default) — sidecar cache and PIP cache may serve the value; replica
+  lag is ignored.
+- `fresh` — bypass the sidecar cache. The PIP response must report
+  `lagSeconds <= maxStalenessSeconds`; otherwise the request is denied with
+  `503 stale_attributes`.
+- `deny-on-stale` — cache allowed, but the same lag bound is enforced. Useful
+  for read paths where a short cache is acceptable but a lagging replica is
+  not.
 
-Reference implementation note: `fresh`/`deny-on-stale` are reserved and not yet
-enforced by the reference engine; they are validated so that configuration can
-be authored ahead of the implementation. Enforcement lands with the PIP lag
-metrics (see ADR-0004).
+`maxStalenessSeconds` defaults to 5 when omitted or zero. Lag is reported by the
+PIP per response (`lagSeconds` in the batch API); the engine compares it with
+this bound. A PIP that does not report lag yields `0`, which trivially passes —
+production adapters must derive it from the replica position.
 
 ## 4. Examples
 

@@ -4,7 +4,7 @@ GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
 export GOPATH
 
-.PHONY: test vet build bench fmt fmt-check all pip sidecar extproc openapi-diff openapi-gate smoke clean
+.PHONY: test vet build bench fmt fmt-check all pip sidecar extproc openapi-diff openapi-gate acceptance smoke clean
 
 all: fmt-check vet test
 
@@ -44,6 +44,12 @@ openapi-diff:
 
 openapi-gate:
 	$(GO) run ./tools/openapi-diff -openapi integration/testdata/openapi.json -registry integration/testdata/config/registry.json
+
+# BDD acceptance criteria against the in-process engine. Set
+# CONTROLS_ACCEPTANCE_URL to run the same features against a live HTTP entrypoint
+# (see `make smoke`, which points it at the Envoy listener).
+acceptance:
+	$(GO) test -run TestAcceptance -count=1 -v ./integration
 
 smoke:
 	./hack/envoy-smoke.sh

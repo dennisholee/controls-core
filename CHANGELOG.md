@@ -18,6 +18,13 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - Live Envoy smoke test (`make smoke`) using Envoy 1.40 in Docker: allow+mask,
   deny, self-description mismatch, authorized write and unregistered route.
 - `-debug` flag on the ext_proc server for request-header visibility.
+- BDD acceptance suite (`features/*.feature`) executed against the in-process
+  engine and, through `make smoke`, the live Envoy listener; `make acceptance`
+  target and the conformance-steward role doc.
+- Replica-lag reporting from the PIP (`lagSeconds`, `-lag-seconds` fixture flag)
+  and enforcement of `freshness`/`maxStalenessSeconds` in the engine: `fresh`
+  bypasses the sidecar cache, both fresh and `deny-on-stale` return
+  `503 stale_attributes` above the bound.
 
 ### Changed
 

@@ -65,7 +65,9 @@ for _ in $(seq 1 50); do
 done
 
 echo "starting envoy ($IMAGE)"
-docker pull -q "$IMAGE" >/dev/null
+if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  docker pull "$IMAGE"
+fi
 EXTRA=()
 if [ "$(uname -s)" = "Linux" ]; then
   EXTRA+=(--add-host=host.docker.internal:host-gateway)
@@ -138,4 +140,11 @@ code=$(status_and_body "$TMP/unreg" -H 'x-subject: u-1' \
   "http://127.0.0.1:$ENVOY_PORT/admin/secrets")
 [ "$code" = "403" ] || fail "unregistered route status $code"
 
-echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered"
+# 6. The same acceptance criteria the engine suite runs, but through Envoy.
+#    This is the end-to-end verification: real ext_proc, real upstream, real
+#    masking. Engine-only scenarios are skipped by the HTTP backend.
+echo "running BDD acceptance criteria against envoy"
+(cd "$ROOT" && CONTROLS_ACCEPTANCE_URL="http://127.0.0.1:$ENVOY_PORT" \
+  go test ./integration -run TestAcceptance -count=1) || fail "BDD acceptance criteria failed"
+
+echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD"

@@ -54,7 +54,9 @@ Status: reference implementation `v0.2.0`.
 4. **Resource identity** from path parameter or body JSON path.
 5. **Rejected fields.** Write policies reject fields such as `pan`/`cvv`.
 6. **Resource attributes.** `resourceSource` selects body, PIP, or both. PIP
-   calls request only the registry's `attributes` projection.
+   calls request only the registry's `attributes` projection. `freshness`
+   controls cache bypass and the replica-lag bound (`maxStalenessSeconds`,
+   default 5s); a violation is `503 stale_attributes`.
 7. **Policy.** Deny rules are absolute and evaluated first; allow rules are
    OR-ed; no match falls back to `defaultEffect` (deny).
 8. **DQ.** Violations are recorded; only `blocking: true` rejects.
@@ -141,7 +143,7 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 | Gap | Impact | Plan |
 |---|---|---|
 | Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
-| `freshness` validated but not enforced | Stale reads possible on `fresh` journeys | PIP lag metrics + enforcement |
+| PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
 | Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
 | OpenAPI gate not wired into the delivery pipeline | Tool exists; an unconfigured route can still ship | Add `tools/openapi-diff` to the rules pipeline |

@@ -124,6 +124,10 @@ components:
           type: integer
           minimum: 0
           description: Cache TTL hint. The sidecar clamps this to its configured maximum.
+        lagSeconds:
+          type: integer
+          minimum: 0
+          description: Replica lag observed when serving this resource. The sidecar compares it with the registry's maxStalenessSeconds for fresh and deny-on-stale endpoints.
     BatchResponse:
       type: object
       required: [results]

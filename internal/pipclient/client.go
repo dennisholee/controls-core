@@ -38,6 +38,9 @@ type Attribute struct {
 	Attributes map[string]any `json:"attributes"`
 	Version    string         `json:"version"`
 	TTLSeconds int            `json:"ttlSeconds"`
+	// LagSeconds is the replica lag observed by the PIP when serving this
+	// attribute. Used to enforce fresh/deny-on-stale registry entries.
+	LagSeconds int `json:"lagSeconds"`
 }
 
 type BatchRequest struct {
@@ -110,6 +113,16 @@ func New(base string, opts ...Option) *Client {
 
 // Resolve fetches attributes for refs, using cache and coalescing misses.
 func (c *Client) Resolve(ctx context.Context, refs []Ref) (map[string]Attribute, error) {
+	return c.resolve(ctx, refs, false)
+}
+
+// ResolveFresh bypasses the local cache. Used for endpoints whose registry
+// freshness is "fresh".
+func (c *Client) ResolveFresh(ctx context.Context, refs []Ref) (map[string]Attribute, error) {
+	return c.resolve(ctx, refs, true)
+}
+
+func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map[string]Attribute, error) {
 	if len(refs) == 0 {
 		return map[string]Attribute{}, nil
 	}
@@ -120,9 +133,11 @@ func (c *Client) Resolve(ctx context.Context, refs []Ref) (map[string]Attribute,
 	c.mu.Lock()
 	for _, r := range refs {
 		key := cacheKey(r)
-		if e, ok := c.cache[key]; ok && e.expires.After(now) {
-			out[attrKey(r.Type, r.ID)] = e.attr
-			continue
+		if !bypassCache {
+			if e, ok := c.cache[key]; ok && e.expires.After(now) {
+				out[attrKey(r.Type, r.ID)] = e.attr
+				continue
+			}
 		}
 		misses = append(misses, r)
 	}

@@ -53,6 +53,32 @@ func TestBatchProjectsFields(t *testing.T) {
 	}
 }
 
+func TestLagSecondsReported(t *testing.T) {
+	repo, err := LoadMemoryRepo("../fixtures/attributes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(repo, log, WithLagSeconds(7)).Handler())
+	t.Cleanup(srv.Close)
+
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+	}})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out pipclient.BatchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Results[0].LagSeconds != 7 {
+		t.Fatalf("lag = %d", out.Results[0].LagSeconds)
+	}
+}
+
 func TestClassification(t *testing.T) {
 	srv := newTestServer(t)
 	resp, err := http.Get(srv.URL + "/v1/classification/account")

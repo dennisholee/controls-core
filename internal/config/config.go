@@ -38,7 +38,10 @@ type Endpoint struct {
 	MaskPolicy   string   `json:"maskPolicy"`
 	MaskErrors   bool     `json:"maskErrors"`
 	Freshness    string   `json:"freshness"` // cached | fresh | deny-on-stale
-	SelfDescribe bool     `json:"selfDescribing"`
+	// MaxStalenessSeconds bounds replica lag for fresh/deny-on-stale
+	// endpoints. Zero means the default (5s).
+	MaxStalenessSeconds int  `json:"maxStalenessSeconds,omitempty"`
+	SelfDescribe        bool `json:"selfDescribing"`
 }
 
 // Ref locates the resource identifier in the path or the request body.
@@ -194,6 +197,14 @@ func (b *Bundle) Validate() error {
 		case "", "pip", "body", "both":
 		default:
 			return fmt.Errorf("registry: endpoint %q resourceSource must be pip, body or both", ep.ID)
+		}
+		switch ep.Freshness {
+		case "", "cached", "fresh", "deny-on-stale":
+		default:
+			return fmt.Errorf("registry: endpoint %q freshness must be cached, fresh or deny-on-stale", ep.ID)
+		}
+		if ep.MaxStalenessSeconds < 0 {
+			return fmt.Errorf("registry: endpoint %q maxStalenessSeconds must be >= 0", ep.ID)
 		}
 		if ep.MaskPolicy != "" {
 			if _, ok := b.Masks.Policies[ep.MaskPolicy]; !ok {
