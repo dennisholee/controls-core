@@ -20,6 +20,14 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.27.0] — 2026-11-07
+
+### Added
+
+- Mask policies may carry an inline `classification` map. It is signed with the
+  bundle and takes precedence over PIP classification metadata for fallback
+  masking.
+
 ## [0.26.0] — 2026-11-07
 
 ### Added

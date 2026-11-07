@@ -49,8 +49,10 @@ enforced by the delivery pipeline before merge.
 
 ### Classification fallback
 
-`fallback: "classification"` masks every field the PIP tags as PII
-(`pii.*`) that the policy did not explicitly list. Explicit field rules always
+`fallback: "classification"` masks every field tagged as PII (`pii.*`) that
+the policy did not explicitly list. Tags normally come from the PIP, but a
+policy may carry a `classification` map; that map is inside the signed bundle
+and takes precedence when present. Explicit field rules always
 win, so a partial rule on `accountNumber` is not overridden by its `pii.partial`
 tag. Unclassified fields are untouched.
 
@@ -86,9 +88,9 @@ invalid, the sidecar fails closed: the request is rejected rather than the
 response returned unmasked. If the PIP is unavailable, entitlement denies and
 the response is never produced.
 
-When a policy enables `fallback: classification`, classification metadata is
-read from the sidecar cache first (hours TTL) and fetched from the PIP only on a
-miss. A fetch failure fails closed. See §3.1.
+When a policy enables `fallback: classification` and has no inline
+`classification` map, metadata is read from the sidecar cache first (hours TTL)
+and fetched from the PIP only on a miss. A fetch failure fails closed. See §3.1.
 
 ## 8. Test obligations
 

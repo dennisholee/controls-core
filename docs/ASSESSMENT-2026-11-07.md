@@ -52,7 +52,7 @@ fixed in 0.18.0.
 | H | Sidecar/Envoy deployment manifest is unowned (service chart absent) | Platform | Reproducible install with pubkey/salt/ext_proc |
 | — | Per-caller rate limiting added | Core | Done in 0.21.0 |
 | M | DQ has no unit suite; fallback/reload paths lack end-to-end tests | QA | Tests added to CI gates |
-| M | Classification tags live outside the signed bundle | Delivery/core | Move into bundle or version/stamp them |
+| — | Classification can now live inside the signed mask policy | Core | Done in 0.27.0 (delivery adoption pending) |
 | — | `rejectFields` wildcard support added | Core | Done in 0.19.0 |
 | M | Audit writes fail silently and share stdout with logs | Core | Dedicated sink + failure counter |
 | — | Rule comparisons are type-strict | Core | Done in 0.24.0 |

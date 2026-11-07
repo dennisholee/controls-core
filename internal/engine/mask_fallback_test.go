@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"example.com/controls/core/internal/config"
@@ -147,5 +148,21 @@ func TestPathPresentWildcard(t *testing.T) {
 	}
 	if pathPresent(doc, "items[*].cvv") {
 		t.Fatal("absent wildcard field reported present")
+	}
+}
+
+func TestBundleClassificationWinsOverPIP(t *testing.T) {
+	b := fallbackBundle()
+	p := b.Masks.Policies["p"]
+	p.Classification = map[string]string{"phone": "pii.locked"}
+	b.Masks.Policies["p"] = p
+	e := New(b, classPIP{classes: map[string]string{}})
+	ep := e.Endpoint("POST", "/x")
+	out, err := e.MaskResponseCtx(context.Background(), ep, []byte(`{"phone":"+15551234567"}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `"[REDACTED]"`) {
+		t.Fatalf("bundle classification not applied: %s", out)
 	}
 }

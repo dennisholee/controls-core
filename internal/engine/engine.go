@@ -349,11 +349,13 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 		return nil, ErrNonJSONResponse
 	}
 	if maskPolicy.Fallback == "classification" {
-		classes := map[string]string{}
-		if cp, ok := e.pip.(interface {
-			CachedClassification(string) (map[string]string, bool)
-		}); ok {
-			classes, _ = cp.CachedClassification(ep.ResourceType)
+		classes := maskPolicy.Classification
+		if len(classes) == 0 {
+			if cp, ok := e.pip.(interface {
+				CachedClassification(string) (map[string]string, bool)
+			}); ok {
+				classes, _ = cp.CachedClassification(ep.ResourceType)
+			}
 		}
 		if len(classes) == 0 {
 			fetched, err := e.pip.Classification(ctx, ep.ResourceType)

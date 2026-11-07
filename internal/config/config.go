@@ -106,10 +106,11 @@ type MaskPolicies struct {
 
 // MaskPolicy describes how a response is masked for a journey.
 type MaskPolicy struct {
-	Default      string               `json:"default"`            // none | full
-	Fallback     string               `json:"fallback,omitempty"` // none | classification
-	Fields       map[string]MaskField `json:"fields"`
-	RejectFields []string             `json:"rejectFields,omitempty"`
+	Default        string               `json:"default"`                  // none | full
+	Fallback       string               `json:"fallback,omitempty"`       // none | classification
+	Classification map[string]string    `json:"classification,omitempty"` // field -> pii class
+	Fields         map[string]MaskField `json:"fields"`
+	RejectFields   []string             `json:"rejectFields,omitempty"`
 }
 
 // MaskField configures one field path.

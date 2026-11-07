@@ -4,14 +4,22 @@
   "title": "Controls mask policies",
   "description": "Field-level masking policies applied to responses. Locked fields (ssn, pan, cvv, cardNumber) must use full masking.",
   "type": "object",
-  "required": ["version", "policies"],
+  "required": [
+    "version",
+    "policies"
+  ],
   "additionalProperties": false,
   "properties": {
-    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
     "policies": {
       "type": "object",
       "minProperties": 1,
-      "additionalProperties": { "$ref": "#/$defs/policy" }
+      "additionalProperties": {
+        "$ref": "#/$defs/policy"
+      }
     }
   },
   "$defs": {
@@ -20,48 +28,105 @@
       "additionalProperties": false,
       "properties": {
         "default": {
-          "enum": ["none", "full"],
+          "enum": [
+            "none",
+            "full"
+          ],
           "default": "none",
           "description": "Mode for leaf fields not explicitly listed."
         },
         "fallback": {
-          "enum": ["none", "classification"],
+          "enum": [
+            "none",
+            "classification"
+          ],
           "default": "none",
           "description": "When classification, fields tagged PII by the PIP that are not explicitly listed are masked full. Requires classification metadata; if it is unavailable the response is denied rather than returned unmasked."
         },
         "fields": {
           "type": "object",
-          "additionalProperties": { "$ref": "#/$defs/field" }
+          "additionalProperties": {
+            "$ref": "#/$defs/field"
+          }
         },
         "rejectFields": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "uniqueItems": true,
           "description": "Request body fields that cause a 403 when present (write paths)."
+        },
+        "classification": {
+          "type": "object",
+          "description": "Optional field -> classification map carried inside the signed bundle. When present, it takes precedence over PIP classification metadata for fallback masking.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
     "field": {
       "type": "object",
-      "required": ["mode"],
+      "required": [
+        "mode"
+      ],
       "additionalProperties": false,
       "properties": {
-        "mode": { "enum": ["none", "full", "partial"] },
-        "keepPrefix": { "type": "integer", "minimum": 0 },
-        "keepSuffix": { "type": "integer", "minimum": 0 },
+        "mode": {
+          "enum": [
+            "none",
+            "full",
+            "partial"
+          ]
+        },
+        "keepPrefix": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keepSuffix": {
+          "type": "integer",
+          "minimum": 0
+        },
         "preserveDomain": {
           "type": "boolean",
           "description": "For email addresses: mask the local part and keep @domain."
         },
-        "keep": { "enum": ["year"] }
+        "keep": {
+          "enum": [
+            "year"
+          ]
+        }
       },
-      "if": { "properties": { "mode": { "const": "partial" } } },
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "partial"
+          }
+        }
+      },
       "then": {
         "anyOf": [
-          { "required": ["keepPrefix"] },
-          { "required": ["keepSuffix"] },
-          { "required": ["preserveDomain"] },
-          { "required": ["keep"] }
+          {
+            "required": [
+              "keepPrefix"
+            ]
+          },
+          {
+            "required": [
+              "keepSuffix"
+            ]
+          },
+          {
+            "required": [
+              "preserveDomain"
+            ]
+          },
+          {
+            "required": [
+              "keep"
+            ]
+          }
         ]
       }
     }
