@@ -86,3 +86,32 @@ func TestManifestLoadedWhenPresent(t *testing.T) {
 		t.Fatalf("manifest = %+v", b.Manifest)
 	}
 }
+
+func TestMaskErrorsDefaultsTrue(t *testing.T) {
+	var ep Endpoint
+	if !ep.MaskErrorsEnabled() {
+		t.Fatal("maskErrors must default to true")
+	}
+	f := false
+	ep.MaskErrors = &f
+	if ep.MaskErrorsEnabled() {
+		t.Fatal("explicit false must be honoured")
+	}
+}
+
+func TestAllowUnregisteredRejected(t *testing.T) {
+	b := loadTestBundle(t)
+	b.Registry.DefaultUnregistered = "allow"
+	if err := b.Validate(); err == nil {
+		t.Fatal("defaultUnregistered allow must be rejected")
+	}
+}
+
+func TestDuplicateRouteRejected(t *testing.T) {
+	b := loadTestBundle(t)
+	b.Registry.Endpoints = append(b.Registry.Endpoints, b.Registry.Endpoints[0])
+	b.Registry.Endpoints[len(b.Registry.Endpoints)-1].ID = "dup"
+	if err := b.Validate(); err == nil {
+		t.Fatal("duplicate method+path must be rejected")
+	}
+}

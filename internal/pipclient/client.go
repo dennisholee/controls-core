@@ -84,6 +84,7 @@ type Client struct {
 	base      string
 	http      *http.Client
 	ttl       time.Duration
+	maxTTL    time.Duration
 	mu        sync.Mutex
 	cache     map[string]cacheEntry
 	class     map[string]classEntry
@@ -101,6 +102,9 @@ func WithTimeout(d time.Duration) Option { return func(c *Client) { c.http.Timeo
 
 // WithDefaultTTL sets the cache TTL when the PIP does not return one.
 func WithDefaultTTL(d time.Duration) Option { return func(c *Client) { c.ttl = d } }
+
+// WithMaxTTL clamps any PIP-advertised attribute or classification TTL.
+func WithMaxTTL(d time.Duration) Option { return func(c *Client) { c.maxTTL = d } }
 
 // WithTLSConfig enables TLS (typically mutual TLS) for PIP requests.
 func WithTLSConfig(cfg *tls.Config) Option { return func(c *Client) { c.tlsConfig = cfg } }
@@ -292,6 +296,9 @@ func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[
 			if a.TTLSeconds > 0 {
 				ttl = time.Duration(a.TTLSeconds) * time.Second
 			}
+			if c.maxTTL > 0 && ttl > c.maxTTL {
+				ttl = c.maxTTL
+			}
 			c.cache[cacheKey(r)] = cacheEntry{attr: a, expires: now.Add(ttl)}
 		}
 	}
@@ -341,6 +348,9 @@ func (c *Client) Classification(ctx context.Context, resourceType string) (map[s
 	ttl := time.Hour
 	if out.TTLSeconds > 0 {
 		ttl = time.Duration(out.TTLSeconds) * time.Second
+	}
+	if c.maxTTL > 0 && ttl > c.maxTTL {
+		ttl = c.maxTTL
 	}
 	c.mu.Lock()
 	c.class[resourceType] = classEntry{fields: out.Fields, expires: time.Now().Add(ttl)}

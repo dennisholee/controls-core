@@ -136,6 +136,15 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "controls-plane.selectorLabels" . | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
       {{- with .Values.pip.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

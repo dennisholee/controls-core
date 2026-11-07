@@ -48,8 +48,9 @@ Requires Go 1.26+.
 make test          # go test ./... (integration tests spin up a fake PIP)
 make acceptance    # BDD acceptance criteria against the engine
 make bench         # engine latency/memory benchmarks
+make api           # :8081 test API + in-process PIP, console at /docs
 make pip           # :8082, fixtures in pip/fixtures/attributes.json
-make sidecar       # :8081, local HTTP harness
+make sidecar       # :8081, harness against an external PIP
 make extproc       # :50051, Envoy ext_proc gRPC service
 make smoke         # live Envoy 1.40 in Docker (requires Docker)
 ```
@@ -83,15 +84,25 @@ Expected: allowed, with `accountNumber` → `******7890`, `holder.email` →
 production the gateway verifies the token and sets internal context headers; the
 sidecar must strip any client-supplied values.
 
+`make api` runs the same engine as a single process with fixture-backed
+attributes. Open `http://127.0.0.1:8081/docs` for a browser console, or import
+`http://127.0.0.1:8081/openapi.yaml` into Postman. `POST /v1/test` accepts a
+conformance fixture and returns pass/fail checks, and
+`make api-rules ENV=dev` renders and serves the delivery-owned rules from
+`../controls-rules`. See [docs/TEST-API.md](docs/TEST-API.md) for the full
+contract, examples and limitations.
+
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — components, flows, failure matrix, latency budget
 - [SECURITY.md](SECURITY.md) — threat model and controls
 - [TESTING.md](TESTING.md) — test strategy, fixture format, gates
+- [docs/TEST-API.md](docs/TEST-API.md) — exercise the solution through the HTTP test API
 - [docs/BDD.md](docs/BDD.md) — acceptance criteria, BDD model, adoption plan
 - [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
 - [RUNBOOK.md](RUNBOOK.md) — alerts and incident procedures
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md) — ownership, review, break-glass
+- [docs/ASSESSMENT-2026-11-07.md](docs/ASSESSMENT-2026-11-07.md) — independent assessment and remediation status
 - [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) — cluster prerequisite/verification checklist
 - [docs/PIPELINE.md](docs/PIPELINE.md) — Jenkins contract: inputs, stages, outputs
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) — version matrix
@@ -100,7 +111,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.16.1` — engine, masking with classification fallback, DQ, replica-lag
+`v0.17.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

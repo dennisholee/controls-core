@@ -204,3 +204,24 @@ func TestCallerAuthorization(t *testing.T) {
 		t.Fatalf("missing caller should be forbidden, got %v", err)
 	}
 }
+
+func TestOmittedFieldsCannotBypassFieldAuth(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"ownerId":"u-1","ssn":"111"}`))
+	}))
+	defer upstream.Close()
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"`+upstream.URL+`/{id}",
+	  "fields":["ownerId","ssn"],
+	  "allowedCallers":["spiffe://example/app/sa/reader"],
+	  "fieldCallers":{"ssn":["spiffe://example/app/sa/pii-reader"]}
+	}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := server.WithCaller(context.Background(), "spiffe://example/app/sa/reader")
+	if _, err := repo.Get(reader, "account", "A1", nil); !errors.Is(err, server.ErrForbidden) {
+		t.Fatalf("omitted fields should be forbidden, got %v", err)
+	}
+}

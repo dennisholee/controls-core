@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.17.x | 1.0.x | 1.0.x | 1.0.x | security hardening |
 | 0.16.x | 1.0.x | 1.0.x | 1.0.x | PIP per-caller authz |
 | 0.15.x | 1.0.x | 1.0.x | 1.0.x | PIP mTLS |
 | 0.14.x | 1.0.x | 1.0.x | 1.0.x | PIP concurrency limit |

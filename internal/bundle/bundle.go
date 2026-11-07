@@ -419,10 +419,30 @@ func applyOverlay(src, rel string, reg *registryDoc, rules *rulesDoc, masks *mas
 		reg.Endpoints = kept
 	}
 	for name, p := range ov.Bundle.MaskPolicies {
-		if _, ok := masks.Policies[name]; !ok {
+		existing, ok := masks.Policies[name]
+		if !ok {
 			return fmt.Errorf("maskPolicies references unknown policy %q", name)
 		}
-		masks.Policies[name] = p
+		// Merge rather than replace: an overlay can add or change fields but
+		// cannot delete an existing one (notably a locked field).
+		if p.Default != "" {
+			existing.Default = p.Default
+		}
+		if p.Fallback != "" {
+			existing.Fallback = p.Fallback
+		}
+		if p.RejectFields != nil {
+			existing.RejectFields = p.RejectFields
+		}
+		if len(p.Fields) > 0 {
+			if existing.Fields == nil {
+				existing.Fields = map[string]config.MaskField{}
+			}
+			for field, mf := range p.Fields {
+				existing.Fields[field] = mf
+			}
+		}
+		masks.Policies[name] = existing
 	}
 	return nil
 }

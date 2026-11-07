@@ -1,0 +1,14 @@
+{{- if and .Values.pip.enabled .Values.pip.pdb.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "controls-plane.fullname" . }}-pip
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.pip.pdb.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "controls-plane.selectorLabels" . | nindent 6 }}
+{{- end }}

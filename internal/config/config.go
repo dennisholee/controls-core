@@ -37,7 +37,7 @@ type Endpoint struct {
 	ResourceFrom string   `json:"resourceSource"` // pip | body | both
 	Attributes   []string `json:"attributes"`
 	MaskPolicy   string   `json:"maskPolicy"`
-	MaskErrors   bool     `json:"maskErrors"`
+	MaskErrors   *bool    `json:"maskErrors,omitempty"`
 	// AllowNonJSON permits a non-JSON response to bypass masking. Default false:
 	// a masked endpoint fails closed instead.
 	AllowNonJSON bool   `json:"allowNonJSON,omitempty"`
@@ -46,6 +46,12 @@ type Endpoint struct {
 	// endpoints. Zero means the default (5s).
 	MaxStalenessSeconds int  `json:"maxStalenessSeconds,omitempty"`
 	SelfDescribe        bool `json:"selfDescribing"`
+}
+
+// MaskErrorsEnabled reports whether error responses are masked. The contract
+// default is true; an explicit false is honoured.
+func (e Endpoint) MaskErrorsEnabled() bool {
+	return e.MaskErrors == nil || *e.MaskErrors
 }
 
 // Ref locates the resource identifier in the path or the request body.
@@ -211,11 +217,15 @@ func readJSON(path string, v any) error {
 // Validate enforces the invariants the contracts promise. The sidecar refuses
 // to start on an invalid bundle rather than run with partial configuration.
 func (b *Bundle) Validate() error {
-	if b.Registry.DefaultUnregistered != "" &&
-		b.Registry.DefaultUnregistered != "deny" && b.Registry.DefaultUnregistered != "allow" {
-		return fmt.Errorf("registry: defaultUnregistered must be deny or allow")
+	switch b.Registry.DefaultUnregistered {
+	case "", "deny":
+	case "allow":
+		return fmt.Errorf("registry: defaultUnregistered allow is not permitted (unregistered routes must fail closed)")
+	default:
+		return fmt.Errorf("registry: defaultUnregistered must be deny")
 	}
 	seen := map[string]bool{}
+	routes := map[string]bool{}
 	for i, ep := range b.Registry.Endpoints {
 		if ep.ID == "" || ep.Method == "" || ep.Path == "" || ep.ResourceType == "" {
 			return fmt.Errorf("registry: endpoint %d missing id/method/path/resourceType", i)
@@ -224,6 +234,11 @@ func (b *Bundle) Validate() error {
 			return fmt.Errorf("registry: duplicate endpoint id %q", ep.ID)
 		}
 		seen[ep.ID] = true
+		route := ep.Method + " " + ep.Path
+		if routes[route] {
+			return fmt.Errorf("registry: duplicate route %q", route)
+		}
+		routes[route] = true
 		if ep.ResourceID.From != "path" && ep.ResourceID.From != "body" {
 			return fmt.Errorf("registry: endpoint %q resourceId.from must be path or body", ep.ID)
 		}

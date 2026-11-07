@@ -298,6 +298,14 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 // cannot be parsed as JSON and the endpoint does not opt out.
 var ErrNonJSONResponse = errors.New("masking required but response is not JSON")
 
+// ErrClassificationUnavailable is returned when a policy needs classification
+// metadata but the PIP supplied an empty map.
+var ErrClassificationUnavailable = errors.New("classification metadata unavailable")
+
+// ErrMaskPolicyMissing means the endpoint references a policy that the running
+// bundle does not define (for example during a reload race).
+var ErrMaskPolicyMissing = errors.New("mask policy missing")
+
 // MaskResponse applies the endpoint's mask policy to a JSON response body.
 // Non-JSON bodies are returned unchanged and must be handled at the gateway.
 func (e *Engine) MaskResponse(ep *config.Endpoint, body []byte, isError bool) ([]byte, error) {
@@ -309,12 +317,12 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 	if ep == nil || ep.MaskPolicy == "" {
 		return body, nil
 	}
-	if isError && !ep.MaskErrors {
+	if isError && !ep.MaskErrorsEnabled() {
 		return body, nil
 	}
 	maskPolicy, ok := e.cfg.Masks.Policies[ep.MaskPolicy]
 	if !ok {
-		return body, nil
+		return nil, ErrMaskPolicyMissing
 	}
 	if len(body) == 0 {
 		return body, nil
@@ -339,6 +347,9 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 				return nil, fmt.Errorf("classification unavailable: %w", err)
 			}
 			classes = fetched
+		}
+		if len(classes) == 0 {
+			return nil, ErrClassificationUnavailable
 		}
 		mask.ApplyWithClassification(maskPolicy, doc, classes)
 	} else {

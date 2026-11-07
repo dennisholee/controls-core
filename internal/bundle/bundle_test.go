@@ -240,3 +240,26 @@ func TestRenderOPAEngine(t *testing.T) {
 		t.Fatalf("opa bundle should load: %v", err)
 	}
 }
+
+func TestOverlayCannotDeleteMaskField(t *testing.T) {
+	src := sampleSrc(t)
+	writeFile(t, filepath.Join(src, "env", "prod", "overrides.json"), `{
+	  "environment": "prod",
+	  "bundle": {"maskPolicies": {"read": {"fields": {"status": {"mode": "none"}}}}}
+	}`)
+	out := t.TempDir()
+	if _, err := Render(Options{Src: src, Out: out, Env: "prod", Service: "accounts"}); err != nil {
+		t.Fatal(err)
+	}
+	b, err := config.LoadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := b.Masks.Policies["read"]
+	if p.Fields["ssn"].Mode != "full" {
+		t.Fatalf("locked field was deleted: %+v", p.Fields)
+	}
+	if p.Fields["status"].Mode != "none" {
+		t.Fatalf("override not applied: %+v", p.Fields)
+	}
+}

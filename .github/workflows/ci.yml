@@ -9,6 +9,11 @@ on:
       - "internal/**"
       - "integration/**"
       - "contracts/**"
+      - "features/**"
+      - "deploy/**"
+      - "hack/**"
+      - "tools/**"
+      - "docs/**"
       - "go.mod"
       - "Makefile"
       - ".github/workflows/ci.yml"
@@ -19,6 +24,11 @@ on:
       - "internal/**"
       - "integration/**"
       - "contracts/**"
+      - "features/**"
+      - "deploy/**"
+      - "hack/**"
+      - "tools/**"
+      - "docs/**"
       - "go.mod"
       - "Makefile"
 
@@ -39,6 +49,8 @@ jobs:
         run: make vulncheck
       - name: test
         run: make test
+      - name: race
+        run: go test -race ./...
       - name: bdd acceptance criteria
         run: make acceptance
       - name: build

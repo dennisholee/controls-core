@@ -128,3 +128,11 @@ func TestNonJSONResponseFailsClosed(t *testing.T) {
 		t.Fatalf("allowNonJSON should pass: %v", err)
 	}
 }
+
+func TestClassificationEmptyFailsClosed(t *testing.T) {
+	e := New(fallbackBundle(), classPIP{classes: map[string]string{}})
+	ep := e.Endpoint("POST", "/x")
+	if _, err := e.MaskResponseCtx(context.Background(), ep, []byte(`{"phone":"x"}`), false); err == nil {
+		t.Fatal("empty classification must fail closed")
+	}
+}

@@ -41,6 +41,7 @@ func main() {
 	pipCert := flag.String("pip-cert", os.Getenv("CONTROLS_PIP_CERT"), "client certificate for PIP mTLS")
 	pipKey := flag.String("pip-key", os.Getenv("CONTROLS_PIP_KEY"), "client key for PIP mTLS")
 	pipServerName := flag.String("pip-server-name", os.Getenv("CONTROLS_PIP_SERVER_NAME"), "expected PIP server name")
+	maxTTL := flag.Duration("max-ttl", 5*time.Minute, "maximum PIP-advertised cache TTL")
 	opaTimeout := flag.Duration("opa-timeout", 100*time.Millisecond, "OPA decision timeout")
 	reloadInterval := flag.Duration("reload-interval", 30*time.Second, "bundle polling interval (0 disables polling; SIGHUP still reloads)")
 	debug := flag.Bool("debug", false, "enable debug logging")
@@ -60,7 +61,7 @@ func main() {
 		log.Warn("bundle signature not verified; set -bundle-pubkey in production")
 	}
 
-	var pipOpts []pipclient.Option
+	pipOpts := []pipclient.Option{pipclient.WithMaxTTL(*maxTTL)}
 	if *pipCA != "" || *pipCert != "" || *pipKey != "" || *pipServerName != "" {
 		cfg, err := pipclient.TLSConfig(*pipCA, *pipCert, *pipKey, *pipServerName)
 		if err != nil {
@@ -69,8 +70,9 @@ func main() {
 		}
 		pipOpts = append(pipOpts, pipclient.WithTLSConfig(cfg))
 	}
+	pip := pipclient.New(*pipURL, pipOpts...)
 	registry := metrics.New()
-	rs, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pipOpts, registry)
+	rs, err := buildRuntime(*cfgDir, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pip, registry)
 	if err != nil {
 		log.Error("cannot start controls bundle", "err", err)
 		os.Exit(1)
@@ -135,7 +137,7 @@ func main() {
 			if !force && (fp == last || fp == lastFail) {
 				return
 			}
-			next, err := buildRuntime(*cfgDir, *pipURL, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pipOpts, registry)
+			next, err := buildRuntime(*cfgDir, *auditSalt, *auditSample, *bundlePubKey, *opaURL, *opaTimeout, pip, registry)
 			if err != nil {
 				lastFail = fp
 				log.Error("bundle reload failed; keeping previous", "reason", reason, "err", err)
@@ -168,7 +170,7 @@ type runtimeState struct {
 	fingerprint string
 }
 
-func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey, opaURL string, opaTimeout time.Duration, pipOpts []pipclient.Option, reg *metrics.Registry) (*runtimeState, error) {
+func buildRuntime(cfgDir, salt string, sample float64, pubkey, opaURL string, opaTimeout time.Duration, pip engine.PIP, reg *metrics.Registry) (*runtimeState, error) {
 	bundle, err := config.LoadDir(cfgDir)
 	if err != nil {
 		return nil, err
@@ -178,7 +180,7 @@ func buildRuntime(cfgDir, pipURL, salt string, sample float64, pubkey, opaURL st
 			return nil, err
 		}
 	}
-	eng := engine.NewWithOptions(bundle, pipclient.New(pipURL, pipOpts...), engine.Options{
+	eng := engine.NewWithOptions(bundle, pip, engine.Options{
 		Policy: policy.Options{OPAURL: opaURL, OPATimeout: opaTimeout},
 	})
 	if err := eng.StartupError(); err != nil {

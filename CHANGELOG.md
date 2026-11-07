@@ -3,6 +3,45 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [Unreleased]
+
+### Added
+
+- Local test API (`make api`): `POST /v1/process` evaluates a request and masks
+  the supplied upstream response, `POST /v1/test` runs a conformance fixture
+  and returns per-check pass/fail, and `GET /v1/endpoints`, `GET /v1/info`,
+  `/docs` and `/openapi.yaml` make the interface discoverable. `-fixtures`
+  serves the PIP in-process, so the API runs as one process; `make api-rules`
+  renders and serves the delivery-owned bundle from `../controls-rules`.
+  Contract: `contracts/test-api.yaml`.
+- `conformance.Evaluate` exposes the per-fixture decision, masked response and
+  checks; `conformance.Run` now uses it, so the CLI and the API assert the same
+  way.
+
+### Changed
+
+- The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
+  interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
+
+## [0.17.0] — 2026-11-07
+
+### Security
+
+- `maskErrors` now defaults to true; a missing mask policy fails closed.
+- Fixed `fieldCallers` bypass when the request omits `fields`.
+- Empty classification metadata fails closed.
+- Mask-policy overlays merge fields, so a locked field cannot be deleted.
+- `defaultUnregistered: allow` is rejected at load.
+- PIP-advertised TTLs are clamped (`-max-ttl`, default 5m).
+- Reload keeps the process-lifetime PIP cache/circuit breaker.
+- Duplicate method+path routes are rejected.
+
+### Added
+
+- PIP PDB (`minAvailable: 1`) and preferred pod anti-affinity.
+- CI path filters for chart/features/hack/deploy/tools and a `-race` step.
+- [docs/ASSESSMENT-2026-11-07.md](docs/ASSESSMENT-2026-11-07.md).
+
 ## [0.16.1] — 2026-11-07
 
 ### Added

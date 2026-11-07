@@ -129,6 +129,8 @@ without saturating the replicas.
 - `pip_lag_seconds{resource_type}`
 - `pip_rejected_total{reason}` (concurrency saturation)
 
+`-max-ttl` (sidecar flag, default 5m) caps the TTL a PIP can advertise.
+
 `-max-concurrent` bounds in-flight requests; excess requests get `503
 {"error":"overloaded"}` instead of queueing behind a slow upstream.
 

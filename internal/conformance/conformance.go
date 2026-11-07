@@ -19,12 +19,13 @@ import (
 
 // Fixture is one acceptance case.
 type Fixture struct {
-	Name     string                               `json:"name"`
-	Service  string                               `json:"service,omitempty"`
-	PIP      map[string]map[string]map[string]any `json:"pip,omitempty"`
-	Request  FixtureRequest                       `json:"request"`
-	Response *FixtureResponse                     `json:"response,omitempty"`
-	Expect   FixtureExpect                        `json:"expect"`
+	Name           string                               `json:"name"`
+	Service        string                               `json:"service,omitempty"`
+	PIP            map[string]map[string]map[string]any `json:"pip,omitempty"`
+	Classification map[string]string                    `json:"classification,omitempty"`
+	Request        FixtureRequest                       `json:"request"`
+	Response       *FixtureResponse                     `json:"response,omitempty"`
+	Expect         FixtureExpect                        `json:"expect"`
 }
 
 // FixtureRequest is the inbound request under test.
@@ -58,13 +59,27 @@ type Result struct {
 }
 
 type fixturePIP struct {
-	data map[string]map[string]map[string]any
+	data     map[string]map[string]map[string]any
+	classes  map[string]string
+	fallback engine.PIP
 }
 
-func (p fixturePIP) Resolve(_ context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error) {
+func (p fixturePIP) Resolve(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error) {
 	out := map[string]pipclient.Attribute{}
 	for _, r := range refs {
 		attrs, ok := p.data[r.Type][r.ID]
+		if !ok && p.fallback != nil {
+			// Fall through to the real PIP for resources the fixture does not
+			// override, so a case only declares the data it cares about.
+			fb, err := p.fallback.Resolve(ctx, []pipclient.Ref{r})
+			if err != nil {
+				return nil, err
+			}
+			if a, found := fb[r.Type+"|"+r.ID]; found {
+				out[r.Type+"|"+r.ID] = a
+				continue
+			}
+		}
 		out[r.Type+"|"+r.ID] = pipclient.Attribute{
 			Type: r.Type, ID: r.ID, Found: ok, Attributes: attrs,
 		}
@@ -72,8 +87,14 @@ func (p fixturePIP) Resolve(_ context.Context, refs []pipclient.Ref) (map[string
 	return out, nil
 }
 
-func (p fixturePIP) Classification(context.Context, string) (map[string]string, error) {
-	return nil, nil
+func (p fixturePIP) Classification(ctx context.Context, resourceType string) (map[string]string, error) {
+	if len(p.classes) > 0 {
+		return p.classes, nil
+	}
+	if p.fallback == nil {
+		return nil, nil
+	}
+	return p.fallback.Classification(ctx, resourceType)
 }
 
 // Run loads a bundle and every fixture in dir, then asserts each case.
@@ -105,11 +126,20 @@ func Run(bundleDir, fixturesDir, service string, verbose bool) (*Result, error) 
 			continue
 		}
 		res.Total++
-		if err := runOne(b, &f); err != nil {
+		ev, evalErr := Evaluate(context.Background(), b, &f, nil)
+		if evalErr != nil {
 			res.Failed++
-			res.Failures = append(res.Failures, fmt.Sprintf("%s: %v", f.Name, err))
+			res.Failures = append(res.Failures, fmt.Sprintf("%s: %v", f.Name, evalErr))
 			if verbose {
-				fmt.Printf("FAIL %s: %v\n", f.Name, err)
+				fmt.Printf("FAIL %s: %v\n", f.Name, evalErr)
+			}
+			continue
+		}
+		if !ev.Pass {
+			res.Failed++
+			res.Failures = append(res.Failures, fmt.Sprintf("%s: %s", f.Name, ev.Failures()))
+			if verbose {
+				fmt.Printf("FAIL %s: %s\n", f.Name, ev.Failures())
 			}
 			continue
 		}
@@ -121,51 +151,132 @@ func Run(bundleDir, fixturesDir, service string, verbose bool) (*Result, error) 
 	return res, nil
 }
 
-func runOne(b *config.Bundle, f *Fixture) error {
-	eng := engine.New(b, fixturePIP{data: f.PIP})
-	subject := engine.Subject{Sub: f.Request.Headers["x-subject"], Claims: map[string]string{}}
-	for k, v := range f.Request.Headers {
-		if strings.HasPrefix(k, "x-claim-") {
-			subject.Claims[strings.TrimPrefix(k, "x-claim-")] = v
-		}
+// Evaluation is the result of evaluating one fixture.
+type Evaluation struct {
+	Name     string             `json:"name"`
+	Pass     bool               `json:"pass"`
+	Decision engine.Result      `json:"decision"`
+	Response *EvaluatedResponse `json:"response,omitempty"`
+	Checks   []Check            `json:"checks"`
+}
+
+// EvaluatedResponse is the masked upstream response, when the fixture supplies one.
+type EvaluatedResponse struct {
+	Status int             `json:"status"`
+	Body   json.RawMessage `json:"body"`
+}
+
+// Check is one assertion made against a fixture.
+type Check struct {
+	Check string `json:"check"`
+	OK    bool   `json:"ok"`
+	Got   any    `json:"got"`
+	Want  any    `json:"want"`
+}
+
+// Evaluate runs one fixture against b. When the fixture declares its own PIP
+// data, that data overrides fallback; otherwise fallback (normally the live
+// test API's PIP) is used.
+func Evaluate(ctx context.Context, b *config.Bundle, f *Fixture, fallback engine.PIP) (*Evaluation, error) {
+	var pip engine.PIP
+	switch {
+	case len(f.PIP) > 0:
+		pip = fixturePIP{data: f.PIP, classes: f.Classification, fallback: fallback}
+	case fallback != nil && len(f.Classification) == 0:
+		pip = fallback
+	default:
+		pip = fixturePIP{classes: f.Classification, fallback: fallback}
 	}
-	out := eng.ProcessRequest(context.Background(), engine.Request{
+	eng := engine.New(b, pip)
+	out := eng.ProcessRequest(ctx, engine.Request{
 		Method:  f.Request.Method,
 		Path:    f.Request.Path,
 		Body:    f.Request.Body,
-		Subject: subject,
+		Subject: subjectFromHeaders(f.Request.Headers),
 	})
-	if out.Allowed != f.Expect.Allowed {
-		return fmt.Errorf("allowed = %v, want %v (status %d, reason %s)", out.Allowed, f.Expect.Allowed, out.Status, out.Reason)
+	ev := &Evaluation{Name: f.Name, Decision: out}
+	ev.Checks = append(ev.Checks, Check{
+		Check: "allowed", OK: out.Allowed == f.Expect.Allowed,
+		Got: out.Allowed, Want: f.Expect.Allowed,
+	})
+	if f.Expect.Status != 0 {
+		ev.Checks = append(ev.Checks, Check{
+			Check: "status", OK: out.Status == f.Expect.Status,
+			Got: out.Status, Want: f.Expect.Status,
+		})
 	}
-	if f.Expect.Status != 0 && out.Status != f.Expect.Status {
-		return fmt.Errorf("status = %d, want %d (reason %s)", out.Status, f.Expect.Status, out.Reason)
+	if f.Expect.Reason != "" {
+		ev.Checks = append(ev.Checks, Check{
+			Check: "reason", OK: out.Reason == f.Expect.Reason,
+			Got: out.Reason, Want: f.Expect.Reason,
+		})
 	}
-	if f.Expect.Reason != "" && out.Reason != f.Expect.Reason {
-		return fmt.Errorf("reason = %q, want %q", out.Reason, f.Expect.Reason)
-	}
-	if !f.Expect.Allowed || f.Response == nil || len(f.Response.Body) == 0 {
-		return nil
-	}
-	ep := eng.Endpoint(f.Request.Method, f.Request.Path)
-	masked, err := eng.MaskResponse(ep, f.Response.Body, f.Response.Status >= 400)
-	if err != nil {
-		return err
-	}
-	var doc map[string]any
-	if err := json.Unmarshal(masked, &doc); err != nil {
-		return fmt.Errorf("masked response is not JSON: %w", err)
-	}
-	for path, want := range f.Expect.Masked {
-		got, ok := lookup(doc, path)
-		if !ok {
-			return fmt.Errorf("masked path %q missing", path)
+	if out.Allowed && f.Response != nil && len(f.Response.Body) > 0 {
+		ep := eng.Endpoint(f.Request.Method, f.Request.Path)
+		masked, err := eng.MaskResponseCtx(ctx, ep, f.Response.Body, f.Response.Status >= 400)
+		if err != nil {
+			return nil, err
 		}
-		if fmt.Sprint(got) != fmt.Sprint(want) {
-			return fmt.Errorf("masked %q = %v, want %v", path, got, want)
+		ev.Response = &EvaluatedResponse{Status: f.Response.Status, Body: json.RawMessage(masked)}
+		var doc map[string]any
+		if err := json.Unmarshal(masked, &doc); err != nil {
+			return nil, fmt.Errorf("masked response is not JSON: %w", err)
+		}
+		paths := make([]string, 0, len(f.Expect.Masked))
+		for path := range f.Expect.Masked {
+			paths = append(paths, path)
+		}
+		sort.Strings(paths)
+		for _, path := range paths {
+			want := f.Expect.Masked[path]
+			got, ok := lookup(doc, path)
+			ev.Checks = append(ev.Checks, Check{
+				Check: "masked." + path,
+				OK:    ok && fmt.Sprint(got) == fmt.Sprint(want),
+				Got:   got,
+				Want:  want,
+			})
 		}
 	}
-	return nil
+	ev.Pass = true
+	for _, c := range ev.Checks {
+		if !c.OK {
+			ev.Pass = false
+			break
+		}
+	}
+	return ev, nil
+}
+
+// Failures renders the failed checks of an evaluation as one human-readable line.
+func (e *Evaluation) Failures() string {
+	var parts []string
+	for _, c := range e.Checks {
+		if c.OK {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s = %v, want %v", c.Check, c.Got, c.Want))
+	}
+	if len(parts) == 0 {
+		return "fixture did not pass"
+	}
+	return strings.Join(parts, "; ")
+}
+
+// subjectFromHeaders derives the harness identity from x-subject/x-claim-*.
+// Header names are matched case-insensitively because they arrive as JSON.
+func subjectFromHeaders(headers map[string]string) engine.Subject {
+	subject := engine.Subject{Claims: map[string]string{}}
+	for k, v := range headers {
+		lower := strings.ToLower(k)
+		switch {
+		case lower == "x-subject":
+			subject.Sub = v
+		case strings.HasPrefix(lower, "x-claim-"):
+			subject.Claims[strings.TrimPrefix(lower, "x-claim-")] = v
+		}
+	}
+	return subject
 }
 
 func lookup(doc map[string]any, path string) (any, bool) {

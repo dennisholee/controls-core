@@ -239,7 +239,14 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 	if len(s.allowed) > 0 && !s.allowed[caller] {
 		return server.Resource{}, server.ErrForbidden
 	}
-	for _, f := range fields {
+	want := fields
+	if len(want) == 0 {
+		want = make([]string, 0, len(s.fields))
+		for f := range s.fields {
+			want = append(want, f)
+		}
+	}
+	for _, f := range want {
 		if callers, ok := s.fieldAuth[f]; ok && !callers[caller] {
 			return server.Resource{}, server.ErrForbidden
 		}
@@ -276,13 +283,6 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 	var all map[string]any
 	if err := json.Unmarshal(raw, &all); err != nil {
 		return server.Resource{}, fmt.Errorf("decode upstream: %w", err)
-	}
-	want := fields
-	if len(want) == 0 {
-		want = make([]string, 0, len(s.fields))
-		for f := range s.fields {
-			want = append(want, f)
-		}
 	}
 	out := map[string]any{}
 	for _, f := range want {
