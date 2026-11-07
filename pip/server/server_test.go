@@ -94,3 +94,20 @@ func TestClassification(t *testing.T) {
 		t.Fatalf("got %v", out)
 	}
 }
+
+func TestBatchCapEnforced(t *testing.T) {
+	srv := newTestServer(t)
+	reqs := make([]pipclient.Ref, 101)
+	for i := range reqs {
+		reqs[i] = pipclient.Ref{Type: "account", ID: "A123"}
+	}
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: reqs})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+}

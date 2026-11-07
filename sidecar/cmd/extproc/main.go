@@ -47,8 +47,8 @@ func main() {
 		os.Exit(1)
 	}
 	if *auditSalt == "" {
-		log.Warn("CONTROLS_AUDIT_SALT is unset; using a local development salt")
-		*auditSalt = "local-dev-salt"
+		log.Error("CONTROLS_AUDIT_SALT is required; refusing to start with a predictable audit salt")
+		os.Exit(1)
 	}
 
 	eng := engine.New(bundle, pipclient.New(*pipURL))

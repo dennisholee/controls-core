@@ -41,7 +41,7 @@ sidecar:
 	$(GO) run ./sidecar/cmd/sidecar -addr :8081 -config integration/testdata/config -pip http://127.0.0.1:8082
 
 extproc:
-	$(GO) run ./sidecar/cmd/extproc -listen :50051 -config integration/testdata/config -pip http://127.0.0.1:8082
+	CONTROLS_AUDIT_SALT=dev-salt $(GO) run ./sidecar/cmd/extproc -listen :50051 -config integration/testdata/config -pip http://127.0.0.1:8082
 
 openapi-diff:
 	$(GO) run ./tools/openapi-diff -openapi $(OPENAPI) -registry $(REGISTRY)

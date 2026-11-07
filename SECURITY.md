@@ -64,7 +64,15 @@ Require security review for changes to: locked fields, `default` masking mode,
 `defaultUnregistered`, trust in identity headers, PIP projection rules, bundle
 signing/verification, and any new non-JSON bypass.
 
-## 6. Reporting
+## 6. Audit
+
+The latest review is [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md). Open
+release blockers: unauthenticated PIP access (C1) and unverified identity
+headers at the sidecar (C2). Bundle signature verification (H1) is also open.
+Deployments must not expose the PIP or the sidecar listener outside the trusted
+network until those are resolved.
+
+## 7. Reporting
 
 Report suspected bypasses or data exposure through the internal security
 channel. Do not open a public issue.

@@ -46,7 +46,7 @@ atomic swap, keep last-known-good on failure.
 `extproc/` and the Envoy configuration is in [`envoy/`](envoy/README.md).
 
 ```bash
-go run ./sidecar/cmd/extproc -listen :50051 \
+CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
   -config integration/testdata/config \
   -pip http://127.0.0.1:8082
 ```

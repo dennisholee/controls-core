@@ -5,6 +5,14 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [0.5.0] — 2026-11-07
 
+### Security
+
+- Bundle overlays reject `defaultUnregistered: allow`; overlay documents are
+  decoded strictly, so unknown keys fail the render.
+- PIP enforces a 64 KiB body limit and a 100-resource batch cap.
+- ext_proc refuses to start without `CONTROLS_AUDIT_SALT`.
+- Full audit report at [docs/SECURITY-AUDIT.md](docs/SECURITY-AUDIT.md).
+
 ### Added
 
 - Classification-driven mask fallback: `fallback: "classification"` masks

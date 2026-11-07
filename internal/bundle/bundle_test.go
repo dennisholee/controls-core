@@ -132,3 +132,23 @@ func TestServiceFilterSelectsOnlyOwnEndpoints(t *testing.T) {
 		t.Fatalf("got %s", reg.Endpoints[0].ID)
 	}
 }
+
+func TestOverlayRejectsAllowUnregistered(t *testing.T) {
+	src := sampleSrc(t)
+	writeFile(t, filepath.Join(src, "env", "prod", "overrides.json"), `{
+	  "environment": "prod", "bundle": {"defaultUnregistered": "allow"}
+	}`)
+	if _, err := Render(Options{Src: src, Env: "prod", Check: true}); err == nil {
+		t.Fatal("expected overlay allow to be rejected")
+	}
+}
+
+func TestOverlayRejectsUnknownKeys(t *testing.T) {
+	src := sampleSrc(t)
+	writeFile(t, filepath.Join(src, "env", "prod", "overrides.json"), `{
+	  "environment": "prod", "bundle": {"disableRule": ["x"]}
+	}`)
+	if _, err := Render(Options{Src: src, Env: "prod", Check: true}); err == nil {
+		t.Fatal("expected unknown overlay key to be rejected")
+	}
+}

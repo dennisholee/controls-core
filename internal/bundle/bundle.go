@@ -7,6 +7,7 @@
 package bundle
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -331,10 +332,13 @@ func loadDQ(src string) (*dqDoc, error) {
 func applyOverlay(src, rel string, reg *registryDoc, rules *rulesDoc, masks *masksDoc, dq *dqDoc) error {
 	path := filepath.Join(src, rel)
 	var ov overlay
-	if err := readJSON(path, &ov); err != nil {
+	if err := readStrictJSON(path, &ov); err != nil {
 		return err
 	}
 	if ov.Bundle.DefaultUnregistered != "" {
+		if ov.Bundle.DefaultUnregistered == "allow" {
+			return fmt.Errorf("defaultUnregistered: allow is not permitted in overlays")
+		}
 		reg.DefaultUnregistered = ov.Bundle.DefaultUnregistered
 	}
 	if len(ov.Bundle.DisableRules) > 0 {
@@ -446,6 +450,19 @@ func digestOf(contents map[string][]byte) string {
 		h.Write([]byte{0})
 	}
 	return "sha256:" + hex.EncodeToString(h.Sum(nil))
+}
+
+func readStrictJSON(path string, v any) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return fmt.Errorf("parse %s: %w", path, err)
+	}
+	return nil
 }
 
 func readJSON(path string, v any) error {

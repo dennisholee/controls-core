@@ -9,6 +9,11 @@ import (
 	"example.com/controls/core/internal/pipclient"
 )
 
+const (
+	maxBodyBytes = 64 << 10
+	maxBatch     = 100
+)
+
 // Server exposes the PIP HTTP API.
 type Server struct {
 	repo       Repository
@@ -45,6 +50,7 @@ func (s *Server) Handler() http.Handler { return s.mux }
 
 func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var req pipclient.BatchRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error":"invalid_json"}`, http.StatusBadRequest)
@@ -52,6 +58,10 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Requests) == 0 {
 		http.Error(w, `{"error":"empty_batch"}`, http.StatusBadRequest)
+		return
+	}
+	if len(req.Requests) > maxBatch {
+		http.Error(w, `{"error":"batch_too_large"}`, http.StatusBadRequest)
 		return
 	}
 	results := make([]pipclient.Attribute, 0, len(req.Requests))
