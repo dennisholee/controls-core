@@ -7,7 +7,7 @@ envoy:
   resources: {}
 
 extproc:
-  image: controls-extproc:0.37.0
+  image: controls-extproc:0.38.0
   pullPolicy: IfNotPresent
   port: 50051
   metricsPort: 9090

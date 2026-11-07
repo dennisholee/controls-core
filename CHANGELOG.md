@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.38.0] — 2026-11-07
+
+### Added
+
+- `controls-check`: validates that rule resource types/actions, DQ fields,
+  mask/reject paths and registry attributes resolve against the registry and
+  OpenAPI schemas. The payments demo runs it in `make gate`.
+
 ## [0.37.0] — 2026-11-07
 
 ### Added

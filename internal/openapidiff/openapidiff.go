@@ -15,7 +15,13 @@ import (
 
 // Document is the subset of an OpenAPI 3 document the gate needs.
 type Document struct {
-	Paths map[string]map[string]json.RawMessage `json:"paths"`
+	Paths      map[string]map[string]json.RawMessage `json:"paths"`
+	Components Components                            `json:"components"`
+}
+
+// Components is the OpenAPI components object.
+type Components struct {
+	Schemas map[string]json.RawMessage `json:"schemas"`
 }
 
 // Endpoint is a registry entry.

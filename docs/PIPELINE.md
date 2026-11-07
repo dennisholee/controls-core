@@ -22,7 +22,8 @@ agent {
 }
 ```
 
-Contains: `bundle`, `conformance`, `openapi-diff`.
+Contains: `bundle`, `conformance`, `openapi-diff`, `openapi-registry`,
+`controls-check`.
 
 ## Inputs
 
@@ -110,7 +111,7 @@ bundle.
 | `bundle` | 2 | usage error |
 | `conformance` | 0 | all fixtures passed |
 | `conformance` | 1 | a fixture failed or the bundle could not be loaded |
-| `openapi-diff` | 0 / 1 | in sync / drift |
+| `controls-check` | 0 / 1 | rules, masks, DQ and attributes resolve |
 
 Jenkins should fail the build on any non-zero exit and keep the renderer and
 conformance output as build artifacts.
