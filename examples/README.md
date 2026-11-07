@@ -23,6 +23,10 @@ sidecar themselves.
    fail when the sidecar contract changes.
 4. Add the sample to the CI `examples` matrix and to the table above.
 
+`accounts-read` also demonstrates the OpenAPI ↔ registry gate: operation
+annotations (`x-resource-type`, `x-resource-id`, `x-mask-policy`,
+`x-resource-source`) are compared against the registry before the sample runs.
+
 Run one sample:
 
 ```bash

@@ -2,6 +2,7 @@ package openapidiff
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -60,5 +61,47 @@ func TestIgnoresNonOperationKeys(t *testing.T) {
 	res := Check(d, []Endpoint{{ID: "get-account", Method: "GET", Path: "/accounts/{accountId}"}})
 	if len(res.MissingRegistry) != 0 {
 		t.Fatalf("parameters treated as operation: %v", res.MissingRegistry)
+	}
+}
+
+func TestAnnotationMismatch(t *testing.T) {
+	d := Document{Paths: map[string]map[string]json.RawMessage{
+		"/accounts/{accountId}": {
+			"get": json.RawMessage(`{
+			  "x-resource-type":"account",
+			  "x-resource-id":"accountId",
+			  "x-mask-policy":"account.read",
+			  "x-resource-source":"pip"
+			}`),
+		},
+	}}
+	res := Check(d, []Endpoint{{
+		ID: "get-account", Method: "GET", Path: "/accounts/{accountId}",
+		ResourceType: "account", ResourceIDFrom: "path", ResourceID: "accountId",
+		MaskPolicy: "wrong.policy", ResourceSource: "pip",
+	}})
+	if len(res.Mismatches) != 1 || !strings.Contains(res.Mismatches[0], "x-mask-policy") {
+		t.Fatalf("mismatches = %v", res.Mismatches)
+	}
+}
+
+func TestAnnotationsMatch(t *testing.T) {
+	d := Document{Paths: map[string]map[string]json.RawMessage{
+		"/accounts/{accountId}": {
+			"get": json.RawMessage(`{
+			  "x-resource-type":"account",
+			  "x-resource-id":"accountId",
+			  "x-mask-policy":"account.read",
+			  "x-resource-source":"pip"
+			}`),
+		},
+	}}
+	res := Check(d, []Endpoint{{
+		ID: "get-account", Method: "GET", Path: "/accounts/{accountId}",
+		ResourceType: "account", ResourceIDFrom: "path", ResourceID: "accountId",
+		MaskPolicy: "account.read", ResourceSource: "pip",
+	}})
+	if len(res.Mismatches) != 0 {
+		t.Fatalf("unexpected mismatches: %v", res.Mismatches)
 	}
 }

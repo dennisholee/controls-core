@@ -36,7 +36,19 @@ func main() {
 
 	endpoints := make([]openapidiff.Endpoint, 0, len(reg.Endpoints))
 	for _, ep := range reg.Endpoints {
-		endpoints = append(endpoints, openapidiff.Endpoint{ID: ep.ID, Method: ep.Method, Path: ep.Path})
+		endpoints = append(endpoints, openapidiff.Endpoint{
+			ID: ep.ID, Method: ep.Method, Path: ep.Path,
+			ResourceType:   ep.ResourceType,
+			ResourceIDFrom: ep.ResourceID.From,
+			ResourceID: func() string {
+				if ep.ResourceID.From == "path" {
+					return ep.ResourceID.Name
+				}
+				return ep.ResourceID.Path
+			}(),
+			MaskPolicy:     ep.MaskPolicy,
+			ResourceSource: ep.ResourceFrom,
+		})
 	}
 
 	res := openapidiff.Check(doc, endpoints)
@@ -53,6 +65,13 @@ func main() {
 		fmt.Println("registry entries with no documented operation:")
 		for _, o := range res.OrphanRegistry {
 			fmt.Println("  - " + o)
+		}
+	}
+	if len(res.Mismatches) > 0 {
+		failed = true
+		fmt.Println("OpenAPI annotations disagree with the registry:")
+		for _, m := range res.Mismatches {
+			fmt.Println("  - " + m)
 		}
 	}
 	if failed {

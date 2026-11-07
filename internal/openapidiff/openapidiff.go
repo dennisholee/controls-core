@@ -5,6 +5,7 @@ package openapidiff
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 )
@@ -16,9 +17,14 @@ type Document struct {
 
 // Endpoint is a registry entry.
 type Endpoint struct {
-	ID     string
-	Method string
-	Path   string
+	ID             string
+	Method         string
+	Path           string
+	ResourceType   string
+	ResourceIDFrom string // path | body
+	ResourceID     string // parameter name or $.-path
+	MaskPolicy     string
+	ResourceSource string
 }
 
 var operations = map[string]bool{
@@ -30,6 +36,14 @@ var operations = map[string]bool{
 type Result struct {
 	MissingRegistry []string // documented operations with no registry entry
 	OrphanRegistry  []string // registry entries with no documented operation
+	Mismatches      []string // annotation and registry disagree
+}
+
+type operation struct {
+	ResourceType   string `json:"x-resource-type"`
+	ResourceID     string `json:"x-resource-id"`
+	MaskPolicy     string `json:"x-mask-policy"`
+	ResourceSource string `json:"x-resource-source"`
 }
 
 // Check compares documented operations against registry entries.
@@ -50,10 +64,27 @@ func Check(doc Document, endpoints []Endpoint) Result {
 	}
 
 	var res Result
+	ops := map[string]operation{}
+	for path, item := range doc.Paths {
+		for method, raw := range item {
+			m := strings.ToLower(method)
+			if !operations[m] {
+				continue
+			}
+			var op operation
+			if len(raw) > 0 {
+				_ = json.Unmarshal(raw, &op)
+			}
+			ops[opKey(m, path)] = op
+		}
+	}
+	registeredByKey := registryByKey(endpoints)
 	for key := range documented {
 		if !registered[key] {
 			res.MissingRegistry = append(res.MissingRegistry, key)
+			continue
 		}
+		res.Mismatches = append(res.Mismatches, compareAnnotations(key, ops[key], registeredByKey[key])...)
 	}
 	for key, ep := range registryByKey(endpoints) {
 		if !documented[key] {
@@ -63,6 +94,29 @@ func Check(doc Document, endpoints []Endpoint) Result {
 	sort.Strings(res.MissingRegistry)
 	sort.Strings(res.OrphanRegistry)
 	return res
+}
+
+func compareAnnotations(key string, op operation, ep Endpoint) []string {
+	var out []string
+	if op.ResourceType != "" && op.ResourceType != ep.ResourceType {
+		out = append(out, fmt.Sprintf("%s: x-resource-type %q != registry %q", key, op.ResourceType, ep.ResourceType))
+	}
+	if op.MaskPolicy != "" && op.MaskPolicy != ep.MaskPolicy {
+		out = append(out, fmt.Sprintf("%s: x-mask-policy %q != registry %q", key, op.MaskPolicy, ep.MaskPolicy))
+	}
+	if op.ResourceSource != "" && op.ResourceSource != ep.ResourceSource {
+		out = append(out, fmt.Sprintf("%s: x-resource-source %q != registry %q", key, op.ResourceSource, ep.ResourceSource))
+	}
+	if op.ResourceID != "" {
+		from := "path"
+		if strings.HasPrefix(op.ResourceID, "$.") {
+			from = "body"
+		}
+		if ep.ResourceIDFrom != from || ep.ResourceID != op.ResourceID {
+			out = append(out, fmt.Sprintf("%s: x-resource-id %q != registry %s:%q", key, op.ResourceID, ep.ResourceIDFrom, ep.ResourceID))
+		}
+	}
+	return out
 }
 
 func registryByKey(endpoints []Endpoint) map[string]Endpoint {

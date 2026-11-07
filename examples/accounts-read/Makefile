@@ -1,10 +1,11 @@
 ROOT := ../..
 IMAGE := controls-sidecar:dev
+GO ?= go
 DOCKER_BUILDKIT ?= 0
 GOARCH ?= $(shell go env GOARCH)
 TMP := $(abspath $(ROOT)/.tmp/sample)
 
-.PHONY: up test down
+.PHONY: gate up test down
 
 up:
 	mkdir -p $(TMP)
@@ -15,7 +16,12 @@ up:
 	DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build --build-arg PIP_BIN=.tmp/sample/pip -f pip/Dockerfile -t accounts-read-pip:dev $(ROOT)
 	docker compose -f compose.yaml up -d
 
-test: up
+gate:
+	cd $(ROOT) && $(GO) run ./tools/openapi-diff \
+		-openapi examples/accounts-read/openapi.json \
+		-registry examples/accounts-read/controls/registry.json
+
+test: gate up
 	./test.sh
 
 down:

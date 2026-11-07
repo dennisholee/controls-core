@@ -3,6 +3,15 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.33.0] — 2026-11-07
+
+### Added
+
+- The OpenAPI gate now enforces `x-resource-type`, `x-resource-id`,
+  `x-mask-policy` and `x-resource-source` against the registry, not just
+  method/path coverage. `examples/accounts-read` includes an annotated
+  `openapi.json` and runs the gate in `make test`.
+
 ## [0.32.0] — 2026-11-07
 
 ### Added

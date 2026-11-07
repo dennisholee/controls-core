@@ -1,0 +1,15 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "accounts-read sample", "version": "1.0.0"},
+  "paths": {
+    "/accounts/{accountId}": {
+      "get": {
+        "x-resource-type": "account",
+        "x-resource-id": "accountId",
+        "x-mask-policy": "account.read",
+        "x-resource-source": "pip",
+        "responses": {"200": {"description": "masked account"}}
+      }
+    }
+  }
+}
