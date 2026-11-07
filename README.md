@@ -103,6 +103,7 @@ contract, examples and limitations.
 - [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
 - [RUNBOOK.md](RUNBOOK.md) — alerts and incident procedures
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md) — ownership, review, break-glass
+- [deploy/helm/controls-sidecar/README.md](deploy/helm/controls-sidecar/README.md) — sidecar injection library chart
 - [docs/REPO-GOVERNANCE.md](docs/REPO-GOVERNANCE.md) — layout, boundaries, docs and CI rules
 - [docs/agents/repo-steward.md](docs/agents/repo-steward.md) — repository steward charter (`make steward`)
 - [docs/IDENTITY.md](docs/IDENTITY.md) — gateway identity envelope and header-trust model
@@ -115,7 +116,7 @@ contract, examples and limitations.
 
 ## Status
 
-`v0.22.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.23.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

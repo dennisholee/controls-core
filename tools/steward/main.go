@@ -107,6 +107,10 @@ func checkADRs(root string) []finding {
 }
 
 func checkVersions(root string) []finding {
+	expected := ""
+	if raw, err := os.ReadFile(filepath.Join(root, "VERSION")); err == nil {
+		expected = strings.TrimSpace(string(raw))
+	}
 	specs := []struct {
 		path string
 		re   *regexp.Regexp
@@ -130,6 +134,9 @@ func checkVersions(root string) []finding {
 		}
 		v := strings.TrimPrefix(m[1], "v")
 		seen[v] = append(seen[v], s.path)
+	}
+	if expected != "" {
+		seen[expected] = append(seen[expected], "VERSION")
 	}
 	if len(seen) <= 1 {
 		return nil

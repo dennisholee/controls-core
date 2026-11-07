@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: accounts
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: accounts
+  template:
+    metadata:
+      labels:
+        app: accounts
+    spec:
+      containers:
+        - name: app
+          image: accounts:latest
+          ports:
+            - name: http
+              containerPort: 8080
+        {{- include "controls-sidecar.containers" . | nindent 8 }}
+      volumes:
+        - name: app
+          emptyDir: {}
+        {{- include "controls-sidecar.volumes" . | nindent 8 }}

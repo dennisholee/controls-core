@@ -88,6 +88,10 @@ jobs:
         run: helm lint deploy/helm/controls-plane
       - name: render defaults
         run: helm template controls deploy/helm/controls-plane --namespace controls >/dev/null
+      - name: sidecar library dependency
+        run: helm dependency build deploy/examples/sidecar-service
+      - name: render sidecar library example
+        run: helm template sidecar deploy/examples/sidecar-service >/dev/null
       - name: render istio
         run: |
           helm template controls deploy/helm/controls-plane --namespace controls             --set istio.enabled=true             --set 'istio.authorizationPolicy.allowedPrincipals[0]=cluster.local/ns/app/sa/sidecar' >/dev/null

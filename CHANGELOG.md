@@ -8,27 +8,34 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 ### Added
 
 - Local test API (`make api`): `POST /v1/process` evaluates a request and masks
-  the supplied upstream response, `POST /v1/test` runs a conformance fixture
-  and returns per-check pass/fail, and `GET /v1/endpoints`, `GET /v1/info`,
-  `/docs` and `/openapi.yaml` make the interface discoverable. `-fixtures`
-  serves the PIP in-process, so the API runs as one process; `make api-rules`
-  renders and serves the delivery-owned bundle from `../controls-rules`.
-  Contract: `contracts/test-api.yaml`.
+  the supplied upstream response, `POST /v1/test` runs a conformance fixture,
+  and `GET /v1/endpoints`, `GET /v1/info`, `/docs` and `/openapi.yaml` make the
+  interface discoverable. `-fixtures` serves the PIP in-process; `make api-rules`
+  serves the delivery-owned bundle. Contract: `contracts/test-api.yaml`.
 - `conformance.Evaluate` exposes the per-fixture decision, masked response and
-  checks; `conformance.Run` now uses it, so the CLI and the API assert the same
-  way.
+  checks; `conformance.Run` uses it, so the CLI and the API assert identically.
 
 ### Changed
 
-- The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
-  interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
+- The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
+  warning when bound elsewhere.
+
+## [0.23.0] — 2026-11-07
+
+### Added
+
+- `deploy/helm/controls-sidecar`: library chart that owns the Envoy + ext_proc
+  container/volume injection, with a renderable example under
+  `deploy/examples/sidecar-service`.
+- `VERSION` as the single version source; the repository steward fails if docs,
+  chart tags or changelog disagree with it.
 
 ## [0.22.0] — 2026-11-07
 
 ### Added
 
-- PIP `/readyz` now probes each source's optional `healthUrl` (2s timeout,
-  2xx required) and returns 503 when an attribute source is unavailable.
+- PIP `/readyz` probes each source's optional `healthUrl` (2s timeout, 2xx
+  required) and returns 503 when an attribute source is unavailable.
 
 ## [0.21.0] — 2026-11-07
 

@@ -1,0 +1,34 @@
+# Defaults for the sidecar library. Parent charts override these.
+envoy:
+  image: envoyproxy/envoy:v1.40.0
+  pullPolicy: IfNotPresent
+  port: 8080
+  adminPort: 9901
+  resources: {}
+
+extproc:
+  image: controls-extproc:0.23.0
+  pullPolicy: IfNotPresent
+  port: 50051
+  metricsPort: 9090
+  resources: {}
+  pipURL: http://controls-pip.controls.svc:8082
+  # Optional PIP mTLS files, mounted from the shared secrets volume.
+  pipCA: ""
+  pipCert: ""
+  pipKey: ""
+  pipServerName: ""
+  # Development only; production must leave this false and provide a pubkey.
+  allowUnsigned: false
+  auditSample: "0.01"
+  auditBuffer: "4096"
+
+volumes:
+  envoyConfig: controls-envoy-config
+  bundle: controls-bundle
+  secrets: controls-secrets
+
+secrets:
+  auditSaltKey: audit-salt
+  identityKey: identity-hmac
+  bundlePubKey: public-key.pem

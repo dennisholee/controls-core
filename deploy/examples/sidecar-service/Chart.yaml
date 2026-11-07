@@ -1,0 +1,10 @@
+apiVersion: v2
+name: sidecar-service-example
+description: Render test for the controls-sidecar library
+type: application
+version: 0.1.0
+appVersion: "0.23.0"
+dependencies:
+  - name: controls-sidecar
+    version: 0.1.0
+    repository: file://../../helm/controls-sidecar

@@ -1,0 +1,6 @@
+dependencies:
+- name: controls-sidecar
+  repository: file://../../helm/controls-sidecar
+  version: 0.1.0
+digest: sha256:cdb74dfd150552b904ca2269e697e4d0e264000b489ed2b74a4aaa4097ddbf6b
+generated: "2026-11-07T13:45:07.2334+08:00"

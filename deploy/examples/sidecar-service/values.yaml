@@ -1,0 +1,15 @@
+replicaCount: 2
+cluster: accounts
+envoy:
+  image: envoyproxy/envoy:v1.40.0
+extproc:
+  image: controls-extproc:0.22.0
+  pipURL: http://controls-pip.controls.svc:8082
+volumes:
+  envoyConfig: accounts-envoy
+  bundle: accounts-controls-bundle
+  secrets: accounts-controls-secrets
+secrets:
+  auditSaltKey: audit-salt
+  identityKey: identity-hmac
+  bundlePubKey: public-key.pem

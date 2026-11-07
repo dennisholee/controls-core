@@ -1,0 +1,6 @@
+apiVersion: v2
+name: controls-sidecar
+description: Library chart that injects the controls Envoy and ext_proc sidecars
+type: library
+version: 0.1.0
+appVersion: "0.23.0"
