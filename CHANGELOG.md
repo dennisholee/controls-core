@@ -20,6 +20,13 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.28.2] — 2026-11-07
+
+### Added
+
+- `make testdrive`: non-interactive local bootstrap that starts the test API,
+  evaluates a masked account read, asserts redaction, and exits. No Docker.
+
 ## [0.28.1] — 2026-11-07
 
 ### Changed

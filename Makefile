@@ -14,7 +14,7 @@ GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
 export GOPATH
 
-.PHONY: test vet build bench fmt fmt-check all pip sidecar api api-rules extproc openapi-diff openapi-gate acceptance smoke steward clean
+.PHONY: test vet build bench fmt fmt-check all pip sidecar api api-rules extproc openapi-diff openapi-gate acceptance smoke testdrive steward clean
 
 all: fmt-check vet test
 
@@ -80,6 +80,9 @@ acceptance:
 
 smoke:
 	./hack/envoy-smoke.sh
+
+testdrive:
+	./hack/testdrive.sh
 
 steward:
 	$(GO) run ./tools/steward -root .

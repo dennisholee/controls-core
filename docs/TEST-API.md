@@ -12,6 +12,16 @@ loopback by default and must never be exposed to untrusted clients.
 - Browser console: `http://127.0.0.1:8081/docs`
 - One command: `make api`
 
+## Verify without starting a server
+
+```bash
+make testdrive
+```
+
+This builds the test API, starts it on loopback, evaluates one masked account
+read, asserts the redaction, and exits. It is the fastest way to confirm the
+local bootstrap before using the interactive console.
+
 ## Quick start
 
 ```bash

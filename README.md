@@ -46,6 +46,7 @@ Requires Go 1.26+.
 
 ```bash
 make test          # go test ./... (integration tests spin up a fake PIP)
+make testdrive     # one-command local check; no Docker needed
 make acceptance    # BDD acceptance criteria against the engine
 make bench         # engine latency/memory benchmarks
 make api           # :8081 test API + in-process PIP, console at /docs
@@ -116,7 +117,7 @@ contract, examples and limitations.
 
 ## Status
 
-`v0.28.1` — engine, masking with classification fallback, DQ, replica-lag
+`v0.28.2` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment
