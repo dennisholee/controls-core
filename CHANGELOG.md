@@ -23,6 +23,13 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
   interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
 
+## [0.22.0] — 2026-11-07
+
+### Added
+
+- PIP `/readyz` now probes each source's optional `healthUrl` (2s timeout,
+  2xx required) and returns 503 when an attribute source is unavailable.
+
 ## [0.21.0] — 2026-11-07
 
 ### Security

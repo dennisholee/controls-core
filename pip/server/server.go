@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -260,6 +261,19 @@ func (s *Server) allow(caller string) bool {
 	}
 	b.tokens--
 	return true
+}
+
+type readyRepository interface {
+	Ready(context.Context) error
+}
+
+// Ready reports whether the PIP can serve attributes. Repositories that do
+// not implement readiness are treated as ready.
+func (s *Server) Ready(ctx context.Context) error {
+	if r, ok := s.repo.(readyRepository); ok {
+		return r.Ready(ctx)
+	}
+	return nil
 }
 
 func (s *Server) recordRequest(endpoint string) {

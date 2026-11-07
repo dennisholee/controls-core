@@ -60,18 +60,25 @@ func main() {
 		log.Error("-require-mtls needs -tls-cert, -tls-key and -client-ca")
 		os.Exit(1)
 	}
-	handler := server.New(repo, log,
+	svc := server.New(repo, log,
 		server.WithLagSeconds(*lagSeconds),
 		server.WithMetrics(reg),
 		server.WithMaxConcurrent(*maxConcurrent),
 		server.WithRequireCaller(*requireCaller || *requireMTLS),
 		server.WithRateLimit(*rateLimit, *rateBurst),
-	).Handler()
+	)
+	handler := svc.Handler()
 	if *metricsAddr != "" {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", reg.Handler())
 		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
-		mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+		mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+			if err := svc.Ready(r.Context()); err != nil {
+				http.Error(w, "attribute sources unavailable", http.StatusServiceUnavailable)
+				return
+			}
+			_, _ = w.Write([]byte("ok"))
+		})
 		go func() {
 			log.Info("pip metrics listening", "addr", *metricsAddr)
 			if err := http.ListenAndServe(*metricsAddr, mux); err != nil {

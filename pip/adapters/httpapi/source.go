@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -39,6 +40,7 @@ type Source struct {
 	Fields         []string          `json:"fields"`
 	Classification map[string]string `json:"classification"`
 	LagHeader      string            `json:"lagHeader"`
+	HealthURL      string            `json:"healthUrl"`
 	VersionHeader  string            `json:"versionHeader"`
 	// Caller authorization. Identities come from the PIP client certificate
 	// (URI SAN, DNS SAN or CN). Empty lists mean "any authenticated caller".
@@ -61,6 +63,7 @@ type source struct {
 	versionHeader string
 	allowed       map[string]bool
 	fieldAuth     map[string]map[string]bool
+	healthURL     string
 }
 
 // Repo implements server.Repository over HTTP attribute APIs.
@@ -179,6 +182,7 @@ func build(typ string, src Source) (*source, error) {
 		versionHeader: versionHeader,
 		allowed:       allowedCallers,
 		fieldAuth:     fieldAuth,
+		healthURL:     src.HealthURL,
 	}, nil
 }
 
@@ -304,6 +308,39 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 }
 
 // Classification returns the configured classification map.
+// Ready probes configured source health URLs. Sources without a healthUrl are
+// assumed ready; a configured probe must return 2xx.
+func (r *Repo) Ready(ctx context.Context) error {
+	types := make([]string, 0, len(r.sources))
+	for typ := range r.sources {
+		types = append(types, typ)
+	}
+	sort.Strings(types)
+	for _, typ := range types {
+		s := r.sources[typ]
+		if s.healthURL == "" {
+			continue
+		}
+		reqCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, s.healthURL, nil)
+		if err != nil {
+			cancel()
+			return fmt.Errorf("source %s: %w", typ, err)
+		}
+		resp, err := (&http.Client{Timeout: 2 * time.Second}).Do(req)
+		if err != nil {
+			cancel()
+			return fmt.Errorf("source %s: %w", typ, err)
+		}
+		_ = resp.Body.Close()
+		cancel()
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			return fmt.Errorf("source %s: health status %d", typ, resp.StatusCode)
+		}
+	}
+	return nil
+}
+
 func (r *Repo) Classification(ctx context.Context, typ string) (map[string]string, bool, error) {
 	s, ok := r.sources[typ]
 	if !ok {

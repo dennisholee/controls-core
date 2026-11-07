@@ -115,7 +115,7 @@ contract, examples and limitations.
 
 ## Status
 
-`v0.21.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.22.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

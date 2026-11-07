@@ -225,3 +225,23 @@ func TestOmittedFieldsCannotBypassFieldAuth(t *testing.T) {
 		t.Fatalf("omitted fields should be forbidden, got %v", err)
 	}
 }
+
+func TestReadyProbesHealthURL(t *testing.T) {
+	status := http.StatusOK
+	health := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(status)
+	}))
+	defer health.Close()
+	cfg := writeConfig(t, `{"sources":{"account":{"url":"http://127.0.0.1/{id}","healthUrl":"`+health.URL+`","fields":["ownerId"]}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Ready(context.Background()); err != nil {
+		t.Fatalf("ready: %v", err)
+	}
+	status = http.StatusServiceUnavailable
+	if err := repo.Ready(context.Background()); err == nil {
+		t.Fatal("unhealthy source must report not ready")
+	}
+}

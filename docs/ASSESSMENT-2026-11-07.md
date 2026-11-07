@@ -48,7 +48,7 @@ fixed in 0.18.0.
 | — | Contract major and full manifest are now signed | Core | Done in 0.21.0 |
 | — | Audit async queue + drop/write-failure metrics added | Core | Done in 0.20.0 |
 | H | `fresh`/`deny-on-stale` trust optional lag; no max-TTL before 0.17 | Core | Lag mandatory for those modes; TTL clamp now in |
-| H | Extproc readiness checks policy init; PIP upstream readiness is still static | Platform | PIP readiness probes sources |
+| — | PIP readiness now probes configured source health URLs | Core | Done in 0.22.0 |
 | H | Sidecar/Envoy deployment manifest is unowned (service chart absent) | Platform | Reproducible install with pubkey/salt/ext_proc |
 | — | Per-caller rate limiting added | Core | Done in 0.21.0 |
 | M | DQ has no unit suite; fallback/reload paths lack end-to-end tests | QA | Tests added to CI gates |
