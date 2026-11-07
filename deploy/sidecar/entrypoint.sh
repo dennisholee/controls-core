@@ -22,6 +22,12 @@ fi
 if [ -n "${PIP_SERVER_NAME:-}" ]; then
   args+=(-pip-server-name "$PIP_SERVER_NAME")
 fi
+if [ -n "${OPA_URL:-}" ]; then
+  args+=(-opa-url "$OPA_URL")
+fi
+if [ -n "${OPA_TIMEOUT:-}" ]; then
+  args+=(-opa-timeout "$OPA_TIMEOUT")
+fi
 /usr/local/bin/extproc "${args[@]}" &
 ext=$!
 trap 'kill "$ext" 2>/dev/null || true' TERM INT

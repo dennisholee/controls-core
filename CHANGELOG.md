@@ -3,6 +3,13 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.38.3] — 2026-11-07
+
+### Added
+
+- Sidecar runtime entrypoint accepts `OPA_URL` and `OPA_TIMEOUT`, so samples
+  can switch authorization to external Rego without a custom image.
+
 ## [0.38.2] — 2026-11-07
 
 ### Fixed
