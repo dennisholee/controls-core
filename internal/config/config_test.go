@@ -115,3 +115,14 @@ func TestDuplicateRouteRejected(t *testing.T) {
 		t.Fatal("duplicate method+path must be rejected")
 	}
 }
+
+func TestEndpointForStripsQueryAndRejectsTraversal(t *testing.T) {
+	b := loadTestBundle(t)
+	ep, params := b.EndpointFor("GET", "/accounts/A123?fields=balance")
+	if ep == nil || params["accountId"] != "A123" {
+		t.Fatalf("query string corrupted id: ep=%v params=%v", ep, params)
+	}
+	if ep, _ := b.EndpointFor("GET", "/accounts/%2e%2e"); ep != nil {
+		t.Fatal("encoded traversal must not match")
+	}
+}

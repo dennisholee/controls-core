@@ -6,6 +6,7 @@
 package dq
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -21,62 +22,90 @@ type Violation struct {
 	Blocking bool   `json:"blocking"`
 }
 
-// Evaluator runs DQ rules against a request body.
-type Evaluator struct {
-	rules []config.DQRule
+type rule struct {
+	cfg config.DQRule
+	re  *regexp.Regexp
 }
 
-// New builds an evaluator from a validated bundle.
-func New(b *config.Bundle) *Evaluator {
-	return &Evaluator{rules: b.DQ.Rules}
+// Evaluator runs DQ rules against a request body.
+type Evaluator struct {
+	rules []rule
+}
+
+// New compiles DQ rules, rejecting unknown operators/types and invalid
+// patterns at load time rather than turning them into runtime violations.
+func New(b *config.Bundle) (*Evaluator, error) {
+	e := &Evaluator{}
+	for _, r := range b.DQ.Rules {
+		if strings.Contains(r.Field, "[*]") {
+			return nil, fmt.Errorf("dq rule %q: wildcard paths are not supported", r.ID)
+		}
+		compiled := rule{cfg: r}
+		switch r.Op {
+		case "", "pattern", "maxLength", "type", "eq", "neq", "gt", "gte", "lt", "lte":
+		default:
+			return nil, fmt.Errorf("dq rule %q: unknown op %q", r.ID, r.Op)
+		}
+		if r.Op == "pattern" {
+			re, err := regexp.Compile(r.Pattern)
+			if err != nil {
+				return nil, fmt.Errorf("dq rule %q: invalid pattern: %w", r.ID, err)
+			}
+			compiled.re = re
+		}
+		if r.Op == "type" {
+			want, _ := r.Value.(string)
+			if want != "string" && want != "number" {
+				return nil, fmt.Errorf("dq rule %q: type must be string or number", r.ID)
+			}
+		}
+		e.rules = append(e.rules, compiled)
+	}
+	return e, nil
 }
 
 // Check returns all violations for the given resource type and document.
 func (e *Evaluator) Check(resourceType string, doc map[string]any) []Violation {
 	var out []Violation
 	for _, r := range e.rules {
-		if r.ResourceType != "*" && r.ResourceType != resourceType {
+		if r.cfg.ResourceType != "*" && r.cfg.ResourceType != resourceType {
 			continue
 		}
-		value, present := lookup(doc, r.Field)
-		if r.Required && (!present || value == nil || value == "") {
-			out = append(out, Violation{RuleID: r.ID, Field: r.Field, Message: "required field missing", Blocking: r.Blocking})
+		value, present := lookup(doc, r.cfg.Field)
+		if r.cfg.Required && (!present || value == nil || value == "") {
+			out = append(out, Violation{RuleID: r.cfg.ID, Field: r.cfg.Field, Message: "required field missing", Blocking: r.cfg.Blocking})
 			continue
 		}
 		if !present {
 			continue
 		}
 		if msg := check(r, value); msg != "" {
-			out = append(out, Violation{RuleID: r.ID, Field: r.Field, Message: msg, Blocking: r.Blocking})
+			out = append(out, Violation{RuleID: r.cfg.ID, Field: r.cfg.Field, Message: msg, Blocking: r.cfg.Blocking})
 		}
 	}
 	return out
 }
 
-func check(r config.DQRule, value any) string {
-	switch r.Op {
+func check(r rule, value any) string {
+	switch r.cfg.Op {
 	case "":
 		return ""
 	case "pattern":
-		re, err := regexp.Compile(r.Pattern)
-		if err != nil {
-			return "invalid rule pattern"
-		}
-		if !re.MatchString(fmt.Sprint(value)) {
+		if !r.re.MatchString(fmt.Sprint(value)) {
 			return "pattern mismatch"
 		}
 	case "maxLength":
-		if len(fmt.Sprint(value)) > r.MaxLength {
-			return fmt.Sprintf("exceeds max length %d", r.MaxLength)
+		if len(fmt.Sprint(value)) > r.cfg.MaxLength {
+			return fmt.Sprintf("exceeds max length %d", r.cfg.MaxLength)
 		}
 	case "type":
-		want, _ := r.Value.(string)
+		want, _ := r.cfg.Value.(string)
 		if !hasType(value, want) {
 			return "type mismatch, want " + want
 		}
 	case "eq", "neq", "gt", "gte", "lt", "lte":
-		if !compare(value, r.Op, r.Value) {
-			return "value violates " + r.Op
+		if !compare(value, r.cfg.Op, r.cfg.Value) {
+			return "value violates " + r.cfg.Op
 		}
 	}
 	return ""
@@ -89,7 +118,7 @@ func hasType(value any, want string) bool {
 		return ok
 	case "number":
 		switch value.(type) {
-		case float64, float32, int, int64:
+		case float64, float32, int, int64, json.Number:
 			return true
 		}
 		return false
@@ -135,6 +164,9 @@ func toFloat(v any) (float64, bool) {
 		return float64(n), true
 	case int64:
 		return float64(n), true
+	case json.Number:
+		f, err := n.Float64()
+		return f, err == nil
 	}
 	return 0, false
 }

@@ -9,6 +9,7 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -113,7 +114,11 @@ func New(cfg *config.Bundle, pip PIP) *Engine {
 // initialisation failure is retained and surfaced by StartupError; requests
 // fail closed.
 func NewWithOptions(cfg *config.Bundle, pip PIP, opts Options) *Engine {
-	e := &Engine{cfg: cfg, dq: dq.New(cfg), pip: pip}
+	dqv, dqErr := dq.New(cfg)
+	e := &Engine{cfg: cfg, dq: dqv, pip: pip}
+	if dqErr != nil {
+		e.initErr = dqErr
+	}
 	ev, err := policy.NewEvaluatorWithOptions(cfg, opts.Policy)
 	if err != nil {
 		e.initErr = err
@@ -133,9 +138,6 @@ func (e *Engine) SetHooks(h Hooks) { e.hooks = h }
 // ProcessRequest runs entitlement and data-quality checks.
 func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 	start := time.Now()
-	if e.initErr != nil {
-		return Result{Allowed: false, Status: 503, Reason: "policy_init_error"}
-	}
 	var endpoint *config.Endpoint
 	var pipCache string
 	var pipLag int
@@ -164,6 +166,9 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 		})
 	}()
 
+	if e.initErr != nil {
+		return Result{Allowed: false, Status: 503, Reason: "policy_init_error"}
+	}
 	ep, params := e.cfg.EndpointFor(req.Method, req.Path)
 	endpoint = ep
 	if ep == nil {
@@ -175,7 +180,9 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 
 	var body map[string]any
 	if len(req.Body) > 0 {
-		if err := json.Unmarshal(req.Body, &body); err != nil {
+		dec := json.NewDecoder(bytes.NewReader(req.Body))
+		dec.UseNumber()
+		if err := dec.Decode(&body); err != nil {
 			return Result{Allowed: false, Status: 400, Reason: "invalid_json", EndpointID: ep.ID}
 		}
 	}

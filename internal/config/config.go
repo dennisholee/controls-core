@@ -11,6 +11,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -337,6 +338,9 @@ func (b *Bundle) Validate() error {
 // path parameters. Matching is exact segment-wise; "{name}" captures one
 // segment. No wildcard or regex matching is permitted by the contract.
 func (b *Bundle) EndpointFor(method, path string) (*Endpoint, map[string]string) {
+	if i := strings.IndexByte(path, '?'); i >= 0 {
+		path = path[:i]
+	}
 	for i := range b.Registry.Endpoints {
 		ep := &b.Registry.Endpoints[i]
 		if !strings.EqualFold(ep.Method, method) {
@@ -362,7 +366,11 @@ func matchPath(pattern, actual string) (map[string]string, bool) {
 			if a[i] == "" {
 				return nil, false
 			}
-			params[name] = a[i]
+			id, err := url.PathUnescape(a[i])
+			if err != nil || id == ".." || strings.ContainsAny(id, "/\\") || hasControl(id) {
+				return nil, false
+			}
+			params[name] = id
 			continue
 		}
 		if p[i] != a[i] {
@@ -370,6 +378,15 @@ func matchPath(pattern, actual string) (map[string]string, bool) {
 		}
 	}
 	return params, true
+}
+
+func hasControl(s string) bool {
+	for _, r := range s {
+		if r < 0x20 || r == 0x7f {
+			return true
+		}
+	}
+	return false
 }
 
 func splitPath(p string) []string {

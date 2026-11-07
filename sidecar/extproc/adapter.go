@@ -78,7 +78,9 @@ func (a *Adapter) Process(s extprocv3.ExternalProcessor_ProcessServer) error {
 
 // Handle runs the per-request message loop.
 func (a *Adapter) Handle(s stream) error {
-	st := &state{headers: map[string]string{}}
+	// Pin one engine for the whole stream so a reload cannot mix bundles
+	// between the decision and the response-masking phase.
+	st := &state{headers: map[string]string{}, eng: a.engineFn()}
 	for {
 		msg, err := s.Recv()
 		if err != nil {
@@ -110,6 +112,7 @@ type state struct {
 	status   int
 	respBody []byte
 	endpoint *config.Endpoint
+	eng      *engine.Engine
 	decided  bool
 }
 
@@ -187,7 +190,7 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 		if len(st.respBody) > a.max {
 			return a.immediate(typev3.StatusCode_InternalServerError, "response_too_large_to_mask"), true, nil
 		}
-		masked, err := a.engineFn().MaskResponseCtx(ctx, st.endpoint, st.respBody, st.status >= 400)
+		masked, err := st.eng.MaskResponseCtx(ctx, st.endpoint, st.respBody, st.status >= 400)
 		if err != nil {
 			return nil, false, err
 		}
@@ -210,13 +213,13 @@ func (a *Adapter) decide(ctx context.Context, st *state) (*extprocv3.ProcessingR
 		return nil, nil
 	}
 	st.decided = true
-	res := a.engineFn().ProcessRequest(ctx, engine.Request{
+	res := st.eng.ProcessRequest(ctx, engine.Request{
 		Method:  st.method,
 		Path:    st.path,
 		Body:    st.reqBody,
 		Subject: subjectFromHeaders(st.headers),
 	})
-	st.endpoint = a.engineFn().Endpoint(st.method, st.path)
+	st.endpoint = st.eng.Endpoint(st.method, st.path)
 	a.log.Debug("decision",
 		"endpoint", res.EndpointID, "method", st.method, "path", st.path,
 		"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,

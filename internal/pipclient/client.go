@@ -85,12 +85,15 @@ type Client struct {
 	http      *http.Client
 	ttl       time.Duration
 	maxTTL    time.Duration
+	maxCache  int
+	cooldown  time.Duration
 	mu        sync.Mutex
 	cache     map[string]cacheEntry
 	class     map[string]classEntry
 	flights   map[string]*call
 	fails     int
 	openTil   time.Time
+	probing   bool
 	tlsConfig *tls.Config
 }
 
@@ -105,6 +108,12 @@ func WithDefaultTTL(d time.Duration) Option { return func(c *Client) { c.ttl = d
 
 // WithMaxTTL clamps any PIP-advertised attribute or classification TTL.
 func WithMaxTTL(d time.Duration) Option { return func(c *Client) { c.maxTTL = d } }
+
+// WithMaxCache bounds the number of cached attributes (default 100k).
+func WithMaxCache(n int) Option { return func(c *Client) { c.maxCache = n } }
+
+// WithBreakerCooldown sets the open-breaker cooldown (default 5s).
+func WithBreakerCooldown(d time.Duration) Option { return func(c *Client) { c.cooldown = d } }
 
 // WithTLSConfig enables TLS (typically mutual TLS) for PIP requests.
 func WithTLSConfig(cfg *tls.Config) Option { return func(c *Client) { c.tlsConfig = cfg } }
@@ -150,10 +159,12 @@ func New(base string, opts ...Option) *Client {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
-		ttl:     30 * time.Second,
-		cache:   map[string]cacheEntry{},
-		class:   map[string]classEntry{},
-		flights: map[string]*call{},
+		ttl:      30 * time.Second,
+		maxCache: 100000,
+		cooldown: 5 * time.Second,
+		cache:    map[string]cacheEntry{},
+		class:    map[string]classEntry{},
+		flights:  map[string]*call{},
 	}
 	for _, o := range opts {
 		o(c)
@@ -189,11 +200,14 @@ func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map
 	for _, r := range refs {
 		key := cacheKey(r)
 		if !bypassCache {
-			if e, ok := c.cache[key]; ok && e.expires.After(now) {
-				a := e.attr
-				a.Cache = "hit"
-				out[attrKey(r.Type, r.ID)] = a
-				continue
+			if e, ok := c.cache[key]; ok {
+				if e.expires.After(now) {
+					a := e.attr
+					a.Cache = "hit"
+					out[attrKey(r.Type, r.ID)] = a
+					continue
+				}
+				delete(c.cache, key)
 			}
 		}
 		misses = append(misses, r)
@@ -220,10 +234,10 @@ func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map
 	f := &call{}
 	f.wg.Add(1)
 	c.flights[flightKey] = f
-	open := time.Now().Before(c.openTil)
+	allowed := c.allowLocked(time.Now())
 	c.mu.Unlock()
 
-	if open {
+	if !allowed {
 		c.finish(flightKey, f, nil, ErrUnavailable)
 		return nil, ErrUnavailable
 	}
@@ -243,21 +257,61 @@ func (c *Client) resolve(ctx context.Context, refs []Ref, bypassCache bool) (map
 	return out, nil
 }
 
+// allowLocked implements the closed → open → half-open transition. After the
+// cooldown exactly one probe is admitted; concurrent calls keep failing fast.
+func (c *Client) allowLocked(now time.Time) bool {
+	if c.openTil.IsZero() {
+		return true
+	}
+	if now.Before(c.openTil) {
+		return false
+	}
+	if c.probing {
+		return false
+	}
+	c.probing = true
+	return true
+}
+
 func (c *Client) finish(key string, f *call, attrs map[string]Attribute, err error) {
 	c.mu.Lock()
 	delete(c.flights, key)
-	if err != nil {
+	switch {
+	case errors.Is(err, ErrUnavailable):
+		// A rejection while open is not a new failure; counting it would
+		// keep extending the window and prevent recovery.
+	case err != nil:
+		c.probing = false
 		c.fails++
 		if c.fails >= 5 {
-			c.openTil = time.Now().Add(5 * time.Second)
+			c.openTil = time.Now().Add(c.cooldown)
 			c.fails = 0
 		}
-	} else {
+	default:
+		c.probing = false
 		c.fails = 0
+		c.openTil = time.Time{}
 	}
 	c.mu.Unlock()
 	f.attrs, f.err = attrs, err
 	f.wg.Done()
+}
+
+func (c *Client) storeLocked(key string, e cacheEntry, now time.Time) {
+	if c.maxCache > 0 && len(c.cache) >= c.maxCache {
+		for k, old := range c.cache {
+			if old.expires.Before(now) {
+				delete(c.cache, k)
+			}
+		}
+		for k := range c.cache {
+			if len(c.cache) < c.maxCache {
+				break
+			}
+			delete(c.cache, k)
+		}
+	}
+	c.cache[key] = e
 }
 
 func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[string]Attribute, error) {
@@ -299,7 +353,10 @@ func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[
 			if c.maxTTL > 0 && ttl > c.maxTTL {
 				ttl = c.maxTTL
 			}
-			c.cache[cacheKey(r)] = cacheEntry{attr: a, expires: now.Add(ttl)}
+			if !a.Found {
+				continue
+			}
+			c.storeLocked(cacheKey(r), cacheEntry{attr: a, expires: now.Add(ttl)}, now)
 		}
 	}
 	c.mu.Unlock()

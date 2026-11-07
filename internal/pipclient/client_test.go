@@ -75,3 +75,75 @@ func TestClassificationCached(t *testing.T) {
 		t.Fatal("classification should be cached")
 	}
 }
+
+func TestBreakerRecoversAfterCooldown(t *testing.T) {
+	var calls int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&calls, 1)
+		if n <= 5 {
+			http.Error(w, "boom", http.StatusInternalServerError)
+			return
+		}
+		var req BatchRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		results := make([]Attribute, 0, len(req.Requests))
+		for _, ref := range req.Requests {
+			results = append(results, Attribute{Type: ref.Type, ID: ref.ID, Found: true, Attributes: map[string]any{"ownerId": "u-1"}, TTLSeconds: 60})
+		}
+		_ = json.NewEncoder(w).Encode(BatchResponse{Results: results})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, WithBreakerCooldown(20*time.Millisecond))
+	ref := []Ref{{Type: "account", ID: "A1", Fields: []string{"ownerId"}}}
+	for i := 0; i < 5; i++ {
+		if _, err := c.Resolve(context.Background(), ref); err == nil {
+			t.Fatalf("call %d: expected upstream failure", i)
+		}
+	}
+	if _, err := c.Resolve(context.Background(), ref); err != ErrUnavailable {
+		t.Fatalf("expected open breaker, got %v", err)
+	}
+	time.Sleep(30 * time.Millisecond)
+	if _, err := c.Resolve(context.Background(), ref); err != nil {
+		t.Fatalf("probe after cooldown failed: %v", err)
+	}
+}
+
+func TestCacheIsBoundedAndDoesNotCacheMisses(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req BatchRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		results := make([]Attribute, 0, len(req.Requests))
+		for _, ref := range req.Requests {
+			results = append(results, Attribute{
+				Type: ref.Type, ID: ref.ID,
+				Found:      ref.ID != "missing",
+				Attributes: map[string]any{"ownerId": "u-1"},
+				TTLSeconds: 60,
+			})
+		}
+		_ = json.NewEncoder(w).Encode(BatchResponse{Results: results})
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, WithMaxCache(10))
+	refs := make([]Ref, 0, 30)
+	for i := 0; i < 30; i++ {
+		refs = append(refs, Ref{Type: "account", ID: string(rune('A' + i)), Fields: []string{"ownerId"}})
+	}
+	refs = append(refs, Ref{Type: "account", ID: "missing", Fields: []string{"ownerId"}})
+	if _, err := c.Resolve(context.Background(), refs); err != nil {
+		t.Fatal(err)
+	}
+	c.mu.Lock()
+	n := len(c.cache)
+	_, negative := c.cache[cacheKey(Ref{Type: "account", ID: "missing", Fields: []string{"ownerId"}})]
+	c.mu.Unlock()
+	if n > 10 {
+		t.Fatalf("cache unbounded: %d entries", n)
+	}
+	if negative {
+		t.Fatal("not-found result must not be cached")
+	}
+}

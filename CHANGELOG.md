@@ -23,6 +23,21 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
   interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
 
+## [0.18.0] — 2026-11-07
+
+### Fixed
+
+- PIP circuit breaker now half-opens with one probe and no longer extends its
+  window on rejections.
+- Attribute cache is capped (100k) and no longer caches not-found results.
+- Query strings are stripped before route matching; path IDs are decoded and
+  traversal characters rejected; request bodies decode with `json.Number`.
+- Policy-initialisation failures now flow through the decision hook.
+- The engine is pinned for the whole ext_proc stream, so decision and masking
+  cannot use different bundle versions.
+- DQ patterns compile at load; unknown operators/types and wildcard paths fail
+  validation; DQ operator tests added.
+
 ## [0.17.0] — 2026-11-07
 
 ### Security
