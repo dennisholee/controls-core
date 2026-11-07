@@ -43,6 +43,7 @@ make bench         # engine latency/memory benchmarks
 make pip           # :8082, fixtures in pip/fixtures/attributes.json
 make sidecar       # :8081, local HTTP harness
 make extproc       # :50051, Envoy ext_proc gRPC service
+make smoke         # live Envoy 1.40 in Docker (requires Docker)
 ```
 
 Exercise the full pipeline:
@@ -76,7 +77,7 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.2.0` — engine, masking, DQ, PIP contract, ext_proc adapter and OpenAPI
-coverage gate. `freshness` enforcement, classification-driven fail-safe masking
-and a live Envoy integration test remain outstanding. See
+`v0.2.0` — engine, masking, DQ, PIP contract, ext_proc adapter (exercised
+against a live Envoy via `make smoke`) and OpenAPI coverage gate. `freshness`
+enforcement and classification-driven fail-safe masking remain outstanding. See
 [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

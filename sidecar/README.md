@@ -56,6 +56,11 @@ go run ./sidecar/cmd/extproc -listen :50051 \
 - `failure_mode_allow: false` and a 1 MiB body cap by default.
 - Strip `Accept-Encoding` on JSON routes; non-JSON passes through unchanged and
   must be handled at the gateway.
+- Pseudo-headers and the mutated `content-length` are read/written as
+  `raw_value`, per Envoy's wire behaviour.
+
+The adapter is exercised against a live Envoy 1.40 by `make smoke`
+([`hack/envoy-smoke.sh`](../hack/envoy-smoke.sh)).
 
 ## Performance expectations
 

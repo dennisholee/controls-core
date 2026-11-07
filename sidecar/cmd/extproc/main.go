@@ -26,9 +26,14 @@ func main() {
 	cfgDir := flag.String("config", "integration/testdata/config", "controls bundle directory")
 	pipURL := flag.String("pip", "http://127.0.0.1:8082", "PIP base URL")
 	maxBody := flag.Int("max-body-bytes", extproc.DefaultMaxBody, "max buffered request/response body")
+	debug := flag.Bool("debug", false, "enable debug logging")
 	flag.Parse()
 
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	level := slog.LevelInfo
+	if *debug {
+		level = slog.LevelDebug
+	}
+	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	bundle, err := config.LoadDir(*cfgDir)
 	if err != nil {
 		log.Error("invalid controls bundle", "err", err)

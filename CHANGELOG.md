@@ -15,12 +15,25 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - Registry ↔ OpenAPI coverage gate (`internal/openapidiff`,
   `tools/openapi-diff`) with tests.
 - Benchmarks for decision, PIP-warm-read and 4 KB masking paths; `make bench`.
+- Live Envoy smoke test (`make smoke`) using Envoy 1.40 in Docker: allow+mask,
+  deny, self-description mismatch, authorized write and unregistered route.
+- `-debug` flag on the ext_proc server for request-header visibility.
 
 ### Changed
 
 - Go directive raised to 1.26; added Envoy proto and gRPC dependencies.
 - `make fmt`/`fmt-check` now operate on tracked Go files only (the previous
   recursive `gofmt` descended into the module cache).
+
+### Fixed
+
+- Read pseudo-headers from `raw_value`; Envoy sends `:method`, `:path` and
+  `:status` only as raw bytes.
+- Evaluate bodyless requests on the request-headers `end_of_stream` message;
+  Envoy does not send an empty request body for GET.
+- Update `content-length` (as `raw_value`) when mutating a response body and
+  enable `allow_content_length_header`, preventing Envoy's
+  `mismatch_between_content_length_and_the_length_of_the_mutated_body` 500.
 
 ## [0.1.0] — 2026-11-06
 

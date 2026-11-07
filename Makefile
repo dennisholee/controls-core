@@ -4,7 +4,7 @@ GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
 export GOPATH
 
-.PHONY: test vet build bench fmt fmt-check all pip sidecar extproc openapi-diff openapi-gate clean
+.PHONY: test vet build bench fmt fmt-check all pip sidecar extproc openapi-diff openapi-gate smoke clean
 
 all: fmt-check vet test
 
@@ -44,6 +44,9 @@ openapi-diff:
 
 openapi-gate:
 	$(GO) run ./tools/openapi-diff -openapi integration/testdata/openapi.json -registry integration/testdata/config/registry.json
+
+smoke:
+	./hack/envoy-smoke.sh
 
 clean:
 	rm -rf bin .gocache .gopath

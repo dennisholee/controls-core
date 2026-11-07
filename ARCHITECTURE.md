@@ -123,6 +123,11 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 - Response phase: collect the body; call `engine.MaskResponse`; return a body
   mutation when the output changed, otherwise continue.
 - `failure_mode_allow: false` in Envoy, so an adapter outage fails closed.
+- Pseudo-headers (`:method`, `:path`, `:status`) arrive as `raw_value`; the
+  adapter reads both forms.
+- A masked body changes length, so the adapter sets `content-length` (as
+  `raw_value`) in the same response. Envoy requires
+  `allow_content_length_header: true` (Envoy 1.40+).
 - Bodies are capped at `-max-body-bytes` (default 1 MiB). Oversize request bodies
   get 413; an oversize response that requires masking gets 500 rather than
   leaking unmasked data.
@@ -135,7 +140,7 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 
 | Gap | Impact | Plan |
 |---|---|---|
-| No live Envoy integration test | Adapter is tested against a fake stream, not a running Envoy | Add an Envoy + ext_proc smoke test in CI |
+| Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
 | `freshness` validated but not enforced | Stale reads possible on `fresh` journeys | PIP lag metrics + enforcement |
 | Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |

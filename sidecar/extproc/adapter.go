@@ -16,6 +16,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -101,18 +102,30 @@ type state struct {
 	status   int
 	respBody []byte
 	endpoint *config.Endpoint
+	decided  bool
 }
 
 func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.ProcessingRequest) (*extprocv3.ProcessingResponse, bool, error) {
 	switch req := msg.GetRequest().(type) {
 	case *extprocv3.ProcessingRequest_RequestHeaders:
+		if a.log.Enabled(context.Background(), slog.LevelDebug) {
+			keys := make([]string, 0, len(req.RequestHeaders.GetHeaders().GetHeaders()))
+			for _, h := range req.RequestHeaders.GetHeaders().GetHeaders() {
+				keys = append(keys, h.GetKey())
+			}
+			a.log.Debug("request headers", "keys", keys, "attributes", len(req.RequestHeaders.GetAttributes()))
+		}
 		for _, h := range req.RequestHeaders.GetHeaders().GetHeaders() {
-			key := strings.ToLower(h.GetKey())
-			value := h.GetValue()
-			st.headers[key] = value
+			st.headers[strings.ToLower(h.GetKey())] = headerValue(h)
 		}
 		st.method = st.headers[":method"]
 		st.path = st.headers[":path"]
+		if req.RequestHeaders.GetEndOfStream() {
+			immediate, err := a.decide(ctx, st)
+			if err != nil || immediate != nil {
+				return immediate, immediate != nil, err
+			}
+		}
 		return continueRequestHeaders(), false, nil
 
 	case *extprocv3.ProcessingRequest_RequestBody:
@@ -123,21 +136,9 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 		if !req.RequestBody.GetEndOfStream() {
 			return continueRequestBody(), false, nil
 		}
-		res := a.engine.ProcessRequest(ctx, engine.Request{
-			Method:  st.method,
-			Path:    st.path,
-			Body:    st.reqBody,
-			Subject: subjectFromHeaders(st.headers),
-		})
-		st.endpoint = a.engine.Endpoint(st.method, st.path)
-		a.log.Info("decision",
-			"endpoint", res.EndpointID, "method", st.method, "path", st.path,
-			"resource", res.ResourceType+"/"+res.ResourceID,
-			"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,
-			"violations", len(res.Violations))
-		if !res.Allowed {
-			code := statusCode(res.Status)
-			return a.immediateWithReason(code, res.Reason), true, nil
+		immediate, err := a.decide(ctx, st)
+		if err != nil || immediate != nil {
+			return immediate, immediate != nil, err
 		}
 		return continueRequestBody(), false, nil
 
@@ -147,7 +148,7 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 	case *extprocv3.ProcessingRequest_ResponseHeaders:
 		for _, h := range req.ResponseHeaders.GetHeaders().GetHeaders() {
 			if strings.EqualFold(h.GetKey(), ":status") {
-				switch strings.TrimSpace(h.GetValue()) {
+				switch strings.TrimSpace(headerValue(h)) {
 				case "200":
 					st.status = 200
 				case "400":
@@ -191,6 +192,41 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 		return continueResponseTrailers(), false, nil
 	}
 	return nil, false, nil
+}
+
+// decide evaluates the request and returns an immediate response on denial.
+// A nil response means "continue"; the caller picks the correct continue type
+// for the message it is answering.
+func (a *Adapter) decide(ctx context.Context, st *state) (*extprocv3.ProcessingResponse, error) {
+	if st.decided {
+		return nil, nil
+	}
+	st.decided = true
+	res := a.engine.ProcessRequest(ctx, engine.Request{
+		Method:  st.method,
+		Path:    st.path,
+		Body:    st.reqBody,
+		Subject: subjectFromHeaders(st.headers),
+	})
+	st.endpoint = a.engine.Endpoint(st.method, st.path)
+	a.log.Info("decision",
+		"endpoint", res.EndpointID, "method", st.method, "path", st.path,
+		"resource", res.ResourceType+"/"+res.ResourceID,
+		"allowed", res.Allowed, "status", res.Status, "reason", res.Reason,
+		"violations", len(res.Violations))
+	if res.Allowed {
+		return nil, nil
+	}
+	return a.immediateWithReason(statusCode(res.Status), res.Reason), nil
+}
+
+// headerValue reads the string form, falling back to raw bytes. Envoy sends
+// pseudo-headers (:method, :path, :status) as raw_value only.
+func headerValue(h *corev3.HeaderValue) string {
+	if v := h.GetValue(); v != "" {
+		return v
+	}
+	return string(h.GetRawValue())
 }
 
 func subjectFromHeaders(headers map[string]string) engine.Subject {
@@ -279,8 +315,18 @@ func continueResponseTrailers() *extprocv3.ProcessingResponse {
 }
 
 func mutateResponseBody(body []byte) *extprocv3.ProcessingResponse {
+	// Envoy rejects a mutated body whose length differs from Content-Length
+	// unless the header is updated in the same response.
 	return &extprocv3.ProcessingResponse{Response: &extprocv3.ProcessingResponse_ResponseBody{
 		ResponseBody: &extprocv3.BodyResponse{Response: &extprocv3.CommonResponse{
+			HeaderMutation: &extprocv3.HeaderMutation{
+				SetHeaders: []*corev3.HeaderValueOption{{
+					Header: &corev3.HeaderValue{
+						Key:      "content-length",
+						RawValue: []byte(strconv.Itoa(len(body))),
+					},
+				}},
+			},
 			BodyMutation: &extprocv3.BodyMutation{
 				Mutation: &extprocv3.BodyMutation_Body{Body: body},
 			},

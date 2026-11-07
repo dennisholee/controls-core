@@ -16,6 +16,7 @@ manual review step.
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
 | Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
+| Smoke | Real Envoy → ext_proc → engine → app | `hack/envoy-smoke.sh`, `make smoke` |
 
 ## 2. Running
 
@@ -75,6 +76,8 @@ Every endpoint in the registry needs a fixture:
 - ext_proc adapter tests pass (deny, PIP failure, masking, self-description).
 - Performance: p99 control overhead ≤ 3 ms at 1,200 RPS/pod; benchmark trend
   must not regress without justification.
+- Live Envoy smoke test passes (`make smoke`, Docker required): allow+mask,
+  deny, self-description mismatch, authorized write, unregistered route.
 
 ## 5. Adding an endpoint
 
@@ -95,7 +98,15 @@ Every endpoint in the registry needs a fixture:
 - Corrupt bundle on reload: last-known-good retained, alert raised.
 - Mask policy removed while endpoint references it: startup validation fails.
 
-## 7. Performance test plan
+## 7. Live Envoy smoke test
+
+`make smoke` builds the binaries, starts the fixture PIP/app/`extproc` on the
+host, and runs Envoy `v1.40.0` in Docker with the real `ext_proc` filter chain.
+It asserts five behaviours end to end and is the only test that exercises
+Envoy's own buffering, `raw_value` pseudo-headers and content-length rules.
+Requires Docker; CI runs it after the unit/integration job.
+
+## 8. Performance test plan
 
 `make bench` runs three engine benchmarks on representative 4 KB payloads:
 decision without PIP, read path with warm PIP cache, and response masking.

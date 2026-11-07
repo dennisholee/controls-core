@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"strconv"
 	"testing"
 
 	corev3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
@@ -127,6 +128,10 @@ func TestAllowedRequestMasksResponse(t *testing.T) {
 	if doc["ssn"] != "[REDACTED]" || doc["accountNumber"] != "******7890" {
 		t.Fatalf("unexpected mask: %v", doc)
 	}
+	headers := last.GetResponseBody().GetResponse().GetHeaderMutation().GetSetHeaders()
+	if len(headers) != 1 || string(headers[0].GetHeader().GetRawValue()) != strconv.Itoa(len(body)) {
+		t.Fatalf("content-length not updated: %+v", headers)
+	}
 }
 
 func TestDeniedRequestReturnsImmediate403(t *testing.T) {
@@ -177,5 +182,41 @@ func TestSelfDescribingMismatchReturns403(t *testing.T) {
 	im := s.sent[len(s.sent)-1].GetImmediateResponse()
 	if im == nil {
 		t.Fatalf("expected immediate response")
+	}
+}
+
+// Envoy sends pseudo-headers as raw_value only. A bodyless request (GET) also
+// sets end_of_stream on the headers message, so the decision must happen there.
+func TestBodylessRequestWithRawPseudoHeaders(t *testing.T) {
+	a := newAdapter(t, fakePIP{})
+	hs := []*corev3.HeaderValue{
+		{Key: ":method", RawValue: []byte("GET")},
+		{Key: ":path", RawValue: []byte("/accounts/A123")},
+		{Key: "x-subject", Value: "u-1"},
+		{Key: "x-claim-region", Value: "US"},
+	}
+	s := &fakeStream{reqs: []*extprocv3.ProcessingRequest{
+		{Request: &extprocv3.ProcessingRequest_RequestHeaders{
+			RequestHeaders: &extprocv3.HttpHeaders{
+				Headers:     &corev3.HeaderMap{Headers: hs},
+				EndOfStream: true,
+			},
+		}},
+		respHeadersReq("200"),
+		respBodyReq(`{"ssn":"111-22-3333","accountNumber":"1234567890"}`),
+	}}
+	if err := a.Handle(s); err != nil {
+		t.Fatal(err)
+	}
+	if len(s.sent) != 3 {
+		t.Fatalf("responses = %d", len(s.sent))
+	}
+	body := s.sent[2].GetResponseBody().GetResponse().GetBodyMutation().GetBody()
+	var doc map[string]any
+	if err := json.Unmarshal(body, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["ssn"] != "[REDACTED]" {
+		t.Fatalf("not masked: %v", doc)
 	}
 }

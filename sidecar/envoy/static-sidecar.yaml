@@ -46,6 +46,7 @@ static_resources:
                         response_trailer_mode: SKIP
                       message_timeout: 1s
                       failure_mode_allow: false
+                      allow_content_length_header: true
                   - name: envoy.filters.http.router
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
