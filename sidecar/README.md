@@ -47,6 +47,12 @@ comes from the gateway trust chain. The default listener is
 See [`../docs/TEST-API.md`](../docs/TEST-API.md) and the
 [`../contracts/test-api.yaml`](../contracts/test-api.yaml) contract.
 
+## Adoption guide
+
+For the end-to-end service-team checklist — contract, controls, deployment,
+identity, testing, operations and anti-patterns — see
+[`../docs/SIDECAR-GUIDE.md`](../docs/SIDECAR-GUIDE.md).
+
 ## Configuration injection
 
 The pod mounts the rendered bundle (registry, rules, mask policies, DQ) from the

@@ -103,6 +103,7 @@ contract, examples and limitations.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — components, flows, failure matrix, latency budget
 - [SECURITY.md](SECURITY.md) — threat model and controls
 - [TESTING.md](TESTING.md) — test strategy, fixture format, gates
+- [docs/SIDECAR-GUIDE.md](docs/SIDECAR-GUIDE.md) — service-team adoption guide
 - [docs/TEST-API.md](docs/TEST-API.md) — exercise the solution through the HTTP test API
 - [docs/BDD.md](docs/BDD.md) — acceptance criteria, BDD model, adoption plan
 - [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
