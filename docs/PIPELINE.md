@@ -1,0 +1,139 @@
+# Pipeline contract (Jenkins)
+
+The pipeline is **centrally managed**: Jenkins owns orchestration, credentials,
+signing, artifact storage, promotion and deployment. Core engineering owns the
+two pipeline-invocable tools and the formats they produce. The delivery team
+owns the inputs (`policies/`, `registry/`, `dq/`, `mask-policies/`, overlays).
+
+Jenkins must not re-implement merging or validation. It calls
+`bundle` and `conformance` from a pinned tools image.
+
+## Tools image
+
+Built from [`../deploy/Dockerfile.tools`](../deploy/Dockerfile.tools) and
+published to the internal registry. Pin by digest in Jenkins:
+
+```groovy
+agent {
+  docker {
+    image 'registry.example.com/controls-tools@sha256:<digest>'
+    args '-u root'
+  }
+}
+```
+
+Contains: `bundle`, `conformance`, `openapi-diff`.
+
+## Inputs
+
+| Input | Location | Owner |
+|---|---|---|
+| Policies, mask policies, registry, DQ rules | `policies/`, `mask-policies/`, `registry/`, `dq/` | Delivery |
+| Environment overlay | `env/<env>/overrides.json` | Delivery |
+| Service overlay (optional) | `services/<service>/overrides.json` | Delivery |
+| Service OpenAPI (optional gate input) | `services/<service>/openapi.json` | Service team |
+| Fixtures (conformance) | `tests/fixtures/*.json` | Delivery |
+
+Endpoint registry entries carry `service`, which is what makes per-service
+bundles possible.
+
+## Overlay schema
+
+Only these keys are applied; anything else is ignored by the renderer and
+should not be used.
+
+```json
+{
+  "environment": "prod",
+  "bundle": {
+    "defaultUnregistered": "deny",
+    "disableRules": ["rule.id"],
+    "disableDQRules": ["dq.rule.id"],
+    "disableEndpoints": ["endpoint-id"],
+    "maskPolicies": {
+      "journey.account.read": { "default": "full", "fields": {} }
+    }
+  }
+}
+```
+
+Unknown disable ids are errors — typo protection. Mask policy overrides must
+name an existing policy and are validated again by the engine's bundle loader
+(including locked fields).
+
+## Stages
+
+```groovy
+stage('Render') {
+  sh "bundle -src . -env ${params.ENV} -service ${params.SERVICE} -out dist/${params.SERVICE}"
+}
+stage('Conformance') {
+  sh "conformance -bundle dist/${params.SERVICE} -fixtures tests/fixtures -service ${params.SERVICE} -v"
+}
+stage('OpenAPI gate') {
+  when { expression { fileExists("services/${params.SERVICE}/openapi.json") } }
+  sh "openapi-diff -openapi services/${params.SERVICE}/openapi.json " +
+     "-registry dist/${params.SERVICE}/registry.json"
+}
+stage('Archive') {
+  archiveArtifacts artifacts: "dist/${params.SERVICE}/**", fingerprint: true
+}
+```
+
+Reference: [`../ci/Jenkinsfile`](../ci/Jenkinsfile).
+
+## Outputs
+
+```
+dist/<service>/
+  rules.json
+  mask-policies.json
+  registry.json
+  dq.json
+  manifest.json        # bundleDigest, bundleVersion, schemaVersion, counts, sources
+```
+
+`manifest.json` is the handoff to sign, store and deploy. The sidecar logs
+`bundleVersion`/digest on every decision, so an incident can be tied to an exact
+bundle.
+
+## Exit codes
+
+| Tool | Code | Meaning |
+|---|---|---|
+| `bundle` | 0 | rendered and validated |
+| `bundle` | 1 | invalid source, unknown overlay key/id, validation failure |
+| `bundle` | 2 | usage error |
+| `conformance` | 0 | all fixtures passed |
+| `conformance` | 1 | a fixture failed or the bundle could not be loaded |
+| `openapi-diff` | 0 / 1 | in sync / drift |
+
+Jenkins should fail the build on any non-zero exit and keep the renderer and
+conformance output as build artifacts.
+
+## Signing, publishing, promotion
+
+Owned by Jenkins, not by these tools:
+
+1. Render + conformance pass on the PR (fast feedback).
+2. Merge to `main` triggers a build for each service/environment.
+3. Sign `manifest.json` and the bundle (cosign), record the digest.
+4. Publish the bundle as an OCI artifact (or the platform's artifact store).
+5. Deploy by pinning the bundle digest in the service's deployment.
+6. Rollback redeploys the previous digest — no application rebuild.
+
+## Versioning
+
+- Pin the tools image by digest; do not use `latest`.
+- The renderer records `schemaVersion` (contract major/minor) in the manifest.
+- The sidecar refuses incompatible contract majors (see
+  [`../docs/COMPATIBILITY.md`](../docs/COMPATIBILITY.md)).
+- Upgrading the tools image and the sidecar is a normal two-step change:
+  publish contracts → deploy sidecar → render new bundles.
+
+## What Jenkins must not do
+
+- Merge global/environment/service configuration itself.
+- Skip conformance because "the rules are simple".
+- Relax locked mask fields or run `defaultUnregistered: allow` in production.
+- Build rules into the application image; the bundle is an independent artifact.

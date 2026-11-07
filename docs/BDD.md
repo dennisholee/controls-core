@@ -1,6 +1,6 @@
 # BDD and acceptance criteria
 
-Status: adopted for the reference implementation (`v0.2.0`). Owner: core
+Status: adopted for the reference implementation (`v0.3.0`). Owner: core
 engineering for the harness, delivery for the journeys.
 
 ## 1. Why BDD here
@@ -152,7 +152,7 @@ Charter: [`docs/agents/conformance-steward.md`](agents/conformance-steward.md).
 
 | Phase | Scope | Exit signal |
 |---|---|---|
-| 1 (done) | Feature files for the two reference journeys, engine + Envoy backends, CI gate | `make smoke` runs features; CI fails on a missing scenario |
+| 1 (done) | Feature files for the two reference journeys, engine + Envoy backends, CI gate | `make acceptance` runs in CI; `make smoke` runs the same `@e2e` scenarios through Envoy |
 | 2 | Make `Given the delivery fixture "<name>"` load `controls-rules/tests/fixtures` directly; run the suite against the **rendered** bundle, not `integration/testdata/config` | delivery pipeline fails on a rule without a scenario |
 | 3 | Per-service feature packs generated from the registry; mutation check that each scenario fails when its rule is removed | coverage report posted on every rules PR |
 

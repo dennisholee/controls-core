@@ -3,6 +3,22 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.3.0] — 2026-11-07
+
+### Added
+
+- Deterministic bundle renderer (`internal/bundle`, `tools/bundle`): merges
+  policies, mask policies, registry and DQ rules; applies environment/service
+  overlays with typo protection; validates through `config.LoadDir`; emits a
+  `manifest.json` with a SHA-256 digest and counts.
+- Conformance runner (`internal/conformance`, `tools/conformance`): executes
+  fixture files against a rendered bundle, per service, asserting decisions,
+  reasons and masked fields.
+- `service` field on registry endpoints and per-service bundle filtering.
+- Jenkins integration contract ([docs/PIPELINE.md](docs/PIPELINE.md)), reference
+  [Jenkinsfile](ci/Jenkinsfile) and tools image
+  ([deploy/Dockerfile.tools](deploy/Dockerfile.tools)).
+
 ## [0.2.0] — 2026-11-07
 
 ### Added

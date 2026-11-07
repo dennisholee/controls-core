@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.2.0`.
+Status: reference implementation `v0.3.0`.
 
 ## 1. Context and constraints
 
@@ -40,7 +40,10 @@ Status: reference implementation `v0.2.0`.
 | PIP server | `pip/server` | Batch/classification API over a read-only Repository |
 | ext_proc adapter | `sidecar/extproc` | Envoy transport: header extraction, buffering, immediate responses, body mutation |
 | Harness | `sidecar/cmd/sidecar` | HTTP harness used locally and in integration tests |
+| Bundle renderer | `internal/bundle`, `tools/bundle` | Merge sources/overlays into a validated, digest-bearing bundle |
+| Conformance | `internal/conformance`, `tools/conformance` | Execute delivery fixtures against a rendered bundle |
 | OpenAPI gate | `internal/openapidiff`, `tools/openapi-diff` | Registry ↔ OpenAPI coverage check |
+| Pipeline integration | `ci/Jenkinsfile`, `docs/PIPELINE.md` | Contract for the centrally managed Jenkins job |
 | Benchmark | `integration/bench_test.go` | Decision/mask overhead regression signal |
 
 ## 3. Request flow
@@ -146,5 +149,5 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 | PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
 | Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
-| OpenAPI gate not wired into the delivery pipeline | Tool exists; an unconfigured route can still ship | Add `tools/openapi-diff` to the rules pipeline |
+| Jenkins job not yet created | Reference Jenkinsfile and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
 | Decision log emitted to stdout only | No audit sink yet | OTel → collector |

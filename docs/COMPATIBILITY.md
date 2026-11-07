@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.3.x | 1.0.x | 1.0.x | 1.0.x | bundle renderer, conformance, freshness |
 | 0.2.x | 1.0.x | 1.0.x | 1.0.x | ext_proc adapter, OpenAPI gate |
 | 0.1.x | 1.0.x | 1.0.x | 1.0.x | HTTP harness only |
 

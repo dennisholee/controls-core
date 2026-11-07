@@ -30,7 +30,11 @@ internal/           config, policy, mask, dq, pipclient, engine, openapidiff
 contracts/          normative schemas, specs and PIP OpenAPI
 features/           BDD acceptance criteria, one file per journey
 integration/        end-to-end tests, BDD runner and benchmarks
+tools/bundle/       deterministic bundle renderer (Jenkins entry point)
+tools/conformance/  executes fixtures against a rendered bundle
 tools/openapi-diff/ registry ↔ OpenAPI coverage gate
+ci/Jenkinsfile      reference pipeline integration
+deploy/             tools image for the central pipeline
 docs/adr/           architecture decisions
 ```
 
@@ -46,6 +50,14 @@ make pip           # :8082, fixtures in pip/fixtures/attributes.json
 make sidecar       # :8081, local HTTP harness
 make extproc       # :50051, Envoy ext_proc gRPC service
 make smoke         # live Envoy 1.40 in Docker (requires Docker)
+```
+
+Render and check a delivery bundle:
+
+```bash
+make build
+./bin/bundle -src ../controls-rules -env prod -service accounts -out dist/accounts
+./bin/conformance -bundle dist/accounts -fixtures ../controls-rules/tests/fixtures -service accounts -v
 ```
 
 Exercise the full pipeline:
@@ -75,13 +87,15 @@ sidecar must strip any client-supplied values.
 - [docs/agents/conformance-steward.md](docs/agents/conformance-steward.md) — the acceptance owner role
 - [RUNBOOK.md](RUNBOOK.md) — alerts and incident procedures
 - [docs/GOVERNANCE.md](docs/GOVERNANCE.md) — ownership, review, break-glass
+- [docs/PIPELINE.md](docs/PIPELINE.md) — Jenkins contract: inputs, stages, outputs
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) — version matrix
 - [contracts/](contracts/) — normative registry, masking, PIP API
 - [docs/adr/](docs/adr/) — why the design is what it is
 
 ## Status
 
-`v0.2.0` — engine, masking, DQ, PIP contract with replica-lag freshness
-enforcement, ext_proc adapter (exercised against a live Envoy via `make smoke`)
-and OpenAPI coverage gate. Classification-driven fail-safe masking remains
-outstanding. See [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).
+`v0.3.0` — engine, masking, DQ, replica-lag freshness, ext_proc adapter
+(exercised against a live Envoy via `make smoke`), plus the pipeline entry
+points: deterministic `bundle` rendering, fixture conformance and the OpenAPI
+gate. Classification-driven fail-safe masking remains outstanding. See
+[ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

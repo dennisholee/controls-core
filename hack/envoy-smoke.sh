@@ -145,6 +145,6 @@ code=$(status_and_body "$TMP/unreg" -H 'x-subject: u-1' \
 #    masking. Engine-only scenarios are skipped by the HTTP backend.
 echo "running BDD acceptance criteria against envoy"
 (cd "$ROOT" && CONTROLS_ACCEPTANCE_URL="http://127.0.0.1:$ENVOY_PORT" \
-  go test ./integration -run TestAcceptance -count=1) || fail "BDD acceptance criteria failed"
+  go test ./integration -run TestAcceptance -count=1 -v) || fail "BDD acceptance criteria failed"
 
 echo "SMOKE OK: allow+mask, deny, self-description mismatch, write, unregistered, BDD"

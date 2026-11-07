@@ -1,4 +1,6 @@
 GO ?= go
+ENV ?= prod
+SERVICE ?= accounts
 GOCACHE ?= $(CURDIR)/.gocache
 GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
@@ -19,6 +21,8 @@ build:
 	$(GO) build -o bin/sidecar ./sidecar/cmd/sidecar
 	$(GO) build -o bin/extproc ./sidecar/cmd/extproc
 	$(GO) build -o bin/openapi-diff ./tools/openapi-diff
+	$(GO) build -o bin/bundle ./tools/bundle
+	$(GO) build -o bin/conformance ./tools/conformance
 
 bench:
 	$(GO) test -run '^$$' -bench . -benchmem ./integration
@@ -53,6 +57,11 @@ acceptance:
 
 smoke:
 	./hack/envoy-smoke.sh
+
+# Render the sibling delivery repo for local inspection (not part of CI).
+render-rules:
+	$(GO) run ./tools/bundle -src ../controls-rules -env $(ENV) -service $(SERVICE) -out dist/$(SERVICE)
+	$(GO) run ./tools/conformance -bundle dist/$(SERVICE) -fixtures ../controls-rules/tests/fixtures -service $(SERVICE) -v
 
 clean:
 	rm -rf bin .gocache .gopath

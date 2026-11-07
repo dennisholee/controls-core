@@ -33,6 +33,10 @@
           "pattern": "^[a-z0-9][a-z0-9-]*$",
           "description": "Stable identifier used in decision logs and metrics."
         },
+        "service": {
+          "type": "string",
+          "description": "Owning service. Used by the bundle renderer to produce per-service bundles."
+        },
         "method": { "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] },
         "path": {
           "type": "string",

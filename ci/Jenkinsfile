@@ -1,0 +1,79 @@
+// Reference Jenkinsfile for the centrally managed pipeline.
+//
+// This file documents the integration contract; the central team owns the real
+// job. The tools image is built from controls-core/deploy/Dockerfile.tools and
+// must be pinned by digest.
+pipeline {
+  agent {
+    docker {
+      image 'registry.example.com/controls-tools@sha256:REPLACE_WITH_DIGEST'
+      args '-u root'
+    }
+  }
+
+  parameters {
+    choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Environment overlay')
+    string(name: 'SERVICE', defaultValue: 'accounts', description: 'Service to render')
+  }
+
+  options {
+    timeout(time: 20, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+  }
+
+  stages {
+    stage('Render') {
+      steps {
+        sh 'mkdir -p dist'
+        sh "bundle -src . -env ${params.ENV} -service ${params.SERVICE} -out dist/${params.SERVICE}"
+      }
+    }
+
+    stage('Conformance') {
+      steps {
+        sh "conformance -bundle dist/${params.SERVICE} -fixtures tests/fixtures -service ${params.SERVICE} -v"
+      }
+    }
+
+    stage('OpenAPI gate') {
+      when {
+        expression { fileExists("services/${params.SERVICE}/openapi.json") }
+      }
+      steps {
+        sh "openapi-diff -openapi services/${params.SERVICE}/openapi.json -registry dist/${params.SERVICE}/registry.json"
+      }
+    }
+
+    stage('Archive') {
+      steps {
+        archiveArtifacts artifacts: "dist/${params.SERVICE}/**", fingerprint: true
+        sh "cat dist/${params.SERVICE}/manifest.json"
+      }
+    }
+
+    stage('Sign and publish') {
+      // Jenkins-owned. Replace with the platform's signing/publishing steps.
+      steps {
+        echo "cosign sign-blob dist/${params.SERVICE}/manifest.json"
+        echo "publish dist/${params.SERVICE} to the artifact store"
+      }
+    }
+
+    stage('Deploy') {
+      when { expression { params.ENV == 'prod' } }
+      steps {
+        input message: "Deploy ${params.SERVICE} bundle ${params.ENV}?", ok: 'Deploy'
+        echo "pin manifest digest in the ${params.SERVICE} deployment"
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'dist/**', allowEmptyArchive: true
+    }
+    failure {
+      echo 'Bundle build failed — do not promote.'
+    }
+  }
+}

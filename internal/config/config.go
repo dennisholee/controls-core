@@ -28,6 +28,7 @@ type Registry struct {
 // Endpoint is one configured route.
 type Endpoint struct {
 	ID           string   `json:"id"`
+	Service      string   `json:"service,omitempty"`
 	Method       string   `json:"method"`
 	Path         string   `json:"path"`
 	ResourceType string   `json:"resourceType"`

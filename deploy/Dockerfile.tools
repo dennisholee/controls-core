@@ -1,0 +1,20 @@
+# Tools image for the centrally managed pipeline.
+#
+# Build:
+#   docker build -f deploy/Dockerfile.tools -t controls-tools .
+# Publish by digest and pin that digest in the Jenkinsfile.
+
+FROM golang:1.26 AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/bundle ./tools/bundle \
+ && CGO_ENABLED=0 go build -o /out/conformance ./tools/conformance \
+ && CGO_ENABLED=0 go build -o /out/openapi-diff ./tools/openapi-diff
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates
+COPY --from=build /out/ /usr/local/bin/
+WORKDIR /work
+ENTRYPOINT ["/usr/local/bin/bundle"]

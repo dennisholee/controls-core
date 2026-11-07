@@ -18,6 +18,9 @@ incidents.
   mask policies are delivery-owned and hot-reloadable.
 - Unknown keys are rejected; `null` means inherit, `[]` means clear.
 
+Implemented by `internal/bundle` + `tools/bundle`; the Jenkins contract is in
+[`../PIPELINE.md`](../PIPELINE.md).
+
 ## Consequences
 
 - "What will prod do?" is answered by inspecting an artifact, not by merging

@@ -14,6 +14,8 @@ manual review step.
 | Contract | PIP API shape, schema compatibility | `contracts/`, PIP handler tests |
 | Transport | ext_proc message handling, immediate responses, body mutation | `sidecar/extproc` |
 | Coverage | Registry ↔ OpenAPI parity | `internal/openapidiff`, `tools/openapi-diff` |
+| Bundle | Deterministic render, overlays, digest | `internal/bundle`, `tools/bundle` |
+| Conformance | Rendered bundle satisfies delivery fixtures | `internal/conformance`, `tools/conformance` |
 | Configuration | Rendered bundle for each service is valid and behaves | delivery pipeline |
 | Performance | p99 overhead and CPU per 1k RPS | `bench/` (to be added) |
 | Chaos | PIP down, invalid bundle, stale cache | integration + staging |
@@ -73,7 +75,8 @@ Every endpoint in the registry needs a fixture:
 - `go test ./...`, `go vet`, `gofmt`.
 - `make acceptance`: every scenario in `features/` passes against the engine.
 - `make smoke` runs the same `@e2e` scenarios through Envoy (see §9).
-- JSON Schema validation of the rendered bundle.
+- `bundle -check` (or a full render) validates the merged source.
+- `conformance` passes every fixture for the service.
 - Registry ↔ OpenAPI diff: no undocumented operation, no orphan entry.
 - Locked fields not relaxed.
 - Every endpoint has fixture cases 1–3 at minimum.
@@ -104,6 +107,17 @@ Every endpoint in the registry needs a fixture:
 - Corrupt bundle at boot: pod not ready.
 - Corrupt bundle on reload: last-known-good retained, alert raised.
 - Mask policy removed while endpoint references it: startup validation fails.
+
+## 6b. Bundle and conformance
+
+```bash
+bundle -src . -env prod -service payments -out dist/payments
+conformance -bundle dist/payments -fixtures tests/fixtures -service payments -v
+```
+
+The renderer is deterministic: the same sources produce the same digest.
+`manifest.json` carries the digest and counts; Jenkins archives it and the
+sidecar logs it per decision. Details: [docs/PIPELINE.md](docs/PIPELINE.md).
 
 ## 7. Live Envoy smoke test
 
