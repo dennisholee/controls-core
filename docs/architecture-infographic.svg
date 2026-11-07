@@ -179,30 +179,38 @@
 <text x="1070" y="1154" class="mono" text-anchor="start" >mask-policies.json     field modes</text>
 <text x="1070" y="1178" class="mono" text-anchor="start" >dq.json                request checks</text>
 <text x="1070" y="1202" class="mono" text-anchor="start" >manifest.json + manifest.sig</text>
+<text x="1070" y="1220" class="small" text-anchor="start" >OPA Rego: external, not in bundle</text>
 <text x="1070" y="1238" class="small" text-anchor="start" >Ed25519 signature · digest recomputed by sidecar</text>
 <rect x="1052" y="1262" width="466" height="36" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5" />
 <text x="1285" y="1286" class="badge" text-anchor="middle" style="fill:#5b21b6">immutable · versioned · pinned by digest</text>
 <path d="M488 1242 H540 V1253 H562" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
-<text x="498" y="1232" class="small" text-anchor="start" >merge</text>
+<rect x="492" y="1214" width="64" height="22" rx="11" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.2"/>
+<text x="524" y="1230" class="small" text-anchor="middle" style="font-weight:700">merge</text>
 <path d="M968 1253 H1010 V1165 H1052" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
-<text x="980" y="1184" class="small" text-anchor="start" >sign</text>
+<rect x="982" y="1166" width="52" height="22" rx="11" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.2"/>
+<text x="1008" y="1182" class="small" text-anchor="middle" style="font-weight:700">sign</text>
+<path d="M765 1282 V1335" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M1285 1335 V1300" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#arrow)"/>
 <rect x="60" y="1335" width="1480" height="72" rx="16" fill="#0f172a" stroke="#0f172a" stroke-width="1.5" />
 <text x="84" y="1362" class="card" text-anchor="start" style="fill:#ffffff">Jenkins pipeline</text>
 <text x="84" y="1386" class="body" text-anchor="start" style="fill:#cbd5e1">render → openapi-diff → controls-check → conformance → sign → publish bundle@digest</text>
 <text x="60" y="1442" class="card" text-anchor="start" >Runtime configuration</text>
-<text x="60" y="1508" class="small" text-anchor="start" >* required in production · OPA_URL optional · PIP TLS optional</text>
-<rect x="60" y="1458" width="78.4" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="74" y="1480" class="chip" text-anchor="start" >PIP_URL *</text>
-<rect x="150.4" y="1458" width="78.4" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="164.4" y="1480" class="chip" text-anchor="start" >OPA_URL</text>
-<rect x="240.8" y="1458" width="215.20000000000002" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="254.8" y="1480" class="chip" text-anchor="start" >CONTROLS_IDENTITY_HMAC_KEY *</text>
-<rect x="468.0" y="1458" width="164.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="482.0" y="1480" class="chip" text-anchor="start" >CONTROLS_AUDIT_SALT *</text>
-<rect x="644.8" y="1458" width="128.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="658.8" y="1480" class="chip" text-anchor="start" >-bundle-pubkey *</text>
-<rect x="785.5999999999999" y="1458" width="164.8" height="34" rx="17" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
-<text x="799.5999999999999" y="1480" class="chip" text-anchor="start" >PIP_CA / CERT / KEY</text>
+<text x="60" y="1464" class="small" text-anchor="start" style="font-weight:700">Connectivity</text>
+<text x="470" y="1464" class="small" text-anchor="start" style="font-weight:700">Identity &amp; integrity</text>
+<text x="910" y="1464" class="small" text-anchor="start" style="font-weight:700">Audit</text>
+<rect x="60" y="1472" width="100" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="72" y="1492" class="chip" text-anchor="start" >PIP_URL *</text>
+<rect x="170" y="1472" width="90" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="182" y="1492" class="chip" text-anchor="start" >OPA_URL</text>
+<rect x="270" y="1472" width="160" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="282" y="1492" class="chip" text-anchor="start" >PIP_CA/CERT/KEY</text>
+<rect x="470" y="1472" width="250" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="482" y="1492" class="chip" text-anchor="start" >CONTROLS_IDENTITY_HMAC_KEY *</text>
+<rect x="730" y="1472" width="150" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="742" y="1492" class="chip" text-anchor="start" >-bundle-pubkey *</text>
+<rect x="910" y="1472" width="220" height="30" rx="15" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+<text x="922" y="1492" class="chip" text-anchor="start" >CONTROLS_AUDIT_SALT *</text>
+<text x="60" y="1522" class="small" text-anchor="start" >* required in production · OPA_URL / PIP TLS optional · OPA Rego stays external</text>
 <text x="60" y="1540" class="h2" text-anchor="start" >4 · Security, integrity and failure modes</text>
 <text x="60" y="1568" class="body" text-anchor="start" >The default posture is deny; every control has an explicit failure path.</text>
 <rect x="60" y="1600" width="440" height="120" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.4" />
