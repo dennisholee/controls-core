@@ -31,7 +31,7 @@ Contains: `bundle`, `conformance`, `openapi-diff`.
 | Policies, mask policies, registry, DQ rules | `policies/`, `mask-policies/`, `registry/`, `dq/` | Delivery |
 | Environment overlay | `env/<env>/overrides.json` | Delivery |
 | Service overlay (optional) | `services/<service>/overrides.json` | Delivery |
-| Service OpenAPI (optional gate input) | `services/<service>/openapi.json` | Service team |
+| Service OpenAPI (optional gate input) | `services/<service>/openapi.yaml` (JSON also accepted) | Service team |
 | Fixtures (conformance) | `tests/fixtures/*.json` | Delivery |
 
 Endpoint registry entries carry `service`, which is what makes per-service
@@ -71,9 +71,12 @@ stage('Conformance') {
   sh "conformance -bundle dist/${params.SERVICE} -fixtures tests/fixtures -service ${params.SERVICE} -v"
 }
 stage('OpenAPI gate') {
-  when { expression { fileExists("services/${params.SERVICE}/openapi.json") } }
-  sh "openapi-diff -openapi services/${params.SERVICE}/openapi.json " +
-     "-registry dist/${params.SERVICE}/registry.json"
+  when { expression { fileExists("services/${params.SERVICE}/openapi.yaml") || fileExists("services/${params.SERVICE}/openapi.json") } }
+  script {
+    def spec = fileExists("services/${params.SERVICE}/openapi.yaml") ?
+      "services/${params.SERVICE}/openapi.yaml" : "services/${params.SERVICE}/openapi.json"
+    sh "openapi-diff -openapi ${spec} -registry dist/${params.SERVICE}/registry.json"
+  }
 }
 stage('Archive') {
   archiveArtifacts artifacts: "dist/${params.SERVICE}/**", fingerprint: true

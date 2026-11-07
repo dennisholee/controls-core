@@ -19,7 +19,7 @@ up:
 
 gate:
 	cd $(ROOT) && $(GO) run ./tools/openapi-diff \
-		-openapi examples/spring-accounts/openapi.json \
+		-openapi examples/spring-accounts/openapi.yaml \
 		-registry examples/spring-accounts/controls/registry.json
 
 test: gate up

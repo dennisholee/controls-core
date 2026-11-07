@@ -2,6 +2,7 @@ package openapidiff
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -103,5 +104,31 @@ func TestAnnotationsMatch(t *testing.T) {
 	}})
 	if len(res.Mismatches) != 0 {
 		t.Fatalf("unexpected mismatches: %v", res.Mismatches)
+	}
+}
+
+func TestLoadYAML(t *testing.T) {
+	path := t.TempDir() + "/openapi.yaml"
+	body := `openapi: 3.0.3
+info:
+  title: test
+  version: 1.0.0
+paths:
+  /accounts/{id}:
+    get:
+      x-resource-type: account
+      responses:
+        '200':
+          description: ok
+`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := doc.Paths["/accounts/{id}"]["get"]; !ok {
+		t.Fatalf("paths = %+v", doc.Paths)
 	}
 }

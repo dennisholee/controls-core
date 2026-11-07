@@ -37,10 +37,17 @@ pipeline {
 
     stage('OpenAPI gate') {
       when {
-        expression { fileExists("services/${params.SERVICE}/openapi.json") }
+        expression {
+          fileExists("services/${params.SERVICE}/openapi.yaml") ||
+          fileExists("services/${params.SERVICE}/openapi.json")
+        }
       }
       steps {
-        sh "openapi-diff -openapi services/${params.SERVICE}/openapi.json -registry dist/${params.SERVICE}/registry.json"
+        script {
+          def spec = fileExists("services/${params.SERVICE}/openapi.yaml") ?
+            "services/${params.SERVICE}/openapi.yaml" : "services/${params.SERVICE}/openapi.json"
+          sh "openapi-diff -openapi ${spec} -registry dist/${params.SERVICE}/registry.json"
+        }
       }
     }
 

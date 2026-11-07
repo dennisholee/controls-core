@@ -18,7 +18,7 @@ up:
 
 gate:
 	cd $(ROOT) && $(GO) run ./tools/openapi-diff \
-		-openapi examples/accounts-read/openapi.json \
+		-openapi examples/accounts-read/openapi.yaml \
 		-registry examples/accounts-read/controls/registry.json
 
 test: gate up

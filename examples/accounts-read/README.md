@@ -27,7 +27,7 @@ curl -s http://127.0.0.1:18000/accounts/A123 -H 'x-subject: u-1'
 
 ## OpenAPI contract
 
-`openapi.json` carries `x-resource-type`, `x-resource-id`, `x-mask-policy` and
+`openapi.yaml` carries `x-resource-type`, `x-resource-id`, `x-mask-policy` and
 `x-resource-source` on the operation. `make test` runs `openapi-diff`, which
 fails if those annotations disagree with `controls/registry.json`.
 

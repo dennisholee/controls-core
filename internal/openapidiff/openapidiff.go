@@ -6,8 +6,11 @@ package openapidiff
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Document is the subset of an OpenAPI 3 document the gate needs.
@@ -44,6 +47,29 @@ type operation struct {
 	ResourceID     string `json:"x-resource-id"`
 	MaskPolicy     string `json:"x-mask-policy"`
 	ResourceSource string `json:"x-resource-source"`
+}
+
+// Load reads an OpenAPI JSON or YAML document.
+func Load(path string) (*Document, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+		var v any
+		if err := yaml.Unmarshal(raw, &v); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", path, err)
+		}
+		raw, err = json.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var doc Document
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	return &doc, nil
 }
 
 // Check compares documented operations against registry entries.

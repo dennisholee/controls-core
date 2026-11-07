@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Spring accounts and payments
+  version: 1.0.0
+  description: |
+    A Spring Boot service whose account reads are masked and whose payment
+    writes are authorized and validated by the controls sidecar.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: accounts
+  - name: payments
+paths:
+  /accounts/{accountId}:
+    get:
+      tags: [accounts]
+      operationId: getAccount
+      summary: Read an account
+      description: The sidecar authorizes the owner and masks sensitive fields.
+      x-resource-type: account
+      x-resource-id: accountId
+      x-mask-policy: account.read
+      x-resource-source: pip
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: A123
+      responses:
+        '200':
+          description: Masked account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '403':
+          description: Denied by the controls sidecar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /payments:
+    post:
+      tags: [payments]
+      operationId: createPayment
+      summary: Create a payment
+      description: DQ and rejected-field checks run before the upstream is called.
+      x-resource-type: payment
+      x-resource-id: $._id
+      x-mask-policy: payment.write
+      x-resource-source: pip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Payment'
+      responses:
+        '201':
+          description: Payment accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResult'
+        '403':
+          description: Denied by entitlement, DQ or a rejected field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Account:
+      type: object
+      required: [ownerId, accountNumber, holder, ssn, region, status]
+      properties:
+        ownerId:
+          type: string
+        accountNumber:
+          type: string
+          example: '******7890'
+        holder:
+          type: object
+          required: [email]
+          properties:
+            email:
+              type: string
+              format: email
+              example: j***@example.com
+        ssn:
+          type: string
+          example: '[REDACTED]'
+        region:
+          type: string
+        status:
+          type: string
+    Payment:
+      type: object
+      required: [_type, _id, amount, currency]
+      properties:
+        _type:
+          type: string
+          enum: [payment]
+        _id:
+          type: string
+          example: P-9001
+        amount:
+          type: number
+          exclusiveMinimum: true
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+        ownerId:
+          type: string
+    PaymentResult:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

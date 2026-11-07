@@ -4,8 +4,7 @@
 //
 //	openapi-diff -openapi openapi.json -registry registry.json
 //
-// Both inputs are JSON. Convert a YAML OpenAPI document to JSON in the delivery
-// pipeline (for example with `yq -o=json`).
+// The OpenAPI document may be JSON or YAML; the registry is JSON.
 package main
 
 import (
@@ -19,7 +18,7 @@ import (
 )
 
 func main() {
-	openapiPath := flag.String("openapi", "", "OpenAPI 3 JSON document")
+	openapiPath := flag.String("openapi", "", "OpenAPI 3 JSON or YAML document")
 	registryPath := flag.String("registry", "", "rendered registry JSON")
 	flag.Parse()
 
@@ -28,8 +27,11 @@ func main() {
 		os.Exit(2)
 	}
 
-	var doc openapidiff.Document
-	readJSON(*openapiPath, &doc)
+	doc, err := openapidiff.Load(*openapiPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
 
 	var reg config.Registry
 	readJSON(*registryPath, &reg)
@@ -51,7 +53,7 @@ func main() {
 		})
 	}
 
-	res := openapidiff.Check(doc, endpoints)
+	res := openapidiff.Check(*doc, endpoints)
 	failed := false
 	if len(res.MissingRegistry) > 0 {
 		failed = true

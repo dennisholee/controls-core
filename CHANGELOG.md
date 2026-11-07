@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.35.0] — 2026-11-07
+
+### Changed
+
+- OpenAPI examples are full 3.0.3 YAML contracts with schemas and responses;
+  the gate now loads YAML (JSON remains accepted), and the Jenkins pipeline
+  prefers `openapi.yaml` when present.
+
 ## [0.34.0] — 2026-11-07
 
 ### Added

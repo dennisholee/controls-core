@@ -1,0 +1,68 @@
+openapi: 3.0.3
+info:
+  title: Accounts read sample
+  version: 1.0.0
+  description: Account reads authorized by the sidecar and masked on the response.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: accounts
+paths:
+  /accounts/{accountId}:
+    get:
+      tags: [accounts]
+      operationId: getAccount
+      summary: Read an account
+      x-resource-type: account
+      x-resource-id: accountId
+      x-mask-policy: account.read
+      x-resource-source: pip
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: A123
+      responses:
+        '200':
+          description: Masked account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '403':
+          description: Denied by the controls sidecar
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Account:
+      type: object
+      required: [ownerId, accountNumber, holder, ssn, region, status]
+      properties:
+        ownerId:
+          type: string
+        accountNumber:
+          type: string
+          example: '******7890'
+        holder:
+          type: object
+          properties:
+            email:
+              type: string
+              format: email
+        ssn:
+          type: string
+          example: '[REDACTED]'
+        region:
+          type: string
+        status:
+          type: string
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

@@ -3,7 +3,7 @@ name: sidecar-service-example
 description: Render test for the controls-sidecar library
 type: application
 version: 0.1.0
-appVersion: "0.34.0"
+appVersion: "0.35.0"
 dependencies:
   - name: controls-sidecar
     version: 0.1.0
