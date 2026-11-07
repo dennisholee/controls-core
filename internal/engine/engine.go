@@ -268,6 +268,11 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 // MaskResponse applies the endpoint's mask policy to a JSON response body.
 // Non-JSON bodies are returned unchanged and must be handled at the gateway.
 func (e *Engine) MaskResponse(ep *config.Endpoint, body []byte, isError bool) ([]byte, error) {
+	return e.MaskResponseCtx(context.Background(), ep, body, isError)
+}
+
+// MaskResponseCtx is MaskResponse with a context for classification lookups.
+func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body []byte, isError bool) ([]byte, error) {
 	if ep == nil || ep.MaskPolicy == "" {
 		return body, nil
 	}
@@ -285,7 +290,24 @@ func (e *Engine) MaskResponse(ep *config.Endpoint, body []byte, isError bool) ([
 	if err := json.Unmarshal(body, &doc); err != nil {
 		return body, nil
 	}
-	mask.Apply(maskPolicy, doc)
+	if maskPolicy.Fallback == "classification" {
+		classes := map[string]string{}
+		if cp, ok := e.pip.(interface {
+			CachedClassification(string) (map[string]string, bool)
+		}); ok {
+			classes, _ = cp.CachedClassification(ep.ResourceType)
+		}
+		if len(classes) == 0 {
+			fetched, err := e.pip.Classification(ctx, ep.ResourceType)
+			if err != nil {
+				return nil, fmt.Errorf("classification unavailable: %w", err)
+			}
+			classes = fetched
+		}
+		mask.ApplyWithClassification(maskPolicy, doc, classes)
+	} else {
+		mask.Apply(maskPolicy, doc)
+	}
 	return json.Marshal(doc)
 }
 

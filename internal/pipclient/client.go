@@ -65,6 +65,11 @@ type cacheEntry struct {
 	expires time.Time
 }
 
+type classEntry struct {
+	fields  map[string]string
+	expires time.Time
+}
+
 type call struct {
 	wg    sync.WaitGroup
 	attrs map[string]Attribute
@@ -78,6 +83,7 @@ type Client struct {
 	ttl     time.Duration
 	mu      sync.Mutex
 	cache   map[string]cacheEntry
+	class   map[string]classEntry
 	flights map[string]*call
 	fails   int
 	openTil time.Time
@@ -106,6 +112,7 @@ func New(base string, opts ...Option) *Client {
 		},
 		ttl:     30 * time.Second,
 		cache:   map[string]cacheEntry{},
+		class:   map[string]classEntry{},
 		flights: map[string]*call{},
 	}
 	for _, o := range opts {
@@ -261,8 +268,16 @@ func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[
 	return byKey, nil
 }
 
-// Classification returns the field classification map for a resource type.
+// Classification returns the field classification map for a resource type,
+// cached for the TTL advertised by the PIP (default one hour).
 func (c *Client) Classification(ctx context.Context, resourceType string) (map[string]string, error) {
+	c.mu.Lock()
+	if e, ok := c.class[resourceType]; ok && e.expires.After(time.Now()) {
+		out := e.fields
+		c.mu.Unlock()
+		return out, nil
+	}
+	c.mu.Unlock()
 	if time.Now().Before(c.openTil) {
 		return nil, ErrUnavailable
 	}
@@ -282,7 +297,26 @@ func (c *Client) Classification(ctx context.Context, resourceType string) (map[s
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
+	ttl := time.Hour
+	if out.TTLSeconds > 0 {
+		ttl = time.Duration(out.TTLSeconds) * time.Second
+	}
+	c.mu.Lock()
+	c.class[resourceType] = classEntry{fields: out.Fields, expires: time.Now().Add(ttl)}
+	c.mu.Unlock()
 	return out.Fields, nil
+}
+
+// CachedClassification returns classification metadata without I/O when it is
+// already cached. Used as the fail-safe input for mask fallbacks.
+func (c *Client) CachedClassification(resourceType string) (map[string]string, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.class[resourceType]
+	if !ok || !e.expires.After(time.Now()) {
+		return nil, false
+	}
+	return e.fields, true
 }
 
 // Invalidate drops all cached attributes (used by tests and by a reload hook).
@@ -290,6 +324,7 @@ func (c *Client) Invalidate() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache = map[string]cacheEntry{}
+	c.class = map[string]classEntry{}
 }
 
 func attrKey(typ, id string) string { return typ + "|" + id }

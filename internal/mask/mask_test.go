@@ -79,3 +79,43 @@ func TestFullString(t *testing.T) {
 		t.Fatalf("got %v", doc["ssn"])
 	}
 }
+
+func TestClassificationFallback(t *testing.T) {
+	doc := map[string]any{
+		"accountNumber": "1234567890",
+		"phone":         "+15551234567",
+		"status":        "active",
+		"holder":        map[string]any{"email": "jane.doe@example.com"},
+	}
+	policy := config.MaskPolicy{
+		Fallback: "classification",
+		Fields: map[string]config.MaskField{
+			"accountNumber": {Mode: "partial", KeepSuffix: 4},
+		},
+	}
+	ApplyWithClassification(policy, doc, map[string]string{
+		"accountNumber": "pii.partial",
+		"phone":         "pii.locked",
+		"holder.email":  "pii.partial",
+	})
+	if doc["accountNumber"] != "******7890" {
+		t.Fatalf("explicit rule lost: %v", doc["accountNumber"])
+	}
+	if doc["phone"] != "[REDACTED]" {
+		t.Fatalf("classified field not masked: %v", doc["phone"])
+	}
+	if doc["holder"].(map[string]any)["email"] != "[REDACTED]" {
+		t.Fatalf("nested classified field not masked: %v", doc["holder"])
+	}
+	if doc["status"] != "active" {
+		t.Fatalf("unclassified field changed: %v", doc["status"])
+	}
+}
+
+func TestClassificationFallbackDisabled(t *testing.T) {
+	doc := map[string]any{"phone": "+15551234567"}
+	ApplyWithClassification(config.MaskPolicy{}, doc, map[string]string{"phone": "pii.locked"})
+	if doc["phone"] != "+15551234567" {
+		t.Fatalf("fallback applied without opt-in: %v", doc["phone"])
+	}
+}

@@ -47,6 +47,18 @@ enforced by the delivery pipeline before merge.
 - `full` — all unlisted leaf fields are masked. Use for strict journeys; it
   will mask non-sensitive fields too, which is intended.
 
+### Classification fallback
+
+`fallback: "classification"` masks every field the PIP tags as PII
+(`pii.*`) that the policy did not explicitly list. Explicit field rules always
+win, so a partial rule on `accountNumber` is not overridden by its `pii.partial`
+tag. Unclassified fields are untouched.
+
+If fallback is enabled and classification metadata cannot be fetched and is not
+cached, masking fails closed: the response is denied rather than returned
+unmasked. This is the fail-safe path for PIP outages on endpoints that do not
+need instance attributes.
+
 ## 4. Paths
 
 - Dot notation: `holder.email`, `accountNumber`.
@@ -72,10 +84,9 @@ invalid, the sidecar fails closed: the request is rejected rather than the
 response returned unmasked. If the PIP is unavailable, entitlement denies and
 the response is never produced.
 
-Target behaviour (not yet wired in the reference engine): when classification
-metadata is cached and the endpoint needs no instance attributes, all
-PII-classified fields default to `full`. See
-[`../ARCHITECTURE.md`](../ARCHITECTURE.md#8-known-gaps).
+When a policy enables `fallback: classification`, classification metadata is
+read from the sidecar cache first (hours TTL) and fetched from the PIP only on a
+miss. A fetch failure fails closed. See §3.1.
 
 ## 8. Test obligations
 

@@ -3,6 +3,16 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.5.0] — 2026-11-07
+
+### Added
+
+- Classification-driven mask fallback: `fallback: "classification"` masks
+  fields tagged `pii.*` that the policy does not explicitly cover. Explicit
+  rules win; missing classification fails closed.
+- PIP classification metadata is cached (PIP-advertised TTL, default one hour)
+  and exposed for the fail-safe path.
+
 ## [0.4.0] — 2026-11-07
 
 ### Added

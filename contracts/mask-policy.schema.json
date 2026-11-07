@@ -24,6 +24,11 @@
           "default": "none",
           "description": "Mode for leaf fields not explicitly listed."
         },
+        "fallback": {
+          "enum": ["none", "classification"],
+          "default": "none",
+          "description": "When classification, fields tagged PII by the PIP that are not explicitly listed are masked full. Requires classification metadata; if it is unavailable the response is denied rather than returned unmasked."
+        },
         "fields": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/field" }

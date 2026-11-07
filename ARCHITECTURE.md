@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.4.0`.
+Status: reference implementation `v0.5.0`.
 
 ## 1. Context and constraints
 
@@ -152,7 +152,7 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 |---|---|---|
 | Envoy 1.40+ required | `allow_content_length_header` is unavailable in older images | Pin the image and smoke-test on upgrade |
 | PIP lag is supplied by adapters, not measured end to end | A PIP that fails to report lag passes the bound | Adapter contract test + lag alerting |
-| Classification-driven mask-all fallback not wired | Fail-safe masking relies on policy defaults | Wire classification cache into mask |
+| Classification tag completeness | Untagged sensitive fields are not masked by the fallback | Catalog review + classification coverage check before pilot |
 | Reference rule engine, not OPA/Cedar | Less expressive than Rego/Cedar | Swap behind `policy.Evaluator` |
 | Jenkins job not yet created | Reference Jenkinsfile and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
 | Audit sink/retention unmanaged by core | Platform must ship stdout and enforce retention | Hand over scrape/log config with the pilot |

@@ -69,6 +69,9 @@ Every endpoint in the registry needs a fixture:
 7b. **Staleness** — for fresh/deny-on-stale endpoints, assert 503
     `stale_attributes` when `lagSeconds` exceeds the bound, and allow within it.
 8. **Error body masking** — when `maskErrors` is true.
+8b. **Classification fallback** — an unlisted field tagged `pii.*` is masked;
+    a classified field with an explicit partial rule keeps the rule; a
+    classification fetch failure denies the response.
 9. **Boundary** — payload at 4 KB; assert masking and latency sanity.
 
 ## 4. Gates (must all pass)

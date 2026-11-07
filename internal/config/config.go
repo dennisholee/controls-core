@@ -88,7 +88,8 @@ type MaskPolicies struct {
 
 // MaskPolicy describes how a response is masked for a journey.
 type MaskPolicy struct {
-	Default      string               `json:"default"` // none | full
+	Default      string               `json:"default"`            // none | full
+	Fallback     string               `json:"fallback,omitempty"` // none | classification
 	Fields       map[string]MaskField `json:"fields"`
 	RejectFields []string             `json:"rejectFields,omitempty"`
 }
@@ -246,6 +247,9 @@ func (b *Bundle) Validate() error {
 	for name, p := range b.Masks.Policies {
 		if p.Default != "" && p.Default != "none" && p.Default != "full" {
 			return fmt.Errorf("masks: policy %q default must be none or full", name)
+		}
+		if p.Fallback != "" && p.Fallback != "none" && p.Fallback != "classification" {
+			return fmt.Errorf("masks: policy %q fallback must be none or classification", name)
 		}
 		for path, f := range p.Fields {
 			if f.Mode != "none" && f.Mode != "full" && f.Mode != "partial" {

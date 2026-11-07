@@ -179,7 +179,7 @@ func (a *Adapter) handleMessage(ctx context.Context, st *state, msg *extprocv3.P
 		if len(st.respBody) > a.max {
 			return a.immediate(typev3.StatusCode_InternalServerError, "response_too_large_to_mask"), true, nil
 		}
-		masked, err := a.engine.MaskResponse(st.endpoint, st.respBody, st.status >= 400)
+		masked, err := a.engine.MaskResponseCtx(ctx, st.endpoint, st.respBody, st.status >= 400)
 		if err != nil {
 			return nil, false, err
 		}

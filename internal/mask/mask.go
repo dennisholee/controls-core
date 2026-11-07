@@ -160,3 +160,51 @@ func maskEmail(s string, mf config.MaskField) string {
 	}
 	return local[:keep] + "***" + domain
 }
+
+// ApplyWithClassification applies explicit field rules and, when the policy
+// opts in, masks every field the PIP classifies as PII that the policy did not
+// explicitly cover. Explicit rules always win.
+func ApplyWithClassification(policy config.MaskPolicy, doc map[string]any, classification map[string]string) map[string]any {
+	Apply(policy, doc)
+	if policy.Fallback != "classification" || len(classification) == 0 {
+		return doc
+	}
+	applyClassification(doc, "", policy.Fields, classification)
+	return doc
+}
+
+func applyClassification(node map[string]any, prefix string, explicit map[string]config.MaskField, classification map[string]string) {
+	for k, v := range node {
+		path := k
+		if prefix != "" {
+			path = prefix + "." + k
+		}
+		if isCovered(path, explicit) {
+			continue
+		}
+		switch child := v.(type) {
+		case map[string]any:
+			applyClassification(child, path, explicit, classification)
+		case []any:
+			for i := range child {
+				if m, ok := child[i].(map[string]any); ok {
+					applyClassification(m, path+"[*]", explicit, classification)
+				} else if isPII(path, k, classification) {
+					child[i] = fullValue(child[i])
+				}
+			}
+		default:
+			if isPII(path, k, classification) {
+				node[k] = fullValue(v)
+			}
+		}
+	}
+}
+
+func isPII(path, leaf string, classification map[string]string) bool {
+	tag, ok := classification[path]
+	if !ok {
+		tag, ok = classification[leaf]
+	}
+	return ok && strings.HasPrefix(tag, "pii.")
+}
