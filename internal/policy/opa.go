@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -54,7 +55,11 @@ func (o *OPAEvaluator) Decide(_ string, action string, ctx Context) Result {
 	if err != nil {
 		return Result{Allowed: false, Reason: "opa:error"}
 	}
-	reqCtx, cancel := context.WithTimeout(context.Background(), o.client.Timeout)
+	parent := ctx.Ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	reqCtx, cancel := context.WithTimeout(parent, o.client.Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, o.url, bytes.NewReader(payload))
 	if err != nil {
@@ -67,12 +72,13 @@ func (o *OPAEvaluator) Decide(_ string, action string, ctx Context) Result {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 1<<20))
 		return Result{Allowed: false, Reason: "opa:error"}
 	}
 	var out struct {
 		Result json.RawMessage `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
 		return Result{Allowed: false, Reason: "opa:error"}
 	}
 	var allow bool

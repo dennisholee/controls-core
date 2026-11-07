@@ -60,3 +60,22 @@ func BenchmarkCedarDecide(b *testing.B) {
 		}
 	}
 }
+
+func TestCedarSeesRequestContext(t *testing.T) {
+	ev, err := NewCedarEvaluator(`
+permit (principal, action, resource)
+when { context.method == "GET" };
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := cedarCtx("u-1", "u-1")
+	c.Request = map[string]any{"method": "GET", "path": "/accounts/A123"}
+	if res := ev.Decide("account", "read", c); !res.Allowed {
+		t.Fatalf("expected allow: %+v", res)
+	}
+	c.Request["method"] = "POST"
+	if res := ev.Decide("account", "read", c); res.Allowed {
+		t.Fatalf("expected deny: %+v", res)
+	}
+}

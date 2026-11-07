@@ -20,6 +20,20 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default and logs a
   warning when bound elsewhere.
 
+## [0.25.0] — 2026-11-07
+
+### Security
+
+- Fresh and deny-on-stale endpoints now require a source-reported lag
+  (`lagKnown`); missing lag fails closed with `lag_unknown` instead of being
+  treated as zero.
+
+### Added
+
+- OPA decisions receive the request context/deadline and bound the response
+  body; Cedar receives method/path context and surfaces evaluation errors as
+  `cedar:error`.
+
 ## [0.24.0] — 2026-11-07
 
 ### Security

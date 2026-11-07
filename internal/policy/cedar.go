@@ -60,13 +60,23 @@ func (c *CedarEvaluator) Decide(resourceType, action string, ctx Context) Result
 		pUID: {UID: pUID, Attributes: toRecord(subjectAttrs)},
 		rUID: {UID: rUID, Attributes: toRecord(ctx.Resource)},
 	}
+	reqCtx := cedar.RecordMap{}
+	if v, ok := ctx.Request["method"].(string); ok && v != "" {
+		reqCtx[cedar.String("method")] = cedar.String(v)
+	}
+	if v, ok := ctx.Request["path"].(string); ok && v != "" {
+		reqCtx[cedar.String("path")] = cedar.String(v)
+	}
 	req := cedar.Request{
 		Principal: pUID,
 		Action:    aUID,
 		Resource:  rUID,
-		Context:   cedar.NewRecord(nil),
+		Context:   cedar.NewRecord(reqCtx),
 	}
-	decision, _ := c.policies.IsAuthorized(entities, req)
+	decision, diag := c.policies.IsAuthorized(entities, req)
+	if len(diag.Errors) > 0 {
+		return Result{Allowed: false, Reason: "cedar:error"}
+	}
 	if bool(decision) {
 		return Result{Allowed: true, Reason: "cedar:allow"}
 	}

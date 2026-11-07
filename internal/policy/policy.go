@@ -7,6 +7,7 @@
 package policy
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -22,6 +23,8 @@ type Context struct {
 	Resource   map[string]any
 	ResourceID string
 	Request    map[string]any
+	// Ctx carries the request deadline/cancellation to external evaluators.
+	Ctx context.Context
 }
 
 // Result is a decision plus the rule that produced it.

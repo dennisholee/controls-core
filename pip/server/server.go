@@ -170,8 +170,10 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		lag := res.LagSeconds
-		if lag == 0 {
+		lagKnown := res.LagKnown
+		if s.lagSeconds > 0 {
 			lag = s.lagSeconds
+			lagKnown = true
 		}
 		if s.reg != nil {
 			found := "false"
@@ -195,6 +197,7 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 			Version:    version,
 			TTLSeconds: 30,
 			LagSeconds: lag,
+			LagKnown:   lagKnown,
 		})
 	}
 	s.log.Info("pip batch", "refs", len(req.Requests), "ms", time.Since(start).Milliseconds())

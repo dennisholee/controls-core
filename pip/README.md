@@ -61,8 +61,10 @@ Two repositories implement the data port:
   denies everyone (fail closed).
 - Upstream responses are capped at 1 MiB; a larger body fails closed.
 - `404` means `found: false`; any other non-200 or decode error fails closed.
-- `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`; if the
-  upstream omits it, lag is zero.
+- `lagHeader` (default `X-Replica-Lag-Seconds`) feeds `freshness`. If the
+  upstream omits it, the response is marked `lagKnown: false`, and `fresh` /
+  `deny-on-stale` endpoints fail closed with `lag_unknown` instead of treating
+  missing lag as zero.
 - `healthUrl` is optional. When set, PIP `/readyz` calls it (2s timeout) and
   reports 503 on any non-2xx; leave it unset if the source has no health
   endpoint.

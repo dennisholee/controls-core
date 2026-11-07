@@ -28,6 +28,7 @@ type Resource struct {
 	Attributes map[string]any
 	Found      bool
 	LagSeconds int
+	LagKnown   bool
 	Version    string
 }
 

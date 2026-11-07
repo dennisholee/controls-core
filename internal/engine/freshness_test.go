@@ -10,6 +10,7 @@ import (
 
 type fakePIP struct {
 	lag          int
+	unknownLag   bool
 	resolveCalls int
 	freshCalls   int
 }
@@ -35,6 +36,7 @@ func (f *fakePIP) attrs(refs []pipclient.Ref) map[string]pipclient.Attribute {
 			Type: r.Type, ID: r.ID, Found: true,
 			Attributes: map[string]any{"ownerId": "u-1", "status": "active"},
 			LagSeconds: f.lag,
+			LagKnown:   !f.unknownLag,
 			Cache:      "miss",
 		}
 	}
@@ -125,6 +127,7 @@ func (p *plainPIP) Resolve(_ context.Context, refs []pipclient.Ref) (map[string]
 			Type: r.Type, ID: r.ID, Found: true,
 			Attributes: map[string]any{"ownerId": "u-1"},
 			LagSeconds: p.lag,
+			LagKnown:   true,
 		}
 	}
 	return out, nil
@@ -149,5 +152,13 @@ func TestDecisionHook(t *testing.T) {
 		got.Subject != "u-1" || got.Action != "read" || !got.Allowed ||
 		got.PIPCache != "miss" || got.Latency <= 0 {
 		t.Fatalf("unexpected decision event: %+v", got)
+	}
+}
+
+func TestUnknownLagFailsClosed(t *testing.T) {
+	pip := &fakePIP{lag: 0, unknownLag: true}
+	res := run(freshnessBundle("fresh", 5), pip)
+	if res.Allowed || res.Reason != "lag_unknown" || res.Status != 503 {
+		t.Fatalf("unknown lag must deny: %+v", res)
 	}
 }

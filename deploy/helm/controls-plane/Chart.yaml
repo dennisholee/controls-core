@@ -3,7 +3,7 @@ name: controls-plane
 description: Data-level entitlements and DQ controls plane (PIP, network policies, mTLS)
 type: application
 version: 0.7.0
-appVersion: "0.24.0"
+appVersion: "0.25.0"
 keywords:
   - authorization
   - data-quality

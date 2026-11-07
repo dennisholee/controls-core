@@ -128,6 +128,9 @@ components:
           type: integer
           minimum: 0
           description: Replica lag observed when serving this resource. The sidecar compares it with the registry's maxStalenessSeconds for fresh and deny-on-stale endpoints.
+        lagKnown:
+          type: boolean
+          description: True when lagSeconds was actually reported by the source. Fresh and deny-on-stale endpoints deny with lag_unknown when this is false.
     BatchResponse:
       type: object
       required: [results]

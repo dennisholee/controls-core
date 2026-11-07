@@ -47,7 +47,7 @@ fixed in 0.18.0.
 | H | Unsigned bundle mode now requires explicit `-allow-unsigned` | Core | Remove dev escape from production manifests |
 | — | Contract major and full manifest are now signed | Core | Done in 0.21.0 |
 | — | Audit async queue + drop/write-failure metrics added | Core | Done in 0.20.0 |
-| H | `fresh`/`deny-on-stale` trust optional lag; no max-TTL before 0.17 | Core | Lag mandatory for those modes; TTL clamp now in |
+| — | Fresh/deny-on-stale require reported lag; missing lag denies | Core | Done in 0.25.0 |
 | — | PIP readiness now probes configured source health URLs | Core | Done in 0.22.0 |
 | H | Sidecar/Envoy deployment manifest is unowned (service chart absent) | Platform | Reproducible install with pubkey/salt/ext_proc |
 | — | Per-caller rate limiting added | Core | Done in 0.21.0 |
@@ -55,7 +55,7 @@ fixed in 0.18.0.
 | M | Classification tags live outside the signed bundle | Delivery/core | Move into bundle or version/stamp them |
 | — | `rejectFields` wildcard support added | Core | Done in 0.19.0 |
 | M | Audit writes fail silently and share stdout with logs | Core | Dedicated sink + failure counter |
-| M | Rule comparisons coerce strings, enabling body-sourced bypass | Core | Strict typed comparison |
+| — | Rule comparisons are type-strict | Core | Done in 0.24.0 |
 | M | Base images and Jenkins tools image are tag/placeholder pinned | Core | Digest pinning |
 
 ## Gate for a canary

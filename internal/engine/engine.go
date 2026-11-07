@@ -255,6 +255,10 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 				EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
 		}
 		if freshness != "cached" {
+			if !attr.LagKnown {
+				return Result{Allowed: false, Status: 503, Reason: "lag_unknown",
+					EndpointID: ep.ID, ResourceType: ep.ResourceType, ResourceID: resourceID}
+			}
 			maxStale := ep.MaxStalenessSeconds
 			if maxStale == 0 {
 				maxStale = defaultMaxStalenessSeconds
@@ -274,6 +278,7 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 		Resource:   resource,
 		ResourceID: resourceID,
 		Request:    map[string]any{"method": req.Method, "path": req.Path},
+		Ctx:        ctx,
 	})
 
 	violations := e.dq.Check(ep.ResourceType, body)

@@ -43,7 +43,8 @@ type Attribute struct {
 	TTLSeconds int            `json:"ttlSeconds"`
 	// LagSeconds is the replica lag observed by the PIP when serving this
 	// attribute. Used to enforce fresh/deny-on-stale registry entries.
-	LagSeconds int `json:"lagSeconds"`
+	LagSeconds int  `json:"lagSeconds"`
+	LagKnown   bool `json:"lagKnown,omitempty"`
 	// Cache records how the sidecar obtained the value: hit, miss or bypass.
 	// It is local metadata and is never sent over the wire.
 	Cache string `json:"-"`
