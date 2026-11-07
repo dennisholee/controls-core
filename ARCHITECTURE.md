@@ -86,6 +86,68 @@ Status: reference implementation `v0.38.3`.
 9. **Response.** The matched endpoint's mask policy is applied to JSON
    responses, including errors when `maskErrors` is true.
 
+### 3.1 Request sequence
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant E as Envoy + ext_proc
+    participant P as PIP
+    participant O as OPA (optional)
+    participant A as Service
+
+    C->>G: HTTP + credentials
+    G->>E: verified identity (signed envelope)
+    E->>E: registry match + self-description check
+    E->>P: attributes batch (cache miss only)
+    P-->>E: attributes + lagKnown
+    alt engine = opa
+        E->>O: authz input
+        O-->>E: allow / deny
+    else reference rules / cedar
+        E->>E: evaluate policy + DQ
+    end
+    alt deny
+        E-->>C: 403 / 503
+    else allow
+        E->>A: request
+        A-->>E: response
+        E->>E: mask response
+        E-->>C: masked response
+    end
+```
+
+### 3.2 Reload and signing sequences
+
+```mermaid
+sequenceDiagram
+    participant K as ConfigMap update
+    participant X as ext_proc
+    K->>X: bundle files changed
+    X->>X: poll fingerprint / SIGHUP
+    X->>X: recompute digest + verify signature
+    alt valid
+        X->>X: build engine, atomic swap
+    else invalid
+        X->>X: keep last-known-good, log + metric
+    end
+```
+
+```mermaid
+sequenceDiagram
+    participant J as Jenkins
+    participant T as bundle tools
+    participant K as signing key
+    participant R as artifact store
+
+    J->>T: render rules + registry + masks + DQ
+    T-->>J: validated bundle + digest
+    J->>K: sign digest + manifest
+    K-->>J: manifest.sig
+    J->>R: publish bundle@digest
+```
+
 ## 4. Latency and capacity budget
 
 At 1,000 RPS/pod with 4 KB p99:
@@ -114,6 +176,27 @@ The regression gate is the benchmark trend plus the p99 budget above.
 Cache requirements: hit rate >95% steady state; miss storm protection via
 per-key coalescing; TTL 30–60 s for attributes, hours for classification. The
 cache is keyed by type, id and field projection.
+
+### 4.1 Capacity and HA
+
+Assumptions: 5,000 RPS, >95% cache hit, ~5% cache-miss QPS.
+
+| Item | Sizing |
+|---|---|
+| PIP requests | ~250 RPS at steady state, ~5,000 RPS worst case if the cache is cold |
+| PIP replicas | 2+ (N+1); ~125 RPS each at steady state, 2x headroom |
+| Source read APIs | ≥250 RPS aggregate; per-domain replicas own their own capacity |
+| Sidecar CPU | ~0.1–0.3 vCPU per 1,000 RPS; ~1.5 vCPU across five pods |
+| Sidecar memory | ~250 MB across the fleet (excluding Envoy buffers) |
+| PIP memory | cache + connection pools; keep bounded, evict expired entries |
+
+- **Zones:** spread PIP replicas across zones; prefer local read APIs.
+- **Disruption:** PDB `minAvailable: 1`; rolling updates one pod at a time.
+- **Backpressure:** PIP `-max-concurrent` and per-caller `-rate-limit`; sidecar
+  breaker and cache coalescing.
+- **Scaling:** HPA on PIP CPU/RPS; sidecar scales with the service pods.
+- **Degradation:** cache hit-rate drop is the first signal; page on PIP latency,
+  error rate and lag, not just availability.
 
 ## 5. Failure behaviour
 
@@ -159,6 +242,24 @@ cache is keyed by type, id and field projection.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 
+### 6.1 Trust boundaries
+
+```
+client ── untrusted ──▶ gateway ── verified ──▶ sidecar ── mTLS ──▶ PIP ──▶ replicas
+                          │                      │
+                          │                      └── signed bundle + audit
+                          └── authentication / route authz
+```
+
+- The gateway is the only component that authenticates users and injects
+  identity.
+- The sidecar trusts the signed identity envelope, not client headers.
+- The PIP trusts sidecar client certificates and enforces caller/field
+  authorization.
+- Replicas are read-only; credentials stay with the domain read API, not the
+  sidecar.
+- See [`SECURITY.md`](SECURITY.md) for the threat model and controls.
+
 ## 7. ext_proc adapter
 
 Implemented in `sidecar/extproc`; Envoy configuration lives in
@@ -185,8 +286,36 @@ Implemented in `sidecar/extproc`; Envoy configuration lives in
 - `ext_authz` remains available for coarse checks but is expected to be a no-op
   while the gateway owns route authz.
 
+### 8.1 Alternatives considered
+
+| Decision | Chosen | Alternative | Why |
+|---|---|---|---|
+| Enforcement point | Sidecar | In-app starter | No application changes; central upgrade and policy |
+| Transport | Envoy `ext_proc` | `ext_authz` | Body buffering and response mutation are required for masking |
+| Attribute source | PIP data service | Direct DB access from sidecar | Keeps DB credentials and schema ownership in the domain |
+| Default policy engine | Reference JSON rules | Cedar/OPA only | Fast, dependency-free default; opt-in engines for complex policy |
+| Repository split | Core + rules | One monorepo | Different owners, review and release cadence |
+| Deployment | Helm render + `kubectl apply` | Helm release state | No release state; archived manifests for rollback |
+| DQ | In-process JSON rules | Rego/OPA | Field validation is hot-path and load-validated |
+
 See [`docs/PIPELINE.md`](docs/PIPELINE.md), [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
 and [`docs/adr/`](docs/adr/) for pipeline, versioning and decision records.
+
+### 7.1 OPA sequence
+
+```mermaid
+sequenceDiagram
+    participant E as ext_proc
+    participant O as OPA
+
+    E->>O: POST /v1/data/controls/authz/allow
+    alt allow
+        O-->>E: result = true
+    else deny or error
+        O-->>E: result = false / error
+    end
+    E->>E: allow or fail closed (opa:deny / opa:error)
+```
 
 ## 8. Known gaps
 
@@ -197,4 +326,7 @@ and [`docs/adr/`](docs/adr/) for pipeline, versioning and decision records.
 | Classification tag completeness | Untagged sensitive fields are not masked by the fallback | Catalog review + classification coverage check before pilot |
 | OPA policies live outside the signed bundle | Policy changes are not covered by bundle signing | Keep OPA under its own change control, or move rules into the bundle |
 | Jenkins job adoption | Reference jobs and tools image exist; the central team must adopt them | Hand over `docs/PIPELINE.md` and the image digest |
-| Audit sink/retention unmanaged by core | Platform must ship stdout and enforce retention | Hand over scrape/log config with the pilot |
+| Audit sink/retention unmanaged by core | Platform must ship the audit stream and enforce retention | Hand over scrape/log config with the pilot |
+| Gateway signer not deployed | Raw-header fallback remains possible | Deploy the signer and enforce `CONTROLS_IDENTITY_HMAC_KEY` |
+| Base images and tools digest placeholder | Builds are not fully reproducible | Pin Go/Alpine by digest; replace the Jenkins tools digest |
+| PIP enforcement defaults are opt-in | mTLS, caller checks and rate limits are off unless configured | Set `pip.tls.required`, `requireCaller`, `allowedCallers` and limits in production |
