@@ -1,0 +1,11 @@
+{
+  "sources": {
+    "account": {
+      "url": "http://attribute-api:8080/accounts/{id}",
+      "timeoutMs": 200,
+      "fields": ["ownerId", "region", "status"],
+      "allowedCallers": ["sidecar"],
+      "lagHeader": "X-Replica-Lag-Seconds"
+    }
+  }
+}

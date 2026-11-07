@@ -15,6 +15,7 @@ func main() {
 		log.Printf("upstream received %s %s", r.Method, r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ownerId":       "u-1",
 			"accountNumber": "1234567890",
 			"holder":        map[string]any{"email": "jane.doe@example.com"},
 			"ssn":           "111-22-3333",

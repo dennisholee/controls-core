@@ -3,6 +3,14 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [0.31.1] — 2026-11-07
+
+### Changed
+
+- `examples/mtls-caller` now resolves attributes through an HTTP source and
+  restricts it with `allowedCallers: ["sidecar"]`, exercising caller
+  authorization in addition to mutual TLS.
+
 ## [0.31.0] — 2026-11-07
 
 ### Added

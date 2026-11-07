@@ -4,14 +4,18 @@ services:
     image: mtls-caller-app:dev
     expose:
       - "8080"
+  attribute-api:
+    image: mtls-caller-app:dev
+    expose:
+      - "8080"
   pip:
     image: mtls-caller-pip:dev
     entrypoint: ["/usr/local/bin/pip"]
     command:
       - -addr
       - :8082
-      - -fixtures
-      - /etc/controls/attributes.json
+      - -sources
+      - /etc/controls/sources.json
       - -tls-cert
       - /tls/server.crt
       - -tls-key
@@ -23,6 +27,7 @@ services:
       - "8082"
     volumes:
       - ./certs:/tls:ro
+      - ./pip/sources.json:/etc/controls/sources.json:ro
   sidecar:
     image: controls-sidecar:dev
     ports:
