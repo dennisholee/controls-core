@@ -73,9 +73,10 @@ CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
 - Pseudo-headers and the mutated `content-length` are read/written as
   `raw_value`, per Envoy's wire behaviour.
 - `/metrics`, `/healthz` and `/readyz` are served on `:9090`; decision audit is
-  JSON on stdout (hashed identifiers, denials always, allows sampled).
+  hashed JSON (denials always, allows sampled) to stdout or `-audit-out <file>`.
 - `-bundle-pubkey` (or `CONTROLS_BUNDLE_PUBKEY`) enables Ed25519 verification of
-  `manifest.sig`; startup fails if the bundle was modified or unsigned.
+  `manifest.sig`; startup fails if the bundle was modified or unsigned unless
+  `-allow-unsigned` is set (development only).
 - `-reload-interval` (default 30s) polls the bundle directory; `SIGHUP` forces a
   reload. Every reload re-verifies the signature, swaps the engine atomically,
   and keeps the previous bundle on any error.

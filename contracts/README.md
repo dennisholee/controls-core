@@ -31,6 +31,16 @@ CI publishes `contracts@<version>` (schemas + specs + OpenAPI) to the internal
 artifact repository. The rules repo and service teams consume the published
 package; they do not clone this repository to read it.
 
+## Validation
+
+```bash
+# registry annotations/coverage
+go run ./tools/openapi-diff -openapi openapi.yaml -registry registry.json
+
+# rules/masks/DQ against the registry and schemas
+go run ./tools/controls-check -openapi openapi.yaml -bundle dist/<service>
+```
+
 ## Ownership
 
 Core engineering owns this directory. Changes require review from core and, for

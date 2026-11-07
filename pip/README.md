@@ -97,8 +97,8 @@ type Repository interface {
 - Return `found: false` for unknown ids; do not leak existence through errors.
 - Bound every query with a timeout and a row limit.
 - Report `lagSeconds` from the replica position. The sidecar enforces it for
-  `fresh` and `deny-on-stale` registry entries; a missing value is treated as
-  zero and therefore passes.
+  `fresh` and `deny-on-stale` registry entries; if the header is missing the
+  response is marked `lagKnown: false` and those endpoints fail closed.
 
 ## Caching
 

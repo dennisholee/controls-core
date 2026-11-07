@@ -31,9 +31,12 @@ contracts/          normative schemas, specs and PIP OpenAPI
 features/           BDD acceptance criteria, one file per journey
 integration/        end-to-end tests, BDD runner and benchmarks
 hack/               smoke stack, fixture app and load generator
+examples/           self-contained app + sidecar samples
 tools/bundle/       deterministic bundle renderer (Jenkins entry point)
 tools/conformance/  executes fixtures against a rendered bundle
 tools/openapi-diff/ registry ↔ OpenAPI coverage gate
+tools/openapi-registry/ derives registry from OpenAPI annotations
+tools/controls-check/   validates rules/DQ/masks against registry + OpenAPI
 ci/Jenkinsfile      reference pipeline integration
 deploy/             tools/PIP/extproc images and the Helm chart
 deploy/helm/controls-plane/  PIP, NetworkPolicies, Istio mTLS/authorization

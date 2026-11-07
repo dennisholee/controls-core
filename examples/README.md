@@ -31,6 +31,21 @@ compared against the registry before the sample runs.
 `openapi.yaml` with `openapi-registry`, and `make test` fails when the committed
 registry drifts from the contract.
 
+## Prerequisites
+
+- Docker, Go 1.26+; `spring-accounts` also needs Maven and Java 21.
+- The sidecar runtime image is built from this repository, so no registry access
+  is required.
+
+Run all samples:
+
+```bash
+make examples
+```
+
+Each sample starts its own compose project and removes it on success. Use
+`make -C examples/<name> up` to keep one running and `down` to stop it.
+
 Run one sample:
 
 ```bash
