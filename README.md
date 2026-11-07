@@ -34,7 +34,8 @@ tools/bundle/       deterministic bundle renderer (Jenkins entry point)
 tools/conformance/  executes fixtures against a rendered bundle
 tools/openapi-diff/ registry ↔ OpenAPI coverage gate
 ci/Jenkinsfile      reference pipeline integration
-deploy/             tools image for the central pipeline
+deploy/             tools/PIP/extproc images and the Helm chart
+deploy/helm/controls-plane/  PIP, NetworkPolicies, Istio mTLS/authorization
 docs/adr/           architecture decisions
 ```
 
@@ -97,9 +98,9 @@ sidecar must strip any client-supplied values.
 
 ## Status
 
-`v0.6.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.7.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
-gate), audited/metered enforcement and verified bundle integrity. Remaining:
-OPA/Cedar and production packaging. See
+gate), audited/metered enforcement, verified bundle integrity and deployment controls
+(Helm: PIP isolation, NetworkPolicies, mTLS). Remaining: OPA/Cedar. See
 [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

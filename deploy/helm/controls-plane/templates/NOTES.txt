@@ -1,0 +1,19 @@
+controls-plane installed.
+
+PIP service: {{ include "controls-plane.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.pip.port }}
+
+Required for C1/C2:
+  1. Sidecar pods must carry the label:
+       controls-plane/sidecar: "true"
+  2. If sidecars run in other namespaces, set
+       networkPolicy.pip.sidecarNamespaceSelector
+     (default allows only this release namespace).
+  3. The sidecar must receive the audit salt and, for verified bundles, the
+     public key:
+       -bundle-pubkey=/etc/controls/bundle-signing.pub.pem
+  4. With Istio enabled, list the sidecar service-account principals in
+     istio.authorizationPolicy.allowedPrincipals.
+
+This chart does not authenticate clients; it isolates the PIP and sidecar so
+that only the gateway can reach the sidecar and only sidecars can reach the PIP.
+Do not expose the sidecar listener or the PIP outside those boundaries.

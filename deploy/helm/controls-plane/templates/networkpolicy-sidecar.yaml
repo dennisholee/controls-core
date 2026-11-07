@@ -1,0 +1,56 @@
+{{- if and .Values.networkPolicy.enabled .Values.networkPolicy.sidecar.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "controls-plane.fullname" . }}-sidecar
+  namespace: {{ .Values.networkPolicy.sidecar.namespace | default .Release.Namespace }}
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- toYaml .Values.sidecar.podLabels | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.sidecar.gatewayNamespaceSelector | nindent 12 }}
+          podSelector:
+            {{- toYaml .Values.networkPolicy.sidecar.gatewayPodSelector | nindent 12 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.sidecar.appPort }}
+    - from:
+        - namespaceSelector:
+            {{- toYaml .Values.networkPolicy.sidecar.metricsNamespaceSelector | nindent 12 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.sidecar.metricsPort }}
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ include "controls-plane.pipNamespace" . }}
+          podSelector:
+            {{- if .Values.networkPolicy.sidecar.pipPodSelector }}
+            {{- toYaml .Values.networkPolicy.sidecar.pipPodSelector | nindent 12 }}
+            {{- else }}
+            matchLabels:
+              {{- include "controls-plane.selectorLabels" . | nindent 14 }}
+            {{- end }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.pip.port }}
+    {{- with .Values.networkPolicy.sidecar.extraEgress }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

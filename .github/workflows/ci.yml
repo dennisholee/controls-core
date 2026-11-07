@@ -52,6 +52,21 @@ jobs:
               print("ok", path)
           PY
 
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - name: lint
+        run: helm lint deploy/helm/controls-plane
+      - name: render defaults
+        run: helm template controls deploy/helm/controls-plane --namespace controls >/dev/null
+      - name: render istio
+        run: |
+          helm template controls deploy/helm/controls-plane --namespace controls             --set istio.enabled=true             --set 'istio.authorizationPolicy.allowedPrincipals[0]=cluster.local/ns/app/sa/sidecar' >/dev/null
+
   smoke:
     runs-on: ubuntu-latest
     needs: test

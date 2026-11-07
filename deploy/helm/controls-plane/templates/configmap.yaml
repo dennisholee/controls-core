@@ -1,0 +1,11 @@
+{{- if and .Values.pip.enabled .Values.pip.fixtures.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "controls-plane.fullname" . }}-fixtures
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+data:
+  attributes.json: |
+{{ .Values.pip.fixtures.json | indent 4 }}
+{{- end }}

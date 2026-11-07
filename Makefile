@@ -1,4 +1,5 @@
 GO ?= go
+HELM ?= helm
 ENV ?= prod
 SERVICE ?= accounts
 GOCACHE ?= $(CURDIR)/.gocache
@@ -59,6 +60,10 @@ acceptance:
 
 smoke:
 	./hack/envoy-smoke.sh
+
+chart:
+	$(HELM) lint deploy/helm/controls-plane
+	$(HELM) template controls deploy/helm/controls-plane --namespace controls >/dev/null
 
 # Render the sibling delivery repo for local inspection (not part of CI).
 render-rules:

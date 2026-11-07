@@ -11,7 +11,7 @@ proxy unreachable from this environment); see M7.
 
 | Severity | Count |
 |---|---|
-| CRITICAL | 2 (open) |
+| CRITICAL | 2 (controls provided, install/verify required) |
 | HIGH | 3 (all remediated) |
 | MEDIUM | 8 |
 | LOW | 2 |
@@ -38,6 +38,12 @@ allowlist per caller; bind loopback in local runs; consider moving the PIP
 behind the service mesh with authorization policy. Treat as a release blocker
 for any environment containing real data.
 
+Status: **deployment controls provided.** The Helm chart applies a
+NetworkPolicy that admits only pods labeled `controls-plane/sidecar=true`, and
+optional Istio `PeerAuthentication: STRICT` plus an `AuthorizationPolicy`
+limited to listed service-account principals. The finding remains open until
+the chart is installed and the policy is verified in the target cluster.
+
 ### C2 — Identity headers are trusted without verification at the sidecar
 Evidence: [`sidecar/extproc/adapter.go:231`](../sidecar/extproc/adapter.go#L231)
 reads `x-subject` and `x-claim-*` directly from the request;
@@ -52,6 +58,11 @@ sidecar; gateway must strip all `x-subject`/`x-claim-*` from client requests;
 add mTLS/SPIFFE between gateway and sidecar and require a signed or
 gateway-injected trust marker; never expose the static listener directly. Add a
 smoke case asserting that a client-supplied identity header is replaced.
+
+Status: **deployment controls provided.** The Helm chart's sidecar
+NetworkPolicy admits the app port only from the configured gateway
+namespace/pod selector; the gateway remains responsible for stripping and
+re-injecting identity headers.
 
 ## HIGH
 

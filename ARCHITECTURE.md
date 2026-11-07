@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.6.0`.
+Status: reference implementation `v0.7.0`.
 
 ## 1. Context and constraints
 
@@ -120,6 +120,11 @@ cache is keyed by type, id and field projection.
 - **Bundle integrity**: the sidecar verifies `manifest.sig` against the
   recomputed digest when `-bundle-pubkey` is set, and refuses to start when the
   bundle is modified or unsigned.
+- **Deployment controls**: the Helm chart
+  ([`deploy/helm/controls-plane`](deploy/helm/controls-plane)) deploys the PIP
+  with NetworkPolicies (gateway → sidecar, sidecar → PIP, monitoring → metrics)
+  and optional Istio `PeerAuthentication: STRICT` plus a PIP
+  `AuthorizationPolicy` limited to sidecar service accounts.
 - **Bundle**: rendered by the delivery pipeline, signed, digest-pinned, mounted
   as a ConfigMap/volume. Sidecar records the bundle digest in the decision log.
 

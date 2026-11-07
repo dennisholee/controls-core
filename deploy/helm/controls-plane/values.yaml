@@ -1,0 +1,101 @@
+# Default values for controls-plane.
+#
+# This chart deploys the PIP and the network/mTLS controls that make the
+# sidecar safe to run. Sidecar containers are injected into service pods by the
+# service's own chart; the policies here select those pods by label.
+
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+pip:
+  enabled: true
+  image: registry.example.com/controls-pip
+  tag: "0.6.0"
+  pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8082
+  lagSeconds: 0
+  serviceAccount:
+    create: true
+    name: ""
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  # Reference image runs over an in-memory fixture. Production uses DB adapters
+  # and should disable fixtures.
+  fixtures:
+    enabled: true
+    json: |
+      {"resources":{},"classifications":{}}
+  # Egress allowed in addition to DNS and the sidecar network.
+  egress:
+    databaseCIDRs: []
+    databasePort: 5432
+  podLabels: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Sidecar is not deployed by this chart; these values describe the pods that
+# service charts create, so the policies can select them.
+sidecar:
+  podLabels:
+    controls-plane/sidecar: "true"
+  appPort: 8080
+  metricsPort: 9090
+  grpcPort: 50051
+  # Secret mounted into the sidecar by the service chart.
+  auditSaltSecret: controls-audit-salt
+  auditSaltKey: salt
+  bundlePublicKeySecret: ""
+  bundlePublicKeyKey: public-key.pem
+
+networkPolicy:
+  enabled: true
+  pip:
+    # Namespace/pod selectors allowed to call the PIP. Empty namespaceSelector
+    # means "this release namespace".
+    sidecarNamespaceSelector: {}
+    sidecarPodSelector:
+      matchLabels:
+        controls-plane/sidecar: "true"
+  sidecar:
+    enabled: true
+    # Namespace where sidecar pods live. Empty means this release namespace.
+    namespace: ""
+    # Namespace and pod selector for the PIP. Empty values default to this
+    # release namespace and the chart's PIP selector labels.
+    pipNamespace: ""
+    pipPodSelector: {}
+    gatewayNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: gateway
+    gatewayPodSelector:
+      matchLabels:
+        app: istio-ingressgateway
+    metricsNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
+    # Extra egress destinations (for example OTLP).
+    extraEgress: []
+
+istio:
+  enabled: false
+  peerAuthentication:
+    enabled: true
+    mode: STRICT
+  authorizationPolicy:
+    enabled: true
+    # Required when enabled: service-account principals allowed to call the PIP.
+    allowedPrincipals: []
+  gateway:
+    namespace: istio-system
+    labels:
+      istio: ingressgateway

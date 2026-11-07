@@ -1,0 +1,27 @@
+{{- if and .Values.istio.enabled .Values.istio.authorizationPolicy.enabled .Values.pip.enabled }}
+{{- if not .Values.istio.authorizationPolicy.allowedPrincipals }}
+{{- fail "istio.authorizationPolicy.allowedPrincipals is required when the policy is enabled" }}
+{{- end }}
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: {{ include "controls-plane.fullname" . }}-pip
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "controls-plane.selectorLabels" . | nindent 6 }}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals:
+              {{- range .Values.istio.authorizationPolicy.allowedPrincipals }}
+              - {{ . | quote }}
+              {{- end }}
+      to:
+        - operation:
+            ports:
+              - {{ .Values.pip.port | quote }}
+{{- end }}

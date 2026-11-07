@@ -1,0 +1,17 @@
+{{- if .Values.pip.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "controls-plane.fullname" . }}
+  labels:
+    {{- include "controls-plane.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "controls-plane.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.pip.port }}
+      targetPort: http
+      protocol: TCP
+{{- end }}
