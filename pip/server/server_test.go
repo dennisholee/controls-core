@@ -250,3 +250,32 @@ func TestRequireCaller(t *testing.T) {
 		t.Fatalf("status = %d", resp.StatusCode)
 	}
 }
+
+func TestRateLimit(t *testing.T) {
+	repo, err := LoadMemoryRepo("../fixtures/attributes.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(repo, log, WithRateLimit(1, 1)).Handler())
+	t.Cleanup(srv.Close)
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A123", Fields: []string{"ownerId"}},
+	}})
+	first, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = first.Body.Close()
+	if first.StatusCode != http.StatusOK {
+		t.Fatalf("first status = %d", first.StatusCode)
+	}
+	second, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Body.Close()
+	if second.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("second status = %d", second.StatusCode)
+	}
+}

@@ -23,6 +23,15 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - The local sidecar harness binds to `127.0.0.1:8081` by default instead of all
   interfaces, and logs a warning when bound elsewhere. It trusts `x-subject`.
 
+## [0.21.0] — 2026-11-07
+
+### Security
+
+- Bundle signatures now cover the complete `manifest.json` (environment,
+  service, bundle/contract versions), not only the four-file digest.
+- PIP per-caller token-bucket rate limiting (`-rate-limit`, `-rate-burst`),
+  returning 429 with `Retry-After` and `pip_rejected_total{reason="rate"}`.
+
 ## [0.20.0] — 2026-11-07
 
 ### Added

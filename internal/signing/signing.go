@@ -9,8 +9,10 @@ package signing
 import (
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
@@ -78,7 +80,11 @@ func SignDir(dir, keyPath string) error {
 	if err != nil {
 		return err
 	}
-	sig := ed25519.Sign(key, []byte(digest))
+	payload, err := signingPayload(dir, digest)
+	if err != nil {
+		return err
+	}
+	sig := ed25519.Sign(key, payload)
 	return os.WriteFile(filepath.Join(dir, SignatureFile), []byte(base64.StdEncoding.EncodeToString(sig)+"\n"), 0o644)
 }
 
@@ -107,10 +113,25 @@ func VerifyDir(dir, pubPath string) error {
 	if err != nil {
 		return err
 	}
-	if !ed25519.Verify(pub, []byte(digest), sig) {
+	payload, err := signingPayload(dir, digest)
+	if err != nil {
+		return err
+	}
+	if !ed25519.Verify(pub, payload, sig) {
 		return fmt.Errorf("bundle signature does not verify")
 	}
 	return nil
+}
+
+// signingPayload binds both the file digest and the complete manifest (which
+// carries the environment, service, bundle version and contract version).
+func signingPayload(dir, digest string) ([]byte, error) {
+	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	sum := sha256.Sum256(raw)
+	return []byte(digest + "\n" + hex.EncodeToString(sum[:])), nil
 }
 
 // LoadPrivateKey reads a PKCS#8 Ed25519 private key.

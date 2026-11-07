@@ -87,3 +87,33 @@ func TestWrongKeyFails(t *testing.T) {
 		t.Fatal("wrong public key should fail")
 	}
 }
+
+func TestManifestMetadataIsSigned(t *testing.T) {
+	dir := testBundle(t)
+	keys := t.TempDir()
+	if _, _, err := GenerateKeyPair(keys); err != nil {
+		t.Fatal(err)
+	}
+	keyPath := filepath.Join(keys, DefaultKeyFile)
+	pubPath := filepath.Join(keys, DefaultPublicKeyFile)
+	if err := SignDir(dir, keyPath); err != nil {
+		t.Fatal(err)
+	}
+	// Change only manifest metadata (files and digest untouched).
+	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["environment"] = "prod"
+	raw, _ = json.Marshal(m)
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := VerifyDir(dir, pubPath); err == nil {
+		t.Fatal("manifest tamper must fail verification")
+	}
+}

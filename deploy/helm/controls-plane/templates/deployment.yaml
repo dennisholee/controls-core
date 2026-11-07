@@ -59,6 +59,12 @@ spec:
             {{- if .Values.pip.requireCaller }}
             - -require-caller
             {{- end }}
+            {{- if gt (int .Values.pip.rateLimit) 0 }}
+            - -rate-limit
+            - "{{ .Values.pip.rateLimit }}"
+            - -rate-burst
+            - "{{ .Values.pip.rateBurst }}"
+            {{- end }}
             {{- if .Values.pip.tls.required }}
             - -require-mtls
             {{- end }}

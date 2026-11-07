@@ -47,6 +47,8 @@ helm template controls deploy/helm/controls-plane --namespace controls \
 - If sidecars live outside the release namespace, set
   `networkPolicy.pip.sidecarNamespaceSelector`.
 - Set `sidecar.bundlePublicKeySecret` so the sidecar can verify bundles.
+- `pip.rateLimit` / `pip.rateBurst` bound each caller; `pip.requireCaller`
+  refuses anonymous API calls.
 - `pip.pdb` keeps one PIP replica available during drains; preferred
   anti-affinity spreads replicas across nodes.
 - `pip.egress.databaseCIDRs` must list the read replicas.

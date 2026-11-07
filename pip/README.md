@@ -131,6 +131,9 @@ without saturating the replicas.
 
 `-max-ttl` (sidecar flag, default 5m) caps the TTL a PIP can advertise.
 
+`-rate-limit` / `-rate-burst` apply a per-caller token bucket; excess requests
+get `429` with `Retry-After`.
+
 `-max-concurrent` bounds in-flight requests; excess requests get `503
 {"error":"overloaded"}` instead of queueing behind a slow upstream.
 

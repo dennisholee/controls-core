@@ -45,12 +45,12 @@ fixed in 0.18.0.
 | C2 | Sidecar trusts raw `x-subject`/`x-claim-*` unless `CONTROLS_IDENTITY_HMAC_KEY` is set; gateway signing not yet deployed | Platform/gateway + core | Envelope enforced; forged raw header test fails |
 | C1 | PIP defaults to plaintext; `-require-mtls` / `-require-caller` are opt-in | Platform + core | `pip.tls.required`, `allowedCallers` on every source |
 | H | Unsigned bundle mode now requires explicit `-allow-unsigned` | Core | Remove dev escape from production manifests |
-| H | Contract major is enforced; manifest still outside the digest | Core | Include manifest in digest |
+| — | Contract major and full manifest are now signed | Core | Done in 0.21.0 |
 | — | Audit async queue + drop/write-failure metrics added | Core | Done in 0.20.0 |
 | H | `fresh`/`deny-on-stale` trust optional lag; no max-TTL before 0.17 | Core | Lag mandatory for those modes; TTL clamp now in |
 | H | Extproc readiness checks policy init; PIP upstream readiness is still static | Platform | PIP readiness probes sources |
 | H | Sidecar/Envoy deployment manifest is unowned (service chart absent) | Platform | Reproducible install with pubkey/salt/ext_proc |
-| M | No rate limiting (only concurrency cap) | Core/platform | Per-identity limit + 429/503 metric |
+| — | Per-caller rate limiting added | Core | Done in 0.21.0 |
 | M | DQ has no unit suite; fallback/reload paths lack end-to-end tests | QA | Tests added to CI gates |
 | M | Classification tags live outside the signed bundle | Delivery/core | Move into bundle or version/stamp them |
 | — | `rejectFields` wildcard support added | Core | Done in 0.19.0 |

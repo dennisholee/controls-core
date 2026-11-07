@@ -12,7 +12,7 @@ imagePullSecrets: []
 pip:
   enabled: true
   image: registry.example.com/controls-pip
-  tag: "0.20.0"
+  tag: "0.21.0"
   pullPolicy: IfNotPresent
   replicas: 2
   port: 8082
@@ -20,6 +20,8 @@ pip:
   lagSeconds: 0
   maxConcurrent: 256
   requireCaller: false
+  rateLimit: 0
+  rateBurst: 0
   # Server TLS / mTLS for the PIP API. The secret must contain the server
   # certificate, key and (for mTLS) the client CA.
   pdb:

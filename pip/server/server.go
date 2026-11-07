@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"example.com/controls/core/internal/metrics"
@@ -23,13 +24,31 @@ type Server struct {
 	log           *slog.Logger
 	mux           *http.ServeMux
 	lagSeconds    int
+	mu            sync.Mutex
 	reg           *metrics.Registry
 	limit         chan struct{}
 	requireCaller bool
+	rateLimit     float64
+	rateBurst     float64
+	buckets       map[string]*bucket
 }
 
 // Option configures the PIP server.
 type Option func(*Server)
+
+// WithRateLimit enables a per-caller token bucket (requests/second, burst).
+func WithRateLimit(rps, burst int) Option {
+	return func(s *Server) {
+		if rps > 0 {
+			s.rateLimit = float64(rps)
+			s.rateBurst = float64(burst)
+			if s.rateBurst < 1 {
+				s.rateBurst = float64(rps)
+			}
+			s.buckets = map[string]*bucket{}
+		}
+	}
+}
 
 // WithRequireCaller rejects API calls that have no authenticated caller
 // identity (for example when PIP mTLS is not enabled).
@@ -76,6 +95,21 @@ func (s *Server) Handler() http.Handler {
 		base = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/v1/") && CallerFromContext(r.Context()) == "" {
 				http.Error(w, `{"error":"caller_required"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+	if s.rateLimit > 0 {
+		next := base
+		base = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !s.allow(CallerFromContext(r.Context())) {
+				if s.reg != nil {
+					s.reg.Inc("pip_rejected_total", "PIP requests rejected before processing.",
+						map[string]string{"reason": "rate"}, 1)
+				}
+				w.Header().Set("Retry-After", "1")
+				http.Error(w, `{"error":"rate_limited"}`, http.StatusTooManyRequests)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -187,6 +221,45 @@ func (s *Server) handleClassification(w http.ResponseWriter, r *http.Request) {
 		Fields:       fields,
 		TTLSeconds:   3600,
 	})
+}
+
+type bucket struct {
+	tokens float64
+	last   time.Time
+}
+
+func (s *Server) allow(caller string) bool {
+	if caller == "" {
+		caller = "anonymous"
+	}
+	now := time.Now()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.buckets == nil {
+		return true
+	}
+	if len(s.buckets) > 10000 {
+		for k, old := range s.buckets {
+			if now.Sub(old.last) > 10*time.Minute {
+				delete(s.buckets, k)
+			}
+		}
+	}
+	b, ok := s.buckets[caller]
+	if !ok {
+		b = &bucket{tokens: s.rateBurst, last: now}
+		s.buckets[caller] = b
+	}
+	b.tokens += now.Sub(b.last).Seconds() * s.rateLimit
+	if b.tokens > s.rateBurst {
+		b.tokens = s.rateBurst
+	}
+	b.last = now
+	if b.tokens < 1 {
+		return false
+	}
+	b.tokens--
+	return true
 }
 
 func (s *Server) recordRequest(endpoint string) {
