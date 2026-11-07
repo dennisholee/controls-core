@@ -136,6 +136,28 @@ Store the private key in Jenkins credentials (file credential). Mount only the
 public key into the sidecar. Losing or rotating the key requires re-signing the
 bundle; the sidecar refuses to start when verification fails.
 
+## Cluster controls job
+
+The bundle pipeline does not deploy the PIP or the network/mTLS objects. A
+second, Jenkins-owned job renders the chart and applies it with `kubectl`:
+
+```bash
+helm template controls deploy/helm/controls-plane --namespace controls \
+  ${HELM_ARGS} > cluster-controls.yaml
+kubectl diff -f cluster-controls.yaml || true
+kubectl apply -n controls -f cluster-controls.yaml
+```
+
+- Helm is a renderer only; there is **no Helm release state**.
+- Jenkins archives `cluster-controls.yaml`; rollback re-applies the previous
+  build's artifact.
+- The job needs a kubeconfig credential and permission to create
+  NetworkPolicies (and Istio objects when enabled).
+- The chart does not create the audit-salt or bundle-public-key secrets; the
+  service deployment mounts those.
+
+Reference: [`../ci/Jenkinsfile.cluster-controls`](../ci/Jenkinsfile.cluster-controls).
+
 ## Versioning
 
 - Pin the tools image by digest; do not use `latest`.

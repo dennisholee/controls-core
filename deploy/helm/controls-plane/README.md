@@ -4,22 +4,30 @@ Reference deployment for the PIP plus the network/mTLS controls that make the
 sidecar safe to run. The sidecar itself is injected into service pods by the
 service's chart; this chart provides the policies those pods are subject to.
 
-## Install
+## Render and apply
+
+Helm is used as a **renderer**: Jenkins applies the output with `kubectl`; there
+is no Helm release state. Archive the rendered file and re-apply the previous
+build's manifest to roll back.
 
 ```bash
-helm upgrade --install controls deploy/helm/controls-plane \
-  --namespace controls --create-namespace \
+kubectl create namespace controls --dry-run=client -o yaml | kubectl apply -f -
+helm template controls deploy/helm/controls-plane --namespace controls \
   --set pip.image=registry.example.com/controls-pip \
-  --set pip.tag=0.6.0
+  --set pip.tag=0.10.1 > cluster-controls.yaml
+kubectl apply -n controls -f cluster-controls.yaml
 ```
 
-With Istio strict mTLS and PIP authorization:
+`make cluster-controls` renders the same file. The reference job is
+[`ci/Jenkinsfile.cluster-controls`](../../../ci/Jenkinsfile.cluster-controls).
+
+With Istio strict mTLS and PIP authorization, add the same flags to the render:
 
 ```bash
-helm upgrade --install controls deploy/helm/controls-plane \
-  --namespace controls --create-namespace \
+helm template controls deploy/helm/controls-plane --namespace controls \
   --set istio.enabled=true \
-  --set istio.authorizationPolicy.allowedPrincipals[0]=cluster.local/ns/payments/sa/accounts
+  --set istio.authorizationPolicy.allowedPrincipals[0]=cluster.local/ns/payments/sa/accounts \
+  > cluster-controls.yaml
 ```
 
 ## What it enforces

@@ -1,5 +1,7 @@
 GO ?= go
 HELM ?= helm
+HELM_ARGS ?=
+CONTROLS_NAMESPACE ?= controls
 ENV ?= prod
 SERVICE ?= accounts
 GOCACHE ?= $(CURDIR)/.gocache
@@ -67,6 +69,11 @@ smoke:
 chart:
 	$(HELM) lint deploy/helm/controls-plane
 	$(HELM) template controls deploy/helm/controls-plane --namespace controls >/dev/null
+
+cluster-controls:
+	mkdir -p dist
+	$(HELM) template controls deploy/helm/controls-plane --namespace $(CONTROLS_NAMESPACE) $(HELM_ARGS) > dist/cluster-controls.yaml
+	@echo "rendered dist/cluster-controls.yaml"
 
 # Render the sibling delivery repo for local inspection (not part of CI).
 render-rules:

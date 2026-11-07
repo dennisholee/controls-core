@@ -6,6 +6,7 @@ apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
   name: {{ include "controls-plane.fullname" . }}-pip
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "controls-plane.labels" . | nindent 4 }}
 spec:

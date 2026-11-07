@@ -1,0 +1,55 @@
+// Reference job for the cluster controls (PIP + NetworkPolicies + mTLS).
+//
+// Helm is used as a renderer only: Jenkins applies the rendered manifests with
+// kubectl. There is no Helm release state; keep the archived manifest for
+// rollback and re-apply the previous build's artifact.
+//
+// Agent requirements: helm 3.16+, kubectl, and a kubeconfig credential with
+// namespace-admin (or cluster-admin for the Istio/NetworkPolicy objects).
+pipeline {
+  agent { label 'k8s-deploy' }
+
+  parameters {
+    string(name: 'NAMESPACE', defaultValue: 'controls', description: 'Namespace to apply into')
+    string(name: 'HELM_ARGS', defaultValue: '', description: 'Extra --set/--values arguments')
+    string(name: 'KUBECONFIG_CREDENTIALS', defaultValue: 'kubeconfig-prod', description: 'Jenkins file credential')
+    booleanParam(name: 'APPLY', defaultValue: false, description: 'Apply after diff (otherwise render only)')
+  }
+
+  options {
+    timeout(time: 20, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+  }
+
+  stages {
+    stage('Render') {
+      steps {
+        sh 'mkdir -p dist'
+        sh "helm template controls deploy/helm/controls-plane --namespace ${params.NAMESPACE} ${params.HELM_ARGS} > dist/cluster-controls.yaml"
+      }
+    }
+
+    stage('Validate') {
+      steps {
+        sh "kubectl diff -f dist/cluster-controls.yaml > dist/cluster-controls.diff || true"
+        sh 'wc -l dist/cluster-controls.diff || true'
+      }
+    }
+
+    stage('Apply') {
+      when { expression { params.APPLY } }
+      steps {
+        input message: "Apply cluster controls to ${params.NAMESPACE}?", ok: 'Apply'
+        withCredentials([file(credentialsId: params.KUBECONFIG_CREDENTIALS, variable: 'KUBECONFIG')]) {
+          sh "kubectl apply -n ${params.NAMESPACE} -f dist/cluster-controls.yaml"
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'dist/cluster-controls.*', allowEmptyArchive: false
+    }
+  }
+}

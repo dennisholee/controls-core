@@ -3,6 +3,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "controls-plane.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "controls-plane.labels" . | nindent 4 }}
 spec:
