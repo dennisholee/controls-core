@@ -17,3 +17,4 @@ examples/mtls-caller/certs/*.crt
 examples/mtls-caller/certs/*.srl
 **/target/
 .m2-repo/
+performance.log

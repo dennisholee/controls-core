@@ -1,0 +1,82 @@
+name: performance
+
+on:
+  workflow_dispatch:
+    inputs:
+      rps:
+        description: Target requests per second
+        required: false
+        default: "300"
+      duration:
+        description: Load duration (Go duration)
+        required: false
+        default: "15s"
+      p99:
+        description: Fail threshold for p99 latency
+        required: false
+        default: "200ms"
+      concurrency:
+        description: Concurrent workers
+        required: false
+        default: "60"
+  schedule:
+    # Weekly regression signal. GitHub-hosted runners are shared and noisy;
+    # use a dedicated runner for certification against an SLO.
+    - cron: "0 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sidecar-load:
+    name: Live Envoy + ext_proc load test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CONTROLS_LOADTEST: "1"
+      LOADTEST_RPS: ${{ github.event.inputs.rps || '300' }}
+      LOADTEST_DURATION: ${{ github.event.inputs.duration || '15s' }}
+      LOADTEST_P99: ${{ github.event.inputs.p99 || '200ms' }}
+      LOADTEST_CONCURRENCY: ${{ github.event.inputs.concurrency || '60' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: Run live sidecar load test
+        run: |
+          set -o pipefail
+          make smoke 2>&1 | tee performance.log
+
+      - name: Publish performance log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-performance-${{ github.run_id }}
+          path: performance.log
+          if-no-files-found: warn
+
+      - name: Summarize run
+        if: always()
+        run: |
+          {
+            echo "## Sidecar performance run"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "|---|---|"
+            echo "| Target RPS | ${LOADTEST_RPS} |"
+            echo "| Duration | ${LOADTEST_DURATION} |"
+            echo "| p99 threshold | ${LOADTEST_P99} |"
+            echo "| Concurrency | ${LOADTEST_CONCURRENCY} |"
+            echo ""
+            echo "GitHub-hosted runners are shared; treat this as a regression signal, not an SLO certification."
+          } >> "$GITHUB_STEP_SUMMARY"
