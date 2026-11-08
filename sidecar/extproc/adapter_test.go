@@ -59,6 +59,12 @@ func (f fakePIP) Classification(context.Context, string) (map[string]string, err
 	return nil, f.err
 }
 
+func (f fakePIP) ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error) {
+	return f.Resolve(ctx, refs)
+}
+
+func (f fakePIP) CachedClassification(string) (map[string]string, bool) { return nil, false }
+
 func newAdapter(t *testing.T, pip engine.PIP) *Adapter {
 	t.Helper()
 	bundle, err := config.LoadDir("../../integration/testdata/config")
@@ -66,7 +72,7 @@ func newAdapter(t *testing.T, pip engine.PIP) *Adapter {
 		t.Fatal(err)
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return New(Config{Engine: engine.New(bundle, pip), Log: log})
+	return New(Config{Processor: engine.New(bundle, pip), Log: log})
 }
 
 func headerReq(method, path string, extra map[string]string) *extprocv3.ProcessingRequest {
@@ -235,7 +241,7 @@ func TestEngineProviderSwap(t *testing.T) {
 
 	current := allow
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	a := New(Config{EngineProvider: func() *engine.Engine { return current }, Log: log})
+	a := New(Config{ProcessorProvider: func() Processor { return current }, Log: log})
 
 	run := func() *extprocv3.ProcessingResponse {
 		s := &fakeStream{reqs: []*extprocv3.ProcessingRequest{
@@ -256,5 +262,44 @@ func TestEngineProviderSwap(t *testing.T) {
 	current = deny
 	if second := run(); second.GetImmediateResponse() == nil {
 		t.Fatalf("expected deny after reload, got %+v", second)
+	}
+}
+
+// The adapter depends on the Processor port, not on the concrete engine.
+type fakeProcessor struct {
+	requests int
+	masks    int
+}
+
+func (f *fakeProcessor) StartupError() error { return nil }
+func (f *fakeProcessor) ProcessRequest(context.Context, engine.Request) engine.Result {
+	f.requests++
+	return engine.Result{Allowed: true, Status: 200, EndpointID: "stub"}
+}
+func (f *fakeProcessor) MaskResponseCtx(_ context.Context, _ *config.Endpoint, body []byte, _ bool) ([]byte, error) {
+	f.masks++
+	return body, nil
+}
+func (f *fakeProcessor) Endpoint(string, string) *config.Endpoint {
+	return &config.Endpoint{ID: "stub"}
+}
+
+func TestAdapterUsesProcessorPort(t *testing.T) {
+	proc := &fakeProcessor{}
+	a := New(Config{Processor: proc, Log: slog.New(slog.NewTextHandler(io.Discard, nil))})
+	s := &fakeStream{reqs: []*extprocv3.ProcessingRequest{
+		headerReq("GET", "/stub", map[string]string{"x-subject": "u-1"}),
+		bodyReq(""),
+		respHeadersReq("200"),
+		respBodyReq(`{"ok":true}`),
+	}}
+	if err := a.Handle(s); err != nil {
+		t.Fatal(err)
+	}
+	if proc.requests != 1 || proc.masks != 1 {
+		t.Fatalf("processor calls: requests=%d masks=%d", proc.requests, proc.masks)
+	}
+	if im := s.sent[len(s.sent)-1].GetImmediateResponse(); im != nil {
+		t.Fatalf("unexpected immediate response: %+v", im)
 	}
 }

@@ -143,10 +143,10 @@ func main() {
 	}
 	server := grpc.NewServer()
 	extprocv3.RegisterExternalProcessorServer(server, extproc.New(extproc.Config{
-		EngineProvider: func() *engine.Engine { return current.Load().engine },
-		Log:            log,
-		MaxBodyBytes:   *maxBody,
-		IdentityKey:    identityKey,
+		ProcessorProvider: func() extproc.Processor { return current.Load().engine },
+		Log:               log,
+		MaxBodyBytes:      *maxBody,
+		IdentityKey:       identityKey,
 	}))
 	go func() {
 		log.Info("extproc listening", "addr", *listen, "config", *cfgDir, "pip", *pipURL)

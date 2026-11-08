@@ -29,6 +29,10 @@ func (f *fakePIP) Classification(context.Context, string) (map[string]string, er
 	return nil, nil
 }
 
+func (f *fakePIP) CachedClassification(string) (map[string]string, bool) {
+	return nil, false
+}
+
 func (f *fakePIP) attrs(refs []pipclient.Ref) map[string]pipclient.Attribute {
 	out := map[string]pipclient.Attribute{}
 	for _, r := range refs {
@@ -107,34 +111,6 @@ func TestDenyOnStaleHonoursBound(t *testing.T) {
 	if res.Allowed || res.Reason != "stale_attributes" {
 		t.Fatalf("lag over bound should deny: %+v", res)
 	}
-}
-
-func TestFreshWithoutFreshClientFallsBack(t *testing.T) {
-	pip := &plainPIP{lag: 0}
-	res := run(freshnessBundle("fresh", 0), pip)
-	if !res.Allowed || pip.calls != 1 {
-		t.Fatalf("fallback failed: %+v calls=%d", res, pip.calls)
-	}
-}
-
-type plainPIP struct{ lag, calls int }
-
-func (p *plainPIP) Resolve(_ context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error) {
-	p.calls++
-	out := map[string]pipclient.Attribute{}
-	for _, r := range refs {
-		out[r.Type+"|"+r.ID] = pipclient.Attribute{
-			Type: r.Type, ID: r.ID, Found: true,
-			Attributes: map[string]any{"ownerId": "u-1"},
-			LagSeconds: p.lag,
-			LagKnown:   true,
-		}
-	}
-	return out, nil
-}
-
-func (p *plainPIP) Classification(context.Context, string) (map[string]string, error) {
-	return nil, nil
 }
 
 func TestDecisionHook(t *testing.T) {

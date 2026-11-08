@@ -18,6 +18,10 @@ func (stubPIP) Resolve(context.Context, []pipclient.Ref) (map[string]pipclient.A
 func (stubPIP) Classification(context.Context, string) (map[string]string, error) {
 	return nil, nil
 }
+func (stubPIP) ResolveFresh(context.Context, []pipclient.Ref) (map[string]pipclient.Attribute, error) {
+	return map[string]pipclient.Attribute{}, nil
+}
+func (stubPIP) CachedClassification(string) (map[string]string, bool) { return nil, false }
 
 func TestReloadReusesPIPClient(t *testing.T) {
 	pip := stubPIP{}

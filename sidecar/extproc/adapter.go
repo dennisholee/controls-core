@@ -31,14 +31,23 @@ import (
 // DefaultMaxBody bounds buffering per request and response.
 const DefaultMaxBody = 1 << 20 // 1 MiB
 
+// Processor is the port the transport adapter needs. *engine.Engine
+// implements it; tests and alternate cores can provide their own.
+type Processor interface {
+	StartupError() error
+	ProcessRequest(context.Context, engine.Request) engine.Result
+	MaskResponseCtx(context.Context, *config.Endpoint, []byte, bool) ([]byte, error)
+	Endpoint(method, path string) *config.Endpoint
+}
+
 // Config configures the adapter.
 type Config struct {
-	Engine *engine.Engine
-	// EngineProvider, when set, is consulted per message so a reload can swap
-	// the engine without restarting the stream adapter.
-	EngineProvider func() *engine.Engine
-	Log            *slog.Logger
-	MaxBodyBytes   int
+	Processor Processor
+	// ProcessorProvider, when set, is consulted per message so a reload can
+	// swap the core without restarting the stream adapter.
+	ProcessorProvider func() Processor
+	Log               *slog.Logger
+	MaxBodyBytes      int
 	// IdentityKey, when set, requires a gateway-signed x-controls-identity
 	// envelope and ignores raw x-subject/x-claim-* headers.
 	IdentityKey     []byte
@@ -48,7 +57,7 @@ type Config struct {
 // Adapter implements the ext_proc ExternalProcessor service.
 type Adapter struct {
 	extprocv3.UnimplementedExternalProcessorServer
-	engineFn        func() *engine.Engine
+	processorFn     func() Processor
 	log             *slog.Logger
 	max             int
 	identityKey     []byte
@@ -63,16 +72,16 @@ func New(cfg Config) *Adapter {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	fn := cfg.EngineProvider
+	fn := cfg.ProcessorProvider
 	if fn == nil {
-		fixed := cfg.Engine
-		fn = func() *engine.Engine { return fixed }
+		fixed := cfg.Processor
+		fn = func() Processor { return fixed }
 	}
 	skew := cfg.IdentityMaxSkew
 	if len(cfg.IdentityKey) > 0 && skew <= 0 {
 		skew = time.Minute
 	}
-	return &Adapter{engineFn: fn, log: cfg.Log, max: cfg.MaxBodyBytes, identityKey: cfg.IdentityKey, identityMaxSkew: skew}
+	return &Adapter{processorFn: fn, log: cfg.Log, max: cfg.MaxBodyBytes, identityKey: cfg.IdentityKey, identityMaxSkew: skew}
 }
 
 // stream is the subset of the gRPC stream the adapter needs (mockable).
@@ -91,7 +100,7 @@ func (a *Adapter) Process(s extprocv3.ExternalProcessor_ProcessServer) error {
 func (a *Adapter) Handle(s stream) error {
 	// Pin one engine for the whole stream so a reload cannot mix bundles
 	// between the decision and the response-masking phase.
-	st := &state{headers: map[string]string{}, eng: a.engineFn()}
+	st := &state{headers: map[string]string{}, eng: a.processorFn()}
 	for {
 		msg, err := s.Recv()
 		if err != nil {
@@ -123,7 +132,7 @@ type state struct {
 	status   int
 	respBody []byte
 	endpoint *config.Endpoint
-	eng      *engine.Engine
+	eng      Processor
 	decided  bool
 }
 

@@ -23,6 +23,9 @@ func (c classPIP) Classification(context.Context, string) (map[string]string, er
 	return c.classes, c.err
 }
 func (c classPIP) CachedClassification(string) (map[string]string, bool) { return nil, false }
+func (c classPIP) ResolveFresh(context.Context, []pipclient.Ref) (map[string]pipclient.Attribute, error) {
+	return c.Resolve(context.Background(), nil)
+}
 
 func fallbackBundle() *config.Bundle {
 	b := &config.Bundle{}
@@ -164,5 +167,39 @@ func TestBundleClassificationWinsOverPIP(t *testing.T) {
 	}
 	if !strings.Contains(string(out), `"[REDACTED]"`) {
 		t.Fatalf("bundle classification not applied: %s", out)
+	}
+}
+
+type cachedClassPIP struct {
+	classPIP
+	fetched int
+}
+
+func (c *cachedClassPIP) CachedClassification(string) (map[string]string, bool) {
+	return c.classes, true
+}
+func (c *cachedClassPIP) Classification(context.Context, string) (map[string]string, error) {
+	c.fetched++
+	return c.classes, nil
+}
+
+func TestMaskFallbackUsesCachedClassification(t *testing.T) {
+	pip := &cachedClassPIP{classPIP: classPIP{classes: map[string]string{"phone": "pii.locked"}}}
+	e := New(fallbackBundle(), pip)
+	ep := e.Endpoint("POST", "/x")
+	out, err := e.MaskResponseCtx(context.Background(), ep,
+		[]byte(`{"accountNumber":"1234567890","phone":"+15551234567"}`), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out, &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["phone"] != "[REDACTED]" {
+		t.Fatalf("phone not masked: %v", doc)
+	}
+	if pip.fetched != 0 {
+		t.Fatalf("cached classification should avoid a fetch, fetched=%d", pip.fetched)
 	}
 }

@@ -49,6 +49,9 @@ func (p *LocalPIP) ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[
 	return p.Resolve(ctx, refs)
 }
 
+// CachedClassification has no cache in the fixture repository.
+func (p *LocalPIP) CachedClassification(string) (map[string]string, bool) { return nil, false }
+
 // Classification returns the fixture classification tags.
 func (p *LocalPIP) Classification(ctx context.Context, resourceType string) (map[string]string, error) {
 	fields, ok, err := p.repo.Classification(ctx, resourceType)

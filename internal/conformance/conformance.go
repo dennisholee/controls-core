@@ -87,6 +87,12 @@ func (p fixturePIP) Resolve(ctx context.Context, refs []pipclient.Ref) (map[stri
 	return out, nil
 }
 
+func (p fixturePIP) ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error) {
+	return p.Resolve(ctx, refs)
+}
+
+func (p fixturePIP) CachedClassification(string) (map[string]string, bool) { return nil, false }
+
 func (p fixturePIP) Classification(ctx context.Context, resourceType string) (map[string]string, error) {
 	if len(p.classes) > 0 {
 		return p.classes, nil

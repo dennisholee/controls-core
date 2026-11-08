@@ -24,17 +24,20 @@ import (
 	"example.com/controls/core/internal/policy"
 )
 
-// PIP is the subset of the PIP client the engine needs (mockable in tests).
+// PIP is the complete attribute port the engine needs. Keeping fresh,
+// classification and cached-classification in one interface avoids optional
+// type assertions at call sites; adapters that do not have a cache can
+// implement ResolveFresh as an alias for Resolve.
+//
+// *pipclient.Client is the production implementation.
 type PIP interface {
 	Resolve(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error)
+	ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error)
 	Classification(ctx context.Context, resourceType string) (map[string]string, error)
+	CachedClassification(resourceType string) (map[string]string, bool)
 }
 
-// freshPIP is implemented by clients that can bypass the local cache. The
-// engine falls back to Resolve when a PIP does not support it.
-type freshPIP interface {
-	ResolveFresh(ctx context.Context, refs []pipclient.Ref) (map[string]pipclient.Attribute, error)
-}
+var _ PIP = (*pipclient.Client)(nil)
 
 // defaultMaxStalenessSeconds applies to fresh/deny-on-stale endpoints that do
 // not declare a bound.
@@ -235,11 +238,7 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 			err   error
 		)
 		if freshness == "fresh" {
-			if fp, ok := e.pip.(freshPIP); ok {
-				attrs, err = fp.ResolveFresh(ctx, refs)
-			} else {
-				attrs, err = e.pip.Resolve(ctx, refs)
-			}
+			attrs, err = e.pip.ResolveFresh(ctx, refs)
 		} else {
 			attrs, err = e.pip.Resolve(ctx, refs)
 		}
@@ -351,11 +350,7 @@ func (e *Engine) MaskResponseCtx(ctx context.Context, ep *config.Endpoint, body 
 	if maskPolicy.Fallback == "classification" {
 		classes := maskPolicy.Classification
 		if len(classes) == 0 {
-			if cp, ok := e.pip.(interface {
-				CachedClassification(string) (map[string]string, bool)
-			}); ok {
-				classes, _ = cp.CachedClassification(ep.ResourceType)
-			}
+			classes, _ = e.pip.CachedClassification(ep.ResourceType)
 		}
 		if len(classes) == 0 {
 			fetched, err := e.pip.Classification(ctx, ep.ResourceType)

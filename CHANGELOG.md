@@ -3,6 +3,16 @@
 All notable changes to `controls-core`. Independent versions are tracked for the
 sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
+## [Unreleased]
+
+### Changed
+
+- Consolidated the engine's PIP dependency into one port (`Resolve`,
+  `ResolveFresh`, `Classification`, `CachedClassification`) and removed
+  optional type assertions.
+- Added an explicit `extproc.Processor` port so the Envoy adapter no longer
+  depends on the concrete engine.
+
 ## [0.38.3] — 2026-11-07
 
 ### Added

@@ -54,6 +54,23 @@ Visual overview: [`docs/architecture-infographic.svg`](docs/architecture-infogra
 | Pipeline integration | `ci/Jenkinsfile`, `docs/PIPELINE.md` | Contract for the centrally managed Jenkins job |
 | Benchmark | `integration/bench_test.go` | Decision/mask overhead regression signal |
 
+### Ports
+
+The engine is the core; transport and external systems are adapters.
+
+| Port | Core use | Adapters |
+|---|---|---|
+| `extproc.Processor` | Request processing and response masking | Envoy ext_proc; HTTP harness; test fakes |
+| `engine.PIP` | Attributes, fresh reads, classification, cached classification | HTTP PIP client; fixture/test PIPs |
+| `policy.Evaluator` | Allow/deny | Reference rules, Cedar, external OPA |
+| `dq.Evaluator` | Blocking/non-blocking violations | In-process JSON rules |
+| `mask` | Field masking | Full/partial modes, classification fallback |
+| `engine.Hooks` | Decision events | Audit sink, metrics |
+
+Only volatile boundaries are ports. `config.Bundle` stays a concrete,
+versioned data contract; wrapping it would add indirection without an
+alternate implementation. The composition root is `sidecar/cmd/extproc`.
+
 ### Artifacts
 
 - **Bundle**: `registry.json`, `rules.json`, `mask-policies.json`, `dq.json`,
