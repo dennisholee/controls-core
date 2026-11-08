@@ -13,6 +13,11 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   key and audit salt; the runtime image accepts `CONTROLS_RUNTIME_CONFIG`.
 - PIP `GET /version` and sidecar `pip.apiVersion` start-up handshake; the
   sidecar fails closed on a mismatched or unreachable PIP contract.
+- PIP client rejects responses missing required `type`, `id` or
+  `resourceType`; the PIP server test pins the contract version to
+  `pip-api.yaml`.
+- Helm sidecar values expose the PIP contract version, client tuning, identity
+  skew, reload interval and optional OPA endpoint.
 
 ### Changed
 

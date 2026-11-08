@@ -25,6 +25,10 @@ renderable parent.
 | `envoy.port` / `envoy.adminPort` | Envoy listener/admin ports |
 | `extproc.port` / `extproc.metricsPort` | ext_proc gRPC / metrics ports |
 | `extproc.pipURL` | PIP base URL |
+| `extproc.pipAPIVersion` | expected PIP contract version (`1.0`) |
+| `extproc.pipTimeout` / `pipDefaultTTL` / `maxTTL` / `pipMaxCache` / `pipBreakerCooldown` | PIP client tuning |
+| `extproc.identityMaxSkew` / `reloadInterval` | identity clock skew and bundle polling |
+| `extproc.opaURL` / `opaTimeout` | optional external OPA endpoint |
 | `extproc.pipCA` / `pipCert` / `pipKey` / `pipServerName` | PIP mTLS files and SNI |
 | `extproc.auditSample` / `auditBuffer` / `auditOut` | audit sampling, queue and optional file |
 | `extproc.allowUnsigned` | development only; production requires a bundle pubkey |

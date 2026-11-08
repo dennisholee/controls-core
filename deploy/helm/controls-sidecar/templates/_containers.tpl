@@ -36,6 +36,28 @@
     - /etc/controls/bundle
     - -pip
     - {{ required "extproc.pipURL is required" .Values.extproc.pipURL | quote }}
+    - -pip-api-version
+    - {{ .Values.extproc.pipAPIVersion | default "1.0" | quote }}
+    - -pip-timeout
+    - {{ .Values.extproc.pipTimeout | default "100ms" | quote }}
+    - -pip-default-ttl
+    - {{ .Values.extproc.pipDefaultTTL | default "30s" | quote }}
+    - -max-ttl
+    - {{ .Values.extproc.maxTTL | default "5m" | quote }}
+    - -pip-max-cache
+    - {{ .Values.extproc.pipMaxCache | default 100000 | quote }}
+    - -pip-breaker-cooldown
+    - {{ .Values.extproc.pipBreakerCooldown | default "5s" | quote }}
+    - -identity-max-skew
+    - {{ .Values.extproc.identityMaxSkew | default "1m" | quote }}
+    - -reload-interval
+    - {{ .Values.extproc.reloadInterval | default "30s" | quote }}
+    {{- if .Values.extproc.opaURL }}
+    - -opa-url
+    - {{ .Values.extproc.opaURL | quote }}
+    - -opa-timeout
+    - {{ .Values.extproc.opaTimeout | default "100ms" | quote }}
+    {{- end }}
     - -metrics-addr
     - ":{{ .Values.extproc.metricsPort | default 9090 }}"
     - -audit-sample

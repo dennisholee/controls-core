@@ -80,6 +80,9 @@ openapi-gate:
 acceptance:
 	$(GO) test -run TestAcceptance -count=1 -v ./integration
 
+pip-contract:
+	$(GO) test ./pip/server -run TestServerMatchesPublishedContract -count=1
+
 smoke:
 	./hack/envoy-smoke.sh
 

@@ -13,6 +13,17 @@ extproc:
   metricsPort: 9090
   resources: {}
   pipURL: http://controls-pip.controls.svc:8082
+  pipAPIVersion: "1.0"
+  pipTimeout: 100ms
+  pipDefaultTTL: 30s
+  maxTTL: 5m
+  pipMaxCache: 100000
+  pipBreakerCooldown: 5s
+  identityMaxSkew: 1m
+  reloadInterval: 30s
+  # Optional external OPA decision endpoint.
+  opaURL: ""
+  opaTimeout: 100ms
   # Optional PIP mTLS files, mounted from the shared secrets volume.
   pipCA: ""
   pipCert: ""

@@ -169,3 +169,21 @@ func TestAPIVersionAndCheck(t *testing.T) {
 		}
 	}
 }
+
+func TestMalformedResponsesFailClosed(t *testing.T) {
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/attributes:batch" {
+			_, _ = w.Write([]byte(`{"results":[{"found":true}]}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"fields":{}}`))
+	}))
+	defer bad.Close()
+	c := New(bad.URL)
+	if _, err := c.Resolve(context.Background(), []Ref{{Type: "account", ID: "A1"}}); err == nil {
+		t.Fatal("expected malformed batch error")
+	}
+	if _, err := c.Classification(context.Background(), "account"); err == nil {
+		t.Fatal("expected malformed classification error")
+	}
+}

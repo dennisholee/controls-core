@@ -8,8 +8,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"example.com/controls/core/internal/metrics"
 	"example.com/controls/core/internal/pipclient"
@@ -296,5 +299,27 @@ func TestVersionEndpoint(t *testing.T) {
 	}
 	if out.APIVersion != APIVersion || out.Build == "" {
 		t.Fatalf("version = %+v", out)
+	}
+}
+
+func TestServerMatchesPublishedContract(t *testing.T) {
+	raw, err := os.ReadFile("../../contracts/pip-api.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spec struct {
+		Info struct {
+			Version string `yaml:"version"`
+		} `yaml:"info"`
+		Paths map[string]any `yaml:"paths"`
+	}
+	if err := yaml.Unmarshal(raw, &spec); err != nil {
+		t.Fatal(err)
+	}
+	if spec.Info.Version != APIVersion {
+		t.Fatalf("contract version %q != server %q", spec.Info.Version, APIVersion)
+	}
+	if _, ok := spec.Paths["/version"]; !ok {
+		t.Fatal("contract is missing /version")
 	}
 }

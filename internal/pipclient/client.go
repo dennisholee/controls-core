@@ -338,6 +338,11 @@ func (c *Client) fetch(ctx context.Context, refs []Ref, cacheState string) (map[
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}
+	for _, r := range out.Results {
+		if r.Type == "" || r.ID == "" {
+			return nil, fmt.Errorf("pip response contains an attribute without type/id")
+		}
+	}
 	for i := range out.Results {
 		out.Results[i].Cache = cacheState
 	}
@@ -403,6 +408,9 @@ func (c *Client) Classification(ctx context.Context, resourceType string) (map[s
 	var out ClassificationResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
+	}
+	if out.ResourceType == "" {
+		return nil, fmt.Errorf("pip classification response missing resourceType")
 	}
 	ttl := time.Hour
 	if out.TTLSeconds > 0 {
