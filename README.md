@@ -1,5 +1,8 @@
 # controls-core
 
+Platform map: [`PLATFORM.md`](PLATFORM.md) · repository inventory:
+[`REPO-INVENTORY.md`](REPO-INVENTORY.md) · agent guide: [`AGENTS.md`](AGENTS.md).
+
 Core engineering monorepo for the **controls plane**: data-level entitlements
 and data-quality checks for existing Java/Spring Boot services, enforced by a
 centrally managed sidecar with delivery-owned rules and configuration.
