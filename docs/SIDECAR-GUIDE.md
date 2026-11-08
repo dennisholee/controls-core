@@ -7,6 +7,11 @@ Outcome: the service keeps its application code, while the sidecar enforces
 route-bound entitlement, data quality and response masking before traffic
 reaches the service.
 
+**Visual orientation**
+
+- [Runtime architecture](architecture-infographic.svg) — request path, decision flow, bundle pipeline and failure modes.
+- [Deployment topology](deployment-infographic.svg) — namespaces, NetworkPolicy, PIP replicas, bundle mounts and delivery.
+
 ## 1. What the sidecar does — and does not do
 
 The sidecar:
@@ -51,7 +56,9 @@ Before starting:
 
 ## 4. Phase 1 — annotate the contract
 
-The service owns the route/resource binding. Annotate each controlled
+The service owns the route/resource binding. See the runtime path in the
+[architecture infographic](architecture-infographic.svg#) before choosing
+`x-resource-source`, `x-attributes` and `x-freshness`. Annotate each controlled
 operation:
 
 ```yaml
@@ -172,7 +179,9 @@ central `controls-rules` pipeline and are signed.
 
 ## 7. Phase 4 — package and deploy
 
-No application code changes are required. The pod contains:
+No application code changes are required. See the
+[deployment topology](deployment-infographic.svg#) for the namespace,
+NetworkPolicy and PIP placement this phase must match. The pod contains:
 
 - the app container;
 - the Envoy container;
@@ -341,6 +350,8 @@ Rollback is redeploying the previous bundle digest.
 ## 15. Reference
 
 - [`ARCHITECTURE.md`](../ARCHITECTURE.md)
+- [Architecture infographic](architecture-infographic.svg)
+- [Deployment infographic](deployment-infographic.svg)
 - [`docs/PIPELINE.md`](PIPELINE.md)
 - [`docs/COMPATIBILITY.md`](COMPATIBILITY.md)
 - [`contracts/`](../contracts/)
