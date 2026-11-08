@@ -1,0 +1,9 @@
+server:
+  addr: ":8082"
+  metricsAddr: ":9090"
+  requireMTLS: true
+  tlsCert: /tls/server.crt
+  tlsKey: /tls/server.key
+  clientCA: /tls/ca.crt
+repository:
+  sources: /etc/controls/sources.json

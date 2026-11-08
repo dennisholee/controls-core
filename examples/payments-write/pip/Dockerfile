@@ -4,4 +4,4 @@ RUN adduser -D -u 10001 controls
 COPY ${PIP_BIN} /usr/local/bin/pip
 COPY examples/payments-write/pip/attributes.json /etc/controls/attributes.json
 USER controls
-ENTRYPOINT ["/usr/local/bin/pip", "-addr", ":8082", "-fixtures", "/etc/controls/attributes.json"]
+ENTRYPOINT ["/usr/local/bin/pip"]

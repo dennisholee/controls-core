@@ -1,0 +1,14 @@
+server:
+  listen: ":50051"
+  metricsAddr: ":9090"
+bundle:
+  path: /etc/controls/bundle
+  allowUnsigned: true
+  reloadInterval: 30s
+pip:
+  url: http://pip:8082
+  timeout: 100ms
+audit:
+  sample: 1
+  buffer: 0
+  salt: sample-salt

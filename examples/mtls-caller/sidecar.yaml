@@ -1,0 +1,19 @@
+server:
+  listen: ":50051"
+  metricsAddr: ":9090"
+bundle:
+  path: /etc/controls/bundle
+  allowUnsigned: true
+  reloadInterval: 30s
+pip:
+  url: https://pip:8082
+  timeout: 100ms
+  tls:
+    ca: /etc/controls/pip-tls/ca.crt
+    cert: /etc/controls/pip-tls/client.crt
+    key: /etc/controls/pip-tls/client.key
+    serverName: pip
+audit:
+  sample: 1
+  buffer: 0
+  salt: sample-salt

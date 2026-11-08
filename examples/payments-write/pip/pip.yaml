@@ -1,0 +1,5 @@
+server:
+  addr: ":8082"
+  metricsAddr: ":9090"
+repository:
+  fixtures: /etc/controls/attributes.json

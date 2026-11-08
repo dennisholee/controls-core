@@ -10,4 +10,4 @@ source-reported lag the sidecar refuses to serve cached attributes as current.
 make test
 ```
 
-This sample has no PIP service; `PIP_URL` points at a closed port.
+This sample has no PIP service; `sidecar.yaml` points `pip.url` at a closed port.

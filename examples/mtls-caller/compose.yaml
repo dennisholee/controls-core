@@ -11,39 +11,25 @@ services:
   pip:
     image: mtls-caller-pip:dev
     entrypoint: ["/usr/local/bin/pip"]
-    command:
-      - -addr
-      - :8082
-      - -sources
-      - /etc/controls/sources.json
-      - -tls-cert
-      - /tls/server.crt
-      - -tls-key
-      - /tls/server.key
-      - -client-ca
-      - /tls/ca.crt
-      - -require-mtls
+    command: ["-runtime-config", "/etc/controls/pip.yaml"]
     expose:
       - "8082"
     volumes:
       - ./certs:/tls:ro
       - ./pip/sources.json:/etc/controls/sources.json:ro
+      - ./pip/pip.yaml:/etc/controls/pip.yaml:ro
   sidecar:
     image: controls-sidecar:dev
     ports:
       - "18004:8080"
     environment:
-      PIP_URL: https://pip:8082
-      PIP_CA: /etc/controls/pip-tls/ca.crt
-      PIP_CERT: /etc/controls/pip-tls/client.crt
-      PIP_KEY: /etc/controls/pip-tls/client.key
-      PIP_SERVER_NAME: pip
-      CONTROLS_AUDIT_SALT: sample-salt
+      CONTROLS_RUNTIME_CONFIG: /etc/controls/sidecar.yaml
       SERVICE_NAME: mtls-caller
     volumes:
       - ./controls:/etc/controls/bundle:ro
       - ./envoy/envoy.yaml:/etc/controls/envoy.yaml:ro
       - ./certs:/etc/controls/pip-tls:ro
+      - ./sidecar.yaml:/etc/controls/sidecar.yaml:ro
     depends_on:
       - app
       - pip
