@@ -151,6 +151,11 @@ The PIP must never call back through the sidecar.
 ## Run
 
 ```bash
+go run ./pip/cmd/pip -runtime-config pip/pip.example.yaml
 go run ./pip/cmd/pip -addr :8082 -fixtures pip/fixtures/attributes.json
 go run ./pip/cmd/pip -addr :8082 -sources pip-sources.json
 ```
+
+The YAML file covers listener, metrics, concurrency, TLS, caller checks, rate
+limits and the repository (fixtures or source document). Flags override the
+file. See [`pip.example.yaml`](pip.example.yaml).

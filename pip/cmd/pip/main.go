@@ -22,33 +22,39 @@ import (
 )
 
 func main() {
-	addr := flag.String("addr", ":8082", "listen address")
-	fixtures := flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
-	sources := flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
-	metricsAddr := flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
-	maxConcurrent := flag.Int("max-concurrent", 0, "max in-flight requests (0 = unlimited)")
-	requireCaller := flag.Bool("require-caller", false, "reject API calls without a client-certificate identity")
-	requireMTLS := flag.Bool("require-mtls", false, "require TLS with a verified client certificate")
-	rateLimit := flag.Int("rate-limit", 0, "per-caller requests/second (0 = disabled)")
-	rateBurst := flag.Int("rate-burst", 0, "per-caller burst (defaults to rate-limit)")
-	tlsCert := flag.String("tls-cert", "", "server certificate for PIP HTTPS")
-	tlsKey := flag.String("tls-key", "", "server key for PIP HTTPS")
-	clientCA := flag.String("client-ca", "", "CA bundle for mutual TLS client verification")
-	lagSeconds := flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
+	runtimeConfig := flag.String("runtime-config", "", "PIP YAML configuration file")
+	flag.String("addr", ":8082", "listen address")
+	flag.String("fixtures", "pip/fixtures/attributes.json", "fixture file for the in-memory repository")
+	flag.String("sources", "", "HTTP attribute-source config (overrides -fixtures)")
+	flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
+	flag.Int("max-concurrent", 0, "max in-flight requests (0 = unlimited)")
+	flag.Bool("require-caller", false, "reject API calls without a client-certificate identity")
+	flag.Bool("require-mtls", false, "require TLS with a verified client certificate")
+	flag.Int("rate-limit", 0, "per-caller requests/second (0 = disabled)")
+	flag.Int("rate-burst", 0, "per-caller burst (defaults to rate-limit)")
+	flag.String("tls-cert", "", "server certificate for PIP HTTPS")
+	flag.String("tls-key", "", "server key for PIP HTTPS")
+	flag.String("client-ca", "", "CA bundle for mutual TLS client verification")
+	flag.Int("lag-seconds", 0, "reported replica lag on attribute responses")
 	flag.Parse()
 
+	opts, err := resolvePIPSettings(*runtimeConfig, flag.CommandLine)
+	if err != nil {
+		slog.Error("invalid runtime configuration", "err", err)
+		os.Exit(1)
+	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	var repo server.Repository
-	if *sources != "" {
-		r, err := httpapi.Load(*sources)
+	if opts.Sources != "" {
+		r, err := httpapi.Load(opts.Sources)
 		if err != nil {
 			log.Error("load attribute sources", "err", err)
 			os.Exit(1)
 		}
 		repo = r
-		log.Info("using HTTP attribute sources", "config", *sources)
+		log.Info("using HTTP attribute sources", "config", opts.Sources)
 	} else {
-		r, err := server.LoadMemoryRepo(*fixtures)
+		r, err := server.LoadMemoryRepo(opts.Fixtures)
 		if err != nil {
 			log.Error("load fixtures", "err", err)
 			os.Exit(1)
@@ -56,19 +62,19 @@ func main() {
 		repo = r
 	}
 	reg := metrics.New()
-	if *requireMTLS && (*tlsCert == "" || *tlsKey == "" || *clientCA == "") {
-		log.Error("-require-mtls needs -tls-cert, -tls-key and -client-ca")
+	if opts.RequireMTLS && (opts.TLSCert == "" || opts.TLSKey == "" || opts.ClientCA == "") {
+		log.Error("requireMTLS needs tlsCert, tlsKey and clientCA")
 		os.Exit(1)
 	}
 	svc := server.New(repo, log,
-		server.WithLagSeconds(*lagSeconds),
+		server.WithLagSeconds(opts.LagSeconds),
 		server.WithMetrics(reg),
-		server.WithMaxConcurrent(*maxConcurrent),
-		server.WithRequireCaller(*requireCaller || *requireMTLS),
-		server.WithRateLimit(*rateLimit, *rateBurst),
+		server.WithMaxConcurrent(opts.MaxConcurrent),
+		server.WithRequireCaller(opts.RequireCaller || opts.RequireMTLS),
+		server.WithRateLimit(opts.RateLimit, opts.RateBurst),
 	)
 	handler := svc.Handler()
-	if *metricsAddr != "" {
+	if opts.MetricsAddr != "" {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", reg.Handler())
 		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
@@ -80,27 +86,27 @@ func main() {
 			_, _ = w.Write([]byte("ok"))
 		})
 		go func() {
-			log.Info("pip metrics listening", "addr", *metricsAddr)
-			if err := http.ListenAndServe(*metricsAddr, mux); err != nil {
+			log.Info("pip metrics listening", "addr", opts.MetricsAddr)
+			if err := http.ListenAndServe(opts.MetricsAddr, mux); err != nil {
 				log.Error("metrics listen", "err", err)
 			}
 		}()
 	}
 	srv := &http.Server{
-		Addr:              *addr,
+		Addr:              opts.Addr,
 		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 	}
-	if (*tlsCert == "") != (*tlsKey == "") {
-		log.Error("tls-cert and tls-key must be set together")
+	if (opts.TLSCert == "") != (opts.TLSKey == "") {
+		log.Error("tlsCert and tlsKey must be set together")
 		os.Exit(1)
 	}
-	if *tlsCert != "" {
+	if opts.TLSCert != "" {
 		srv.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-		if *clientCA != "" {
-			raw, err := os.ReadFile(*clientCA)
+		if opts.ClientCA != "" {
+			raw, err := os.ReadFile(opts.ClientCA)
 			if err != nil {
 				log.Error("read client CA", "err", err)
 				os.Exit(1)
@@ -113,15 +119,15 @@ func main() {
 			srv.TLSConfig.ClientCAs = pool
 			srv.TLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
 		}
-	} else if *clientCA != "" {
+	} else if opts.ClientCA != "" {
 		log.Error("client-ca requires tls-cert and tls-key")
 		os.Exit(1)
 	}
 	go func() {
-		log.Info("pip listening", "addr", *addr, "mtls", srv.TLSConfig != nil && srv.TLSConfig.ClientAuth != tls.NoClientCert)
+		log.Info("pip listening", "addr", opts.Addr, "mtls", srv.TLSConfig != nil && srv.TLSConfig.ClientAuth != tls.NoClientCert)
 		var err error
 		if srv.TLSConfig != nil {
-			err = srv.ListenAndServeTLS(*tlsCert, *tlsKey)
+			err = srv.ListenAndServeTLS(opts.TLSCert, opts.TLSKey)
 		} else {
 			err = srv.ListenAndServe()
 		}

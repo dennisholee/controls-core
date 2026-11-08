@@ -19,6 +19,8 @@ base by digest, and publish the result by digest.
 |---|---|
 | `/etc/controls/bundle` | rendered bundle (registry, rules, masks, DQ) |
 | `/etc/controls/envoy.yaml` | Envoy config; app cluster + ext_proc on `127.0.0.1:50051` |
+| `CONTROLS_RUNTIME_CONFIG` | optional path to `sidecar.yaml`; replaces the legacy flag set |
+| `CONTROLS_BUNDLE_PUBKEY` | bundle public key path (legacy flag mode also accepts `-bundle-pubkey`) |
 | `PIP_URL` | PIP base URL (required) |
 | `CONTROLS_AUDIT_SALT` | audit hash salt |
 | `SERVICE_NAME` | Envoy service cluster (optional) |
@@ -27,8 +29,10 @@ base by digest, and publish the result by digest.
 | `OPA_URL` | OPA base URL when the bundle uses `engine: opa` |
 | `OPA_TIMEOUT` | OPA decision timeout (default 100ms) |
 
-The entrypoint runs `-allow-unsigned` and an in-process audit queue for sample
-use. Production should use the Helm library chart (two containers, signed
+The example config is [`sidecar.example.yaml`](sidecar.example.yaml).
+Precedence is CLI flags > env > file > defaults. The entrypoint runs
+`-allow-unsigned` and an in-process audit queue for sample use when no runtime
+config is supplied. Production should use the Helm library chart (two containers, signed
 bundle, `-bundle-pubkey`) instead of this combined image.
 
 ## Example

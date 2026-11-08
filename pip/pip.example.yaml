@@ -1,0 +1,18 @@
+# PIP runtime configuration. Precedence: CLI flags > this file > defaults.
+server:
+  addr: ":8082"
+  metricsAddr: ":9090"
+  maxConcurrent: 512
+  requireCaller: true
+  requireMTLS: true
+  rateLimit: 500
+  rateBurst: 100
+  tlsCert: /etc/controls-tls/server.pem
+  tlsKey: /etc/controls-tls/server-key.pem
+  clientCA: /etc/controls-tls/ca.pem
+  lagSeconds: 0
+
+repository:
+  # Use one of: fixtures (development) or sources (production).
+  fixtures: pip/fixtures/attributes.json
+  # sources: /etc/controls/sources.json

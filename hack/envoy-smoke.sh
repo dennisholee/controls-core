@@ -49,14 +49,43 @@ echo "building binaries"
 (cd "$ROOT" && go build -o "$TMP/pip" ./pip/cmd/pip)
 (cd "$ROOT" && go build -o "$TMP/app" ./hack/smokeapp)
 
+cat >"$TMP/pip.yaml" <<EOF
+server:
+  addr: "127.0.0.1:$PIP_PORT"
+  metricsAddr: ":19091"
+  maxConcurrent: 32
+repository:
+  fixtures: "$ROOT/pip/fixtures/attributes.json"
+EOF
+cat >"$TMP/sidecar.yaml" <<EOF
+server:
+  listen: ":$EXTPROC_PORT"
+  metricsAddr: ":19090"
+bundle:
+  path: "$ROOT/integration/testdata/config"
+  allowUnsigned: true
+  reloadInterval: 0s
+pip:
+  url: "http://127.0.0.1:$PIP_PORT"
+  timeout: 200ms
+  defaultTTL: 30s
+  maxTTL: 5m
+  maxCache: 100000
+  breakerCooldown: 5s
+audit:
+  sample: 1
+  buffer: 0
+  salt: smoke
+identity:
+  maxSkew: 1m
+EOF
+
 echo "starting pip, app, extproc"
-"$TMP/pip" -addr "127.0.0.1:$PIP_PORT" -fixtures "$ROOT/pip/fixtures/attributes.json" >"$TMP/pip.log" 2>&1 &
+"$TMP/pip" -runtime-config "$TMP/pip.yaml" >"$TMP/pip.log" 2>&1 &
 PIDS+=($!)
 "$TMP/app" -addr ":$APP_PORT" >"$TMP/app.log" 2>&1 &
 PIDS+=($!)
-"$TMP/extproc" -listen ":$EXTPROC_PORT" -config "$ROOT/integration/testdata/config" \
-  -pip "http://127.0.0.1:$PIP_PORT" -metrics-addr :19090 -audit-sample 1 -audit-salt smoke -allow-unsigned -audit-buffer 0 \
-  >"$TMP/extproc.log" 2>&1 &
+"$TMP/extproc" -runtime-config "$TMP/sidecar.yaml" >"$TMP/extproc.log" 2>&1 &
 PIDS+=($!)
 
 wait_for "http://127.0.0.1:$PIP_PORT/healthz" || fail "pip did not start"
@@ -157,7 +186,7 @@ grep -q 'controls_decisions_total' "$TMP/metrics" || fail "decisions metric miss
 grep -q 'controls_pip_cache_total' "$TMP/metrics" || fail "pip cache metric missing"
 grep -q '"subjectHash"' "$TMP/extproc.log" || fail "audit log missing"
 grep -q '"decision":"deny"' "$TMP/extproc.log" || fail "audit deny missing"
-curl -sf "http://127.0.0.1:9090/metrics" >"$TMP/pip-metrics" || fail "PIP metrics endpoint failed"
+curl -sf "http://127.0.0.1:19091/metrics" >"$TMP/pip-metrics" || fail "PIP metrics endpoint failed"
 grep -q 'pip_requests_total' "$TMP/pip-metrics" || fail "PIP requests metric missing"
 
 # 8. Optional throughput/latency gate through the real Envoy chain.

@@ -1,31 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${PIP_URL:?PIP_URL is required}"
-args=(
-  -listen :50051
-  -config /etc/controls/bundle
-  -pip "$PIP_URL"
-  -metrics-addr :9090
-  -audit-salt "${CONTROLS_AUDIT_SALT:-sample-salt}"
-  -audit-buffer 0
-  -allow-unsigned
-)
-if [ -n "${PIP_CA:-}" ]; then
+if [ -n "${CONTROLS_RUNTIME_CONFIG:-}" ]; then
+  args=(-runtime-config "$CONTROLS_RUNTIME_CONFIG")
+else
+  : "${PIP_URL:?PIP_URL is required when CONTROLS_RUNTIME_CONFIG is not set}"
+  args=(
+    -listen :50051
+    -config /etc/controls/bundle
+    -pip "$PIP_URL"
+    -metrics-addr :9090
+    -audit-salt "${CONTROLS_AUDIT_SALT:-sample-salt}"
+    -audit-buffer 0
+  )
+fi
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ]; then
+  if [ -n "${CONTROLS_BUNDLE_PUBKEY:-}" ]; then
+    args+=(-bundle-pubkey "$CONTROLS_BUNDLE_PUBKEY")
+  else
+    args+=(-allow-unsigned)
+  fi
+fi
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${PIP_CA:-}" ]; then
   args+=(-pip-ca "$PIP_CA")
 fi
-if [ -n "${PIP_CERT:-}" ]; then
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${PIP_CERT:-}" ]; then
   args+=(-pip-cert "$PIP_CERT")
 fi
-if [ -n "${PIP_KEY:-}" ]; then
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${PIP_KEY:-}" ]; then
   args+=(-pip-key "$PIP_KEY")
 fi
-if [ -n "${PIP_SERVER_NAME:-}" ]; then
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${PIP_SERVER_NAME:-}" ]; then
   args+=(-pip-server-name "$PIP_SERVER_NAME")
 fi
-if [ -n "${OPA_URL:-}" ]; then
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${OPA_URL:-}" ]; then
   args+=(-opa-url "$OPA_URL")
 fi
-if [ -n "${OPA_TIMEOUT:-}" ]; then
+if [ -z "${CONTROLS_RUNTIME_CONFIG:-}" ] && [ -n "${OPA_TIMEOUT:-}" ]; then
   args+=(-opa-timeout "$OPA_TIMEOUT")
 fi
 /usr/local/bin/extproc "${args[@]}" &

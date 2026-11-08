@@ -5,6 +5,13 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+### Added
+
+- Structured runtime configuration files: `sidecar.yaml` and `pip.yaml`.
+  Precedence is CLI flags > env > file > defaults; unknown fields fail closed.
+- Sidecar config supports `env:`/`file:` secret references for the identity
+  key and audit salt; the runtime image accepts `CONTROLS_RUNTIME_CONFIG`.
+
 ### Changed
 
 - Consolidated the engine's PIP dependency into one port (`Resolve`,

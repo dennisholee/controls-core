@@ -9,6 +9,7 @@ bin/
 dist/
 /loadtest
 /steward
+/extproc
 deploy/examples/*/charts/
 .tmp/
 examples/mtls-caller/certs/*.key

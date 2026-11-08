@@ -1,0 +1,40 @@
+# Sidecar runtime configuration. Precedence: CLI flags > env > this file > defaults.
+server:
+  listen: ":50051"
+  metricsAddr: ":9090"
+  maxBodyBytes: 1048576
+  debug: false
+
+bundle:
+  path: /etc/controls/bundle
+  pubKey: /etc/controls/keys/bundle.pub
+  allowUnsigned: false
+  reloadInterval: 30s
+
+pip:
+  url: https://pip.controls.svc:8082
+  timeout: 100ms
+  defaultTTL: 30s
+  maxTTL: 5m
+  maxCache: 100000
+  breakerCooldown: 5s
+  tls:
+    ca: /etc/controls-tls/ca.pem
+    cert: /etc/controls-tls/client.pem
+    key: /etc/controls-tls/client-key.pem
+    serverName: pip.controls.svc
+
+policy:
+  opa:
+    url: http://opa.controls.svc:8181
+    timeout: 100ms
+
+identity:
+  hmacKey: env:CONTROLS_IDENTITY_HMAC_KEY
+  maxSkew: 60s
+
+audit:
+  sample: 0.01
+  buffer: 4096
+  out: ""
+  salt: env:CONTROLS_AUDIT_SALT
