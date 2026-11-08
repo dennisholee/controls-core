@@ -170,6 +170,22 @@ func TestRejectsIDInHost(t *testing.T) {
 	}
 }
 
+func TestGetRejectsUnsafeID(t *testing.T) {
+	cfg := writeConfig(t, `{"sources":{"account":{
+	  "url":"http://127.0.0.1:1/accounts/{id}",
+	  "fields":["ownerId"]
+	}}}`)
+	repo, err := Load(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"../admin", "..", ".", "a/b", "a\\b"} {
+		if _, err := repo.Get(context.Background(), "account", id, nil); err == nil {
+			t.Fatalf("expected unsafe id %q to be rejected", id)
+		}
+	}
+}
+
 func TestCallerAuthorization(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"ownerId":"u-1","ssn":"111"}`))

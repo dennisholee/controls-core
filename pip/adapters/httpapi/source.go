@@ -54,7 +54,7 @@ type Source struct {
 }
 
 type source struct {
-	url           string
+	base          *url.URL
 	client        *http.Client
 	headers       map[string]string
 	fields        map[string]bool
@@ -173,7 +173,7 @@ func build(typ string, src Source) (*source, error) {
 	transport.MaxIdleConns = 100
 	transport.MaxIdleConnsPerHost = 100
 	return &source{
-		url:           src.URL,
+		base:          u,
 		client:        &http.Client{Timeout: timeout, Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }},
 		headers:       headers,
 		fields:        fields,
@@ -233,6 +233,23 @@ func expandEnv(v string) (string, error) {
 	return out, nil
 }
 
+// safeResourceID rejects ids that could alter the request path. The host is
+// already fixed by build; this additionally prevents path traversal.
+func safeResourceID(id string) bool {
+	if id == "" || id == "." || id == ".." {
+		return false
+	}
+	if strings.ContainsAny(id, "/\\") {
+		return false
+	}
+	for _, r := range id {
+		if r < 0x20 || r == 0x7f {
+			return false
+		}
+	}
+	return true
+}
+
 // Get fetches one resource and projects the allowlisted fields.
 func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server.Resource, error) {
 	s, ok := r.sources[typ]
@@ -255,10 +272,19 @@ func (r *Repo) Get(ctx context.Context, typ, id string, fields []string) (server
 			return server.Resource{}, server.ErrForbidden
 		}
 	}
-	endpoint := strings.ReplaceAll(s.url, "{id}", url.PathEscape(id))
+	if !safeResourceID(id) {
+		return server.Resource{}, fmt.Errorf("invalid resource id")
+	}
+	target := *s.base
+	escaped := url.PathEscape(id)
+	target.Path = strings.ReplaceAll(target.Path, "{id}", escaped)
+	target.RawQuery = strings.ReplaceAll(target.RawQuery, "{id}", escaped)
+	if target.Scheme != s.base.Scheme || target.Host != s.base.Host {
+		return server.Resource{}, fmt.Errorf("resource url escaped its configured origin")
+	}
 	reqCtx, cancel := context.WithTimeout(ctx, s.client.Timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, target.String(), nil)
 	if err != nil {
 		return server.Resource{}, err
 	}
