@@ -357,7 +357,7 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 - PIP PDB (`minAvailable: 1`) and preferred pod anti-affinity.
 - CI path filters for chart/features/hack/deploy/tools and a `-race` step.
-- [docs/ASSESSMENT-2026-11-07.md](docs/ASSESSMENT-2026-11-07.md).
+- [docs/archive/ASSESSMENT-2026-11-07.md](docs/archive/ASSESSMENT-2026-11-07.md).
 
 ## [0.16.1] — 2026-11-07
 

@@ -1,3 +1,8 @@
+> **Historical — v0.16.1 decision record.**
+> Superseded by [`docs/SECURITY-AUDIT.md`](../SECURITY-AUDIT.md) and
+> [`docs/PILOT-CHECKLIST.md`](../PILOT-CHECKLIST.md). Do not use this page as a
+> current status. It is retained for audit history only.
+
 # Independent assessment — 2026-11-07
 
 Four role-scoped reviews were run against `v0.16.1`/working tree: application

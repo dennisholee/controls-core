@@ -17,6 +17,10 @@ up:
 	docker compose -f compose.yaml up -d
 
 gate:
+	cd $(ROOT) && $(GO) run ./tools/openapi-registry -check \
+		-openapi examples/accounts-read/openapi.yaml \
+		-service accounts \
+		-out examples/accounts-read/controls/registry.json
 	cd $(ROOT) && $(GO) run ./tools/openapi-diff \
 		-openapi examples/accounts-read/openapi.yaml \
 		-registry examples/accounts-read/controls/registry.json

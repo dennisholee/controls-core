@@ -115,7 +115,7 @@ contract, examples and limitations.
 - [docs/REPO-GOVERNANCE.md](docs/REPO-GOVERNANCE.md) — layout, boundaries, docs and CI rules
 - [docs/agents/repo-steward.md](docs/agents/repo-steward.md) — repository steward charter (`make steward`)
 - [docs/IDENTITY.md](docs/IDENTITY.md) — gateway identity envelope and header-trust model
-- [docs/ASSESSMENT-2026-11-07.md](docs/ASSESSMENT-2026-11-07.md) — independent assessment and remediation status
+- [docs/archive/ASSESSMENT-2026-11-07.md](docs/archive/ASSESSMENT-2026-11-07.md) — historical v0.16.1 assessment (superseded)
 - [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) — cluster prerequisite/verification checklist
 - [docs/PIPELINE.md](docs/PIPELINE.md) — Jenkins contract: inputs, stages, outputs
 - [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) — version matrix

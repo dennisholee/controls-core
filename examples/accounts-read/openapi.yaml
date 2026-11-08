@@ -15,6 +15,8 @@ paths:
       summary: Read an account
       x-resource-type: account
       x-resource-id: accountId
+      x-attributes: [ownerId, region, status]
+      x-mask-errors: true
       x-mask-policy: account.read
       x-resource-source: pip
       parameters:
