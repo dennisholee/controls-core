@@ -5,6 +5,20 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+## [0.41.1] — 2026-11-08
+
+### Added
+
+- Apache-2.0 license, CODEOWNERS, and platform/agent docs (`PLATFORM.md`,
+  `REPO-INVENTORY.md`, `AGENTS.md`).
+- Read-only GitHub Actions token permissions.
+
+### Fixed
+
+- CI version-steward drift, `govulncheck` v1.9.0 for Go 1.27, mTLS test-key
+  permissions for non-root containers, Spring example Maven downloads and the
+  integration OpenAPI fixture annotations.
+
 ### Removed
 
 - Deleted the archived `payments-service-demo`; its external-OPA policy is

@@ -34,6 +34,6 @@ registered routes. See [`ARCHITECTURE.md`](ARCHITECTURE.md),
 
 ## Release state
 
-`v0.41.0` is the current local release: Spring Boot 4.1 demo, OpenAPI 3.1,
+`v0.41.1` is the current local release: Spring Boot 4.1 demo, OpenAPI 3.1,
 Go 1.27, Alpine 3.24 and typed Envoy HTTP options. Cluster verification and
 external image publication remain environment/CI tasks.
