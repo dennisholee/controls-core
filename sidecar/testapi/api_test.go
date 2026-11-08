@@ -193,7 +193,7 @@ func TestEndpointsDiscovery(t *testing.T) {
 			continue
 		}
 		found = true
-		if ep.Path != "/accounts/{accountId}" || ep.MaskPolicy != "journey.account.read" {
+		if ep.Path != "/accounts/{accountId}" || ep.MaskPolicy != "account.read" {
 			t.Fatalf("endpoint = %+v", ep)
 		}
 		if ep.Mask == nil || ep.Mask.Fields["accountNumber"].Mode != "partial" {

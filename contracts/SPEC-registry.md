@@ -87,7 +87,7 @@ Resource read:
   "resourceId": { "from": "path", "name": "accountId" },
   "resourceSource": "pip",
   "attributes": ["ownerId", "region", "status"],
-  "maskPolicy": "journey.account.read",
+  "maskPolicy": "account.read",
   "maskErrors": true,
   "freshness": "cached",
   "selfDescribing": false
@@ -105,7 +105,7 @@ Resource creation with a self-describing payload:
   "action": "write",
   "resourceId": { "from": "body", "path": "$._id" },
   "resourceSource": "body",
-  "maskPolicy": "journey.payment.write",
+  "maskPolicy": "payment.write",
   "selfDescribing": true
 }
 ```

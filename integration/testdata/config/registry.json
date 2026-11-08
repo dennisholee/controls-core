@@ -11,7 +11,7 @@
       "resourceId": { "from": "path", "name": "accountId" },
       "resourceSource": "pip",
       "attributes": ["ownerId", "region", "status"],
-      "maskPolicy": "journey.account.read",
+      "maskPolicy": "account.read",
       "maskErrors": true,
       "freshness": "cached",
       "selfDescribing": false
@@ -25,7 +25,7 @@
       "resourceId": { "from": "body", "path": "$._id" },
       "resourceSource": "body",
       "attributes": [],
-      "maskPolicy": "journey.payment.write",
+      "maskPolicy": "payment.write",
       "maskErrors": true,
       "freshness": "fresh",
       "selfDescribing": true

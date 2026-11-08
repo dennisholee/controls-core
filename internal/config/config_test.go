@@ -28,9 +28,9 @@ func TestLoadValidBundle(t *testing.T) {
 
 func TestLockedFieldCannotBeRelaxed(t *testing.T) {
 	b := loadTestBundle(t)
-	p := b.Masks.Policies["journey.account.read"]
+	p := b.Masks.Policies["account.read"]
 	p.Fields["ssn"] = MaskField{Mode: "partial", KeepSuffix: 4}
-	b.Masks.Policies["journey.account.read"] = p
+	b.Masks.Policies["account.read"] = p
 	err := b.Validate()
 	if err == nil || !strings.Contains(err.Error(), "locked") {
 		t.Fatalf("expected locked-field error, got %v", err)

@@ -21,13 +21,13 @@ base by digest, and publish the result by digest.
 | `/etc/controls/envoy.yaml` | Envoy config; app cluster + ext_proc on `127.0.0.1:50051` |
 | `CONTROLS_RUNTIME_CONFIG` | optional path to `sidecar.yaml`; replaces the legacy flag set |
 | `CONTROLS_BUNDLE_PUBKEY` | bundle public key path (legacy flag mode also accepts `-bundle-pubkey`) |
-| `PIP_URL` | PIP base URL (required) |
+| `PIP_URL` | PIP base URL (legacy flags; required unless `CONTROLS_RUNTIME_CONFIG` is set) |
 | `PIP_API_VERSION` | expected PIP contract major.minor (default `1.0`; empty disables) |
-| `CONTROLS_AUDIT_SALT` | audit hash salt |
+| `CONTROLS_AUDIT_SALT` | audit hash salt (legacy flags; config uses `env:` refs) |
 | `SERVICE_NAME` | Envoy service cluster (optional) |
 | `PIP_CA` / `PIP_CERT` / `PIP_KEY` | PIP TLS / client certificate files |
 | `PIP_SERVER_NAME` | expected PIP server name for TLS |
-| `OPA_URL` | OPA base URL when the bundle uses `engine: opa` |
+| `OPA_URL` | OPA base URL when legacy flags are used (`policy.opa.url` in `sidecar.yaml`) |
 | `OPA_TIMEOUT` | OPA decision timeout (default 100ms) |
 
 The example config is [`sidecar.example.yaml`](sidecar.example.yaml).

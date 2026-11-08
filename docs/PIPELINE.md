@@ -52,7 +52,7 @@ should not be used.
     "disableDQRules": ["dq.rule.id"],
     "disableEndpoints": ["endpoint-id"],
     "maskPolicies": {
-      "journey.account.read": { "default": "full", "fields": {} }
+      "account.read": { "default": "full", "fields": {} }
     }
   }
 }

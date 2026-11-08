@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "policies": {
-    "journey.account.read": {
+    "account.read": {
       "default": "none",
       "fields": {
         "accountNumber": { "mode": "partial", "keepSuffix": 4 },
@@ -9,7 +9,7 @@
         "ssn": { "mode": "full" }
       }
     },
-    "journey.payment.write": {
+    "payment.write": {
       "default": "none",
       "rejectFields": ["pan", "cvv"],
       "fields": {
