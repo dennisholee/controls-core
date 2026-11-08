@@ -19,7 +19,7 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 - Helm sidecar values expose the PIP contract version, client tuning, identity
   skew, reload interval and optional OPA endpoint.
 - `make pip-api-compat` compares `pip-api.yaml` with a base revision and fails
-  on breaking changes.
+  on breaking changes; CI pins `oasdiff` and the tools image includes it.
 - Helm `extproc.runtimeConfig` renders a literal `sidecar.yaml` ConfigMap and
   runs ext_proc with `-runtime-config`.
 - PIP version mismatch is scrapeable (`controls_pip_version_mismatch_total`) and

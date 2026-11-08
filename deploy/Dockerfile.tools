@@ -15,14 +15,16 @@ RUN CGO_ENABLED=0 go build -o /out/bundle ./tools/bundle \
  && CGO_ENABLED=0 go build -o /out/openapi-registry ./tools/openapi-registry \
  && CGO_ENABLED=0 go build -o /out/controls-check ./tools/controls-check \
  && CGO_ENABLED=0 go build -o /out/bundle-sign ./tools/bundle-sign \
- && CGO_ENABLED=0 go build -o /out/bundle-keygen ./tools/bundle-keygen
+ && CGO_ENABLED=0 go build -o /out/bundle-keygen ./tools/bundle-keygen \
+ && CGO_ENABLED=0 go install github.com/oasdiff/oasdiff@v1.11.7
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates \
+RUN apk add --no-cache ca-certificates git \
  && adduser -D -u 10001 controls \
  && mkdir -p /work \
  && chown controls /work
 COPY --from=build /out/ /usr/local/bin/
+COPY --from=build /go/bin/oasdiff /usr/local/bin/oasdiff
 WORKDIR /work
 USER controls
 ENTRYPOINT ["/usr/local/bin/bundle"]
