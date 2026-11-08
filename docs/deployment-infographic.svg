@@ -105,12 +105,15 @@ text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#132238}
 <text x="868" y="1086" class="small" text-anchor="start" >hashed decisions</text>
 <text x="868" y="1104" class="small" text-anchor="start" >stdout / -audit-out</text>
 <path d="M610 400 V460" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrow)"/>
+<circle cx="610" cy="420" r="4" fill="#2563eb"/>
 <text x="622" y="435" class="small" text-anchor="start" >NetworkPolicy</text>
-<path d="M870 575 H880 V895 H630" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
-<text x="932" y="710" class="small" text-anchor="start" style="font-size:11px">mTLS to PIP</text>
+<path d="M870 575 H880 Q890 575 890 585 V905 Q890 915 880 915 H630" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
+<circle cx="890" cy="750" r="4" fill="#7c3aed"/>
+<text x="886" y="710" class="small" text-anchor="end" >mTLS to PIP</text>
 <path d="M610 985 V1040" fill="none" stroke="#0f766e" stroke-width="2.4" marker-end="url(#arrow)"/>
+<circle cx="610" cy="1000" r="4" fill="#0f766e"/>
 <text x="622" y="1018" class="small" text-anchor="start" >attribute read</text>
-<path d="M870 575 H900 V790 H890" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+<path d="M870 575 H900 V780 Q900 790 890 790" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
 <text x="912" y="752" class="small" text-anchor="start" >authz (optional)</text>
 <rect x="1225" y="205" width="335" height="520" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="1245" y="235" class="h3" text-anchor="start" >Delivery pipeline</text>
@@ -129,7 +132,7 @@ text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#132238}
 <rect x="1245" y="435" width="295" height="55" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.2" />
 <text x="1263" y="458" class="card" text-anchor="start" >ConfigMap</text>
 <text x="1263" y="478" class="small" text-anchor="start" >mounted into the pod</text>
-<path d="M1245 462 H1170 V505 H1150" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
+<path d="M1245 462 H1170 Q1160 462 1160 472 V495 Q1160 505 1150 505" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
 <text x="1200" y="452" class="small" text-anchor="middle" >deploy</text>
 <text x="60" y="1280" class="small" text-anchor="start" >Solid = traffic · dashed = optional · PDB/anti-affinity = PIP availability · app port never exposed</text>
 <text x="1540" y="1280" class="small" text-anchor="end" >controls-core · v0.38.3</text>

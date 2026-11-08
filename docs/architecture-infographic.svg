@@ -29,6 +29,7 @@
   .chip { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; fill: #1e3a8a; }
   .badge { font-size: 12px; font-weight: 700; fill: #991b1b; }
   .white { fill: #ffffff; }
+  path { stroke-linejoin: round; stroke-linecap: round; }
 </style>
 <text x="60" y="68" class="h1" text-anchor="start" >Controls Plane</text>
 <text x="60" y="102" class="sub" text-anchor="start" >Data-level entitlements, masking and data quality for Spring Boot services — no application code changes.</text>
@@ -47,7 +48,6 @@
 <rect x="550" y="230" width="560" height="280" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="8 6" />
 <text x="570" y="258" class="h3" text-anchor="start" >Service pod</text>
 <text x="570" y="280" class="small" text-anchor="start" >app code unchanged</text>
-<text x="760" y="280" class="small" text-anchor="start" >bundle: /etc/controls/bundle/registry.json</text>
 <rect x="575" y="292" width="230" height="190" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="1.6" />
 <text x="595" y="320" class="card" text-anchor="start" >Envoy + ext_proc</text>
 <text x="595" y="344" class="small" text-anchor="start" >sidecar</text>
@@ -74,15 +74,18 @@
 <text x="1200" y="484" class="small" text-anchor="start" >fail closed on error</text>
 <path d="M220 320 H280" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
 <path d="M490 320 H575" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrow)"/>
+<circle cx="550" cy="320" r="4" fill="#2563eb"/>
 <text x="532" y="309" class="small" text-anchor="middle" >signed</text>
 <text x="532" y="292" class="small" text-anchor="middle" >identity</text>
 <path d="M805 370 H845" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrow)"/>
 <path d="M845 420 H805" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-dasharray="6 5" marker-end="url(#arrow)"/>
 <text x="825" y="408" class="small" text-anchor="middle" >mask</text>
-<path d="M690 292 V214 H1355 V260" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
-<text x="905" y="204" class="small" text-anchor="middle" >attributes: projection · cache · mTLS</text>
-<path d="M690 482 V590 H1565 V455 H1530" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
-<text x="905" y="610" class="small" text-anchor="middle" >authz input (optional)</text>
+<circle cx="1110" cy="282" r="4" fill="#7c3aed"/>
+<circle cx="690" cy="510" r="4" fill="#ea580c"/>
+<path d="M805 330 H820 Q830 330 830 320 V292 Q830 282 840 282 H1115 Q1125 282 1125 292 V300 H1180" fill="none" stroke="#7c3aed" stroke-width="2.4" marker-end="url(#arrow)"/>
+<text x="950" y="268" class="small" text-anchor="middle" >attributes: projection · cache · mTLS</text>
+<path d="M690 482 V565 Q690 575 700 575 H1160 Q1170 575 1170 565 V465 Q1170 455 1180 455" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-dasharray="6 4" marker-end="url(#arrow)"/>
+<text x="900" y="598" class="small" text-anchor="middle" >authz input (optional)</text>
 <rect x="1180" y="520" width="350" height="40" rx="12" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5" />
 <text x="1355" y="545" class="badge" text-anchor="middle" >PIP / OPA error → fail closed</text>
 <text x="60" y="640" class="h2" text-anchor="start" >2 · Decision flow</text>
@@ -176,10 +179,10 @@
 <text x="580" y="1128" class="mono" text-anchor="start" >mask-policies.json</text>
 <text x="580" y="1150" class="mono" text-anchor="start" >dq.json</text>
 <text x="580" y="1172" class="mono" text-anchor="start" >env + service overlays</text>
-<path d="M765 1202 V1222" fill="none" stroke="#ca8a04" stroke-width="2.4" marker-end="url(#arrow)"/>
-<rect x="562" y="1224" width="406" height="58" rx="12" fill="#fef9c3" stroke="#fde047" stroke-width="1.5" />
-<text x="580" y="1250" class="card" text-anchor="start" >bundle renderer</text>
-<text x="580" y="1270" class="small" text-anchor="start" >merge · validate · sign</text>
+<path d="M765 1202 V1213" fill="none" stroke="#ca8a04" stroke-width="2.4" marker-end="url(#arrow)"/>
+<rect x="562" y="1213" width="406" height="58" rx="12" fill="#fef9c3" stroke="#fde047" stroke-width="1.5" />
+<text x="580" y="1239" class="card" text-anchor="start" >bundle renderer</text>
+<text x="580" y="1259" class="small" text-anchor="start" >merge · validate · sign</text>
 <rect x="1030" y="1010" width="510" height="300" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="1052" y="1042" class="h3" text-anchor="start" >Signed runtime bundle</text>
 <text x="1052" y="1066" class="small" text-anchor="start" >mount at /etc/controls/bundle</text>
@@ -193,13 +196,13 @@
 <text x="1070" y="1238" class="small" text-anchor="start" >Ed25519 signature · digest recomputed by sidecar</text>
 <rect x="1052" y="1262" width="466" height="36" rx="10" fill="#ede9fe" stroke="#c4b5fd" stroke-width="1.5" />
 <text x="1285" y="1286" class="badge" text-anchor="middle" style="fill:#5b21b6">immutable · versioned · pinned by digest</text>
-<path d="M488 1242 H540 V1253 H562" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
+<path d="M488 1242 H562" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
 <rect x="492" y="1214" width="64" height="22" rx="11" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.2"/>
 <text x="524" y="1230" class="small" text-anchor="middle" style="font-weight:700">merge</text>
-<path d="M968 1253 H1010 V1165 H1052" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
+<path d="M968 1242 H1000 Q1010 1242 1010 1232 V1175 Q1010 1165 1020 1165 H1052" fill="none" stroke="#64748b" stroke-width="2.4" marker-end="url(#arrow)"/>
 <rect x="994" y="1166" width="34" height="22" rx="11" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.2"/>
 <text x="1011" y="1182" class="small" text-anchor="middle" style="font-weight:700">sign</text>
-<path d="M765 1282 V1335" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#arrow)"/>
+<path d="M765 1271 V1335" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#arrow)"/>
 <text x="775" y="1316" class="small" text-anchor="start" >stages</text>
 <path d="M1285 1335 V1300" fill="none" stroke="#64748b" stroke-width="2.2" marker-end="url(#arrow)"/>
 <text x="1295" y="1322" class="small" text-anchor="start" >signed output</text>
