@@ -8,7 +8,7 @@ TMP := $(abspath $(ROOT)/.tmp/sample)
 .PHONY: registry gate up test down
 
 up:
-	mvn -o -q -DskipTests package
+	mvn -q -DskipTests package
 	mkdir -p $(TMP)
 	cd $(ROOT) && CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o $(TMP)/extproc ./sidecar/cmd/extproc
 	cd $(ROOT) && CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o $(TMP)/pip ./pip/cmd/pip
@@ -23,7 +23,7 @@ registry:
 		-out examples/spring-accounts/controls/registry.json
 
 gate:
-	mvn -o -q test
+	mvn -q test
 	cd $(ROOT) && $(GO) run ./tools/openapi-registry -check \
 		-openapi examples/spring-accounts/openapi.yaml \
 		-out examples/spring-accounts/controls/registry.json

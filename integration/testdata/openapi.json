@@ -1,20 +1,57 @@
 {
   "openapi": "3.0.3",
-  "info": { "title": "Accounts and payments", "version": "1.0.0" },
+  "info": {
+    "title": "Accounts and payments",
+    "version": "1.0.0"
+  },
   "paths": {
     "/accounts/{accountId}": {
       "get": {
         "operationId": "getAccount",
         "parameters": [
-          { "name": "accountId", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "accountId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "account" } }
+        "responses": {
+          "200": {
+            "description": "account"
+          }
+        },
+        "x-resource-type": "account",
+        "x-resource-id": "accountId",
+        "x-resource-source": "pip",
+        "x-attributes": [
+          "ownerId",
+          "region",
+          "status"
+        ],
+        "x-mask-policy": "account.read",
+        "x-mask-errors": true,
+        "x-freshness": "cached"
       }
     },
     "/payments": {
       "post": {
         "operationId": "createPayment",
-        "responses": { "201": { "description": "created" } }
+        "responses": {
+          "201": {
+            "description": "created"
+          }
+        },
+        "x-resource-type": "payment",
+        "x-resource-id": "$._id",
+        "x-resource-source": "body",
+        "x-attributes": [],
+        "x-mask-policy": "payment.write",
+        "x-mask-errors": true,
+        "x-freshness": "fresh",
+        "x-self-describing": true
       }
     }
   }
