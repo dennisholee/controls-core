@@ -38,5 +38,5 @@ bundle, `-bundle-pubkey`) instead of this combined image.
 
 ## Example
 
-`examples/accounts-read` and `payments-service-demo` use this image with a
-compose stack; see their `compose.yaml` files.
+`examples/accounts-read` uses this image with a compose stack; see its
+`compose.yaml` file.
