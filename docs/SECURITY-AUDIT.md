@@ -90,7 +90,7 @@ signature check, and both paths are tested.
 Evidence: [`bundle.go:337`](../internal/bundle/bundle.go#L337) copies the overlay
 value unchanged; [`config.go:197`](../internal/config/config.go#L197) accepts
 `allow`; the rules validator only checks registry files and the top-level env
-field ([`validate.py:108`](../../controls-rules/tools/validate.py#L108)), not
+field ([`validate.py:108`](https://github.com/dennisholee/controls-rules/tools/validate.py#L108)), not
 `bundle.defaultUnregistered` inside an overlay.
 Impact: a production overlay can turn off fail-closed handling of unregistered
 routes, which is the primary route-coverage control.
