@@ -7,8 +7,11 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ### Added
 
-- `docs/SUPPORTED-VERSIONS.md` and `make eol-check`: fails on EOL Alpine bases,
-  unpinned Alpine images, or the deprecated Envoy cluster field.
+- `docs/SUPPORTED-VERSIONS.md`, `docs/DEPRECATION.md` and `make eol-check`:
+  supported-version matrix, deprecation/removal schedule, and a gate that
+  rejects EOL Alpine bases, unpinned images or the deprecated Envoy field.
+- `make examples-config-check`: fails when shared example configs (Envoy,
+  Dockerfiles, non-mTLS PIP configs, Go modules) drift apart.
 
 ### Changed
 

@@ -3,6 +3,8 @@
 Status: current as of 2026-11-08. This is the policy used by `make eol-check`;
 update it with every dependency or base-image change.
 
+Removal schedule: [`docs/DEPRECATION.md`](DEPRECATION.md).
+
 | Component | Supported | Notes |
 |---|---|---|
 | Java | 21, 25 | Java 21 is the demo target; 25 is the current LTS-friendly runtime |

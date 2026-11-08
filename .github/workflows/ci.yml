@@ -59,6 +59,8 @@ jobs:
         run: make vet
       - name: EOL and deprecation check
         run: make eol-check
+      - name: Example config drift
+        run: make examples-config-check
       - name: govulncheck
         run: make vulncheck
       - name: test
