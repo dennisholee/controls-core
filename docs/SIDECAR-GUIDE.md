@@ -151,9 +151,9 @@ Use the `controls-sidecar` Helm library or an equivalent manifest to add:
 - ext_proc container on `127.0.0.1:50051`;
 - ConfigMap: `envoy.yaml` and the signed bundle;
 - Secret: audit salt, identity HMAC key, bundle public key, PIP client certs;
-- env: `PIP_URL`, optional `PIP_CA`/`PIP_CERT`/`PIP_KEY`/`PIP_SERVER_NAME`,
-  `OPA_URL` if using Rego; or `CONTROLS_RUNTIME_CONFIG=/etc/controls/sidecar.yaml`
-  for the structured runtime config.
+- env: legacy `PIP_URL`/`PIP_CA`/`PIP_CERT`/`PIP_KEY`/`PIP_SERVER_NAME` and
+  `OPA_URL`; preferred: `CONTROLS_RUNTIME_CONFIG=/etc/controls/sidecar.yaml`
+  with `pip.apiVersion: "1.0"`.
 
 The service container keeps listening on its normal port; only the sidecar port
 is exposed.

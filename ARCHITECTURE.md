@@ -83,6 +83,10 @@ alternate implementation. The composition root is `sidecar/cmd/extproc`.
 
 ## 3. Request flow
 
+0. **Startup.** The sidecar loads `sidecar.yaml` (flags/env override it),
+   verifies the bundle, then calls the PIP `GET /version` and compares
+   `pip.apiVersion` major/minor. A mismatch leaves the process unready and
+   exposes `controls_pip_version_mismatch_total`.
 1. **Gateway** authenticates, authorizes the route/scope, and injects verified
    identity. With `CONTROLS_IDENTITY_HMAC_KEY` set, the sidecar requires the
    signed `x-controls-identity` envelope; raw `x-subject`/`x-claim-*` are a
@@ -237,10 +241,12 @@ Assumptions: 5,000 RPS, >95% cache hit, ~5% cache-miss QPS.
 
 - **Sidecar**: one image, injected into all 5 service pods. `maxUnavailable: 1`.
   Upgrades are rolling pod restarts; no application rebuild.
-- **PIP**: 2+ replicas behind a Service, mTLS. Production uses the HTTP
-  attribute-source adapter (`-sources`) against per-domain read APIs; those
-  APIs own replica credentials and query shape. Size for cache-miss QPS
-  (~5% of 5,000 = 250 RPS).
+- **PIP**: 2+ replicas behind a Service, mTLS, configured by `pip.yaml` and
+  `repository.sources` against per-domain read APIs; those APIs own replica
+  credentials and query shape. Size for cache-miss QPS (~5% of 5,000 = 250 RPS).
+- **Runtime config**: `deploy/sidecar` accepts `CONTROLS_RUNTIME_CONFIG`; the
+  Helm library can render a literal `sidecar.yaml` when
+  `extproc.runtimeConfig=true`.
 - **Observability**: ext_proc exposes `/metrics`, `/healthz` and `/readyz` on
   `:9090`; decision logs are hashed JSON on stdout or `-audit-out <file>`.
   Scrape the admin port and ship the audit stream to the platform log store.

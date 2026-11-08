@@ -3,7 +3,8 @@
 The pipeline is **centrally managed**: Jenkins owns orchestration, credentials,
 signing, artifact storage, promotion and deployment. Core engineering owns the
 two pipeline-invocable tools and the formats they produce. The delivery team
-owns the inputs (`policies/`, `registry/`, `dq/`, `mask-policies/`, overlays).
+owns the inputs (`policies/`, `dq/`, `mask-policies/`, overlays); the service
+team owns the generated registry fragment.
 
 Jenkins must not re-implement merging or validation. It calls
 `bundle` and `conformance` from a pinned tools image.
@@ -23,20 +24,22 @@ agent {
 ```
 
 Contains: `bundle`, `conformance`, `openapi-diff`, `openapi-registry`,
-`controls-check`.
+`controls-check`, `oasdiff`.
 
 ## Inputs
 
 | Input | Location | Owner |
 |---|---|---|
-| Policies, mask policies, registry, DQ rules | `policies/`, `mask-policies/`, `registry/`, `dq/` | Delivery |
+| Policies, mask policies, DQ rules | `policies/`, `mask-policies/`, `dq/` | Delivery |
 | Environment overlay | `env/<env>/overrides.json` | Delivery |
 | Service overlay (optional) | `services/<service>/overrides.json` | Delivery |
 | Service OpenAPI (optional gate input) | `services/<service>/openapi.yaml` (JSON also accepted) | Service team |
+| Generated registry fragment | `registry/<service>.json` | Service team |
 | Fixtures (conformance) | `tests/fixtures/*.json` | Delivery |
 
-Endpoint registry entries carry `service`, which is what makes per-service
-bundles possible.
+The registry fragment is generated from the service OpenAPI annotations with
+`openapi-registry -service <service>`; entries carry `service`, which is what
+makes per-service bundles possible. Do not hand-author it in `controls-rules`.
 
 ## Overlay schema
 
@@ -112,9 +115,22 @@ bundle.
 | `conformance` | 0 | all fixtures passed |
 | `conformance` | 1 | a fixture failed or the bundle could not be loaded |
 | `controls-check` | 0 / 1 | rules, masks, DQ and attributes resolve |
+| `openapi-registry` | 0 / 1 | generated registry matches the contract |
+| `pip-api-compat` | 0 / 1 | no breaking PIP OpenAPI change |
 
 Jenkins should fail the build on any non-zero exit and keep the renderer and
 conformance output as build artifacts.
+
+## PIP contract gate
+
+Before rendering, run:
+
+```bash
+oasdiff breaking --fail-on ERR "$BASE_REF:contracts/pip-api.yaml" contracts/pip-api.yaml
+```
+
+and the PIP schema test (`go test ./pip/server -run TestResponsesMatchOpenAPI`).
+A breaking PIP change requires a contract major and a sidecar release.
 
 ## Signing, publishing, promotion
 

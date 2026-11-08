@@ -129,7 +129,8 @@ freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment
 controls (Helm: PIP isolation, NetworkPolicies, mTLS), HTTP attribute sources
-for the PIP, an optional Cedar policy engine, external OPA decisions and signed
-bundle reload. Remaining: cluster verification, gateway signer deployment and
+for the PIP, an optional Cedar policy engine, external OPA decisions, signed
+bundle reload, structured `sidecar.yaml`/`pip.yaml` runtime configuration and a
+PIP `/version` contract handshake. Remaining: cluster verification, gateway signer deployment and
 digest-pinned base images. See
 [ARCHITECTURE.md § Known gaps](ARCHITECTURE.md#8-known-gaps).

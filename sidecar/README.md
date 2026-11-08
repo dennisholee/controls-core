@@ -56,7 +56,9 @@ identity, testing, operations and anti-patterns — see
 ## Configuration injection
 
 The pod mounts the rendered bundle (registry, rules, mask policies, DQ) from the
-delivery pipeline, and passes its path via `-config`. The sidecar validates on
+delivery pipeline. Preferred runtime configuration is `-runtime-config
+sidecar.yaml` (see [`../deploy/sidecar/sidecar.example.yaml`](../deploy/sidecar/sidecar.example.yaml));
+the legacy `-config`/`-pip` flags remain supported. The sidecar validates on
 load and refuses to start on an invalid bundle. Reload semantics: validate,
 atomic swap, keep last-known-good on failure.
 
@@ -66,9 +68,12 @@ atomic swap, keep last-known-good on failure.
 `extproc/` and the Envoy configuration is in [`envoy/`](envoy/README.md).
 
 ```bash
+# preferred: one structured runtime config
+go run ./sidecar/cmd/extproc -runtime-config deploy/sidecar/sidecar.example.yaml
+
+# legacy flags
 CONTROLS_AUDIT_SALT=dev-salt go run ./sidecar/cmd/extproc -listen :50051 \
-  -config integration/testdata/config \
-  -pip http://127.0.0.1:8082
+  -config integration/testdata/config -pip http://127.0.0.1:8082
 ```
 
 - `BUFFERED` request and response body modes; chunked bodies are tolerated.
