@@ -5,6 +5,12 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+### Removed
+
+- Deleted the archived `payments-service-demo`; its external-OPA policy is
+  preserved at `docs/archive/payments-authz.rego` and its history as a local
+  git bundle.
+
 ## [0.41.0] — 2026-11-08
 
 ### Added
