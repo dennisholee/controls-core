@@ -24,6 +24,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   runs ext_proc with `-runtime-config`.
 - PIP version mismatch is scrapeable (`controls_pip_version_mismatch_total`) and
   holds the sidecar unready for alerting.
+- PIP server responses are validated against `contracts/pip-api.yaml` with
+  `kin-openapi` in CI.
 
 ### Changed
 
