@@ -111,7 +111,7 @@ text{font-family:Inter,"Segoe UI",Arial,sans-serif;fill:#132238}
 <path d="M610 985 V1040" fill="none" stroke="#0f766e" stroke-width="2.4" marker-end="url(#arrow)"/>
 <text x="622" y="1018" class="small" text-anchor="start" >attribute read</text>
 <path d="M870 575 H900 V790 H890" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
-<text x="932" y="752" class="small" text-anchor="start" >authz (optional)</text>
+<text x="912" y="752" class="small" text-anchor="start" >authz (optional)</text>
 <rect x="1225" y="205" width="335" height="520" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="1245" y="235" class="h3" text-anchor="start" >Delivery pipeline</text>
 <text x="1245" y="255" class="small" text-anchor="start" >Jenkins, pinned tools</text>
