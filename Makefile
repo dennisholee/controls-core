@@ -14,15 +14,18 @@ GOPATH ?= $(CURDIR)/.gopath
 export GOCACHE
 export GOPATH
 
-.PHONY: test vet build bench fmt fmt-check all pip sidecar api api-rules extproc openapi-diff openapi-gate acceptance smoke testdrive demo examples steward clean pip-contract pip-api-compat
+.PHONY: test vet eol-check build bench fmt fmt-check all pip sidecar api api-rules extproc openapi-diff openapi-gate acceptance smoke testdrive demo examples steward clean pip-contract pip-api-compat
 
-all: fmt-check vet test
+all: fmt-check vet eol-check test
 
 test:
 	$(GO) test ./...
 
 vet:
 	$(GO) vet ./...
+
+eol-check:
+	./hack/eol-check.sh
 
 vulncheck:
 	$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...

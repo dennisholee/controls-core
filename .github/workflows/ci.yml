@@ -57,6 +57,8 @@ jobs:
         run: make fmt-check
       - name: vet
         run: make vet
+      - name: EOL and deprecation check
+        run: make eol-check
       - name: govulncheck
         run: make vulncheck
       - name: test

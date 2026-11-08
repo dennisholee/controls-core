@@ -5,6 +5,18 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `docs/SUPPORTED-VERSIONS.md` and `make eol-check`: fails on EOL Alpine bases,
+  unpinned Alpine images, or the deprecated Envoy cluster field.
+
+### Changed
+
+- Runtime images use Alpine 3.24 and pinned base digests; Go/Envoy bases are
+  digest-pinned.
+- Envoy configs use `HttpProtocolOptions` instead of the deprecated
+  `Cluster.http2_protocol_options`.
+
 ## [0.39.0] — 2026-11-08
 
 ### Added

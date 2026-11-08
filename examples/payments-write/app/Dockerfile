@@ -1,10 +1,10 @@
-FROM golang:1.26 AS build
+FROM golang:1.26@sha256:cfa27959837144bf4649802ba38e59daffd0dd2a7994aa83daaf113285b0f551 AS build
 WORKDIR /src
 COPY go.mod ./
 COPY . .
 RUN CGO_ENABLED=0 go build -o /out/app .
 
-FROM alpine:3.20
+FROM alpine:3.24@sha256:3f4d6b32e26703c6082839234f43769d5046b3ac7c910033911d1e71d8cd630a
 RUN adduser -D -u 10001 app
 COPY --from=build /out/app /usr/local/bin/app
 USER app
