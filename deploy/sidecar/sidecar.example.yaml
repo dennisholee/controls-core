@@ -12,6 +12,7 @@ bundle:
   reloadInterval: 30s
 
 pip:
+  apiVersion: "1.0"
   url: https://pip.controls.svc:8082
   timeout: 100ms
   defaultTTL: 30s

@@ -6,6 +6,8 @@ bundle:
   allowUnsigned: true
   reloadInterval: 30s
 pip:
+  # Deliberately disabled: the PIP is unreachable; requests fail closed with 503.
+  apiVersion: ""
   url: http://127.0.0.1:9
   timeout: 100ms
 audit:

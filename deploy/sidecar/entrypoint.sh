@@ -8,6 +8,7 @@ else
     -listen :50051
     -config /etc/controls/bundle
     -pip "$PIP_URL"
+    -pip-api-version "${PIP_API_VERSION:-1.0}"
     -metrics-addr :9090
     -audit-salt "${CONTROLS_AUDIT_SALT:-sample-salt}"
     -audit-buffer 0

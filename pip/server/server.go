@@ -20,6 +20,9 @@ const (
 )
 
 // Server exposes the PIP HTTP API.
+// APIVersion is the PIP HTTP contract version implemented by this server.
+const APIVersion = "1.0"
+
 type Server struct {
 	repo          Repository
 	log           *slog.Logger
@@ -29,6 +32,7 @@ type Server struct {
 	reg           *metrics.Registry
 	limit         chan struct{}
 	requireCaller bool
+	build         string
 	rateLimit     float64
 	rateBurst     float64
 	buckets       map[string]*bucket
@@ -36,6 +40,9 @@ type Server struct {
 
 // Option configures the PIP server.
 type Option func(*Server)
+
+// WithBuild sets the build identifier returned by /version.
+func WithBuild(v string) Option { return func(s *Server) { s.build = v } }
 
 // WithRateLimit enables a per-caller token bucket (requests/second, burst).
 func WithRateLimit(rps, burst int) Option {
@@ -74,7 +81,7 @@ func WithLagSeconds(n int) Option { return func(s *Server) { s.lagSeconds = n } 
 
 // New builds a PIP server.
 func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
-	s := &Server{repo: repo, log: log, mux: http.NewServeMux()}
+	s := &Server{repo: repo, log: log, mux: http.NewServeMux(), build: "dev"}
 	for _, opt := range opts {
 		opt(s)
 	}
@@ -83,6 +90,12 @@ func New(repo Repository, log *slog.Logger, opts ...Option) *Server {
 	s.mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+	s.mux.HandleFunc("GET /version", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{
+			"apiVersion": APIVersion,
+			"build":      s.build,
+		})
 	})
 	return s
 }

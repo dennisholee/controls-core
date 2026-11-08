@@ -21,6 +21,8 @@ import (
 	"example.com/controls/core/pip/server"
 )
 
+var build = "dev"
+
 func main() {
 	runtimeConfig := flag.String("runtime-config", "", "PIP YAML configuration file")
 	flag.String("addr", ":8082", "listen address")
@@ -72,6 +74,7 @@ func main() {
 		server.WithMaxConcurrent(opts.MaxConcurrent),
 		server.WithRequireCaller(opts.RequireCaller || opts.RequireMTLS),
 		server.WithRateLimit(opts.RateLimit, opts.RateBurst),
+		server.WithBuild(build),
 	)
 	handler := svc.Handler()
 	if opts.MetricsAddr != "" {

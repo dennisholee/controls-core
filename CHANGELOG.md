@@ -11,6 +11,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   Precedence is CLI flags > env > file > defaults; unknown fields fail closed.
 - Sidecar config supports `env:`/`file:` secret references for the identity
   key and audit salt; the runtime image accepts `CONTROLS_RUNTIME_CONFIG`.
+- PIP `GET /version` and sidecar `pip.apiVersion` start-up handshake; the
+  sidecar fails closed on a mismatched or unreachable PIP contract.
 
 ### Changed
 

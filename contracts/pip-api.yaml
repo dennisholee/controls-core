@@ -77,6 +77,26 @@ paths:
       responses:
         "200":
           description: ok
+  /version:
+    get:
+      operationId: getVersion
+      summary: PIP contract and build version
+      responses:
+        "200":
+          description: Version handshake used by the sidecar at startup.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [apiVersion]
+                properties:
+                  apiVersion:
+                    type: string
+                    example: "1.0"
+                  build:
+                    type: string
+                    example: "abc123"
+
 components:
   schemas:
     BatchRequest:

@@ -279,3 +279,22 @@ func TestRateLimit(t *testing.T) {
 		t.Fatalf("second status = %d", second.StatusCode)
 	}
 }
+
+func TestVersionEndpoint(t *testing.T) {
+	srv := newTestServer(t)
+	resp, err := http.Get(srv.URL + "/version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		APIVersion string `json:"apiVersion"`
+		Build      string `json:"build"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.APIVersion != APIVersion || out.Build == "" {
+		t.Fatalf("version = %+v", out)
+	}
+}

@@ -13,6 +13,7 @@ func configFlagSet() *flag.FlagSet {
 	fs.String("listen", ":50051", "")
 	fs.String("config", "integration/testdata/config", "")
 	fs.String("pip", "http://127.0.0.1:8082", "")
+	fs.String("pip-api-version", "1.0", "")
 	fs.Int("max-body-bytes", 1<<20, "")
 	fs.String("metrics-addr", ":9090", "")
 	fs.Float64("audit-sample", 0.01, "")
@@ -60,6 +61,7 @@ bundle:
   reloadInterval: 45s
 pip:
   url: http://pip:8082
+  apiVersion: "1.0"
   timeout: 250ms
   defaultTTL: 20s
   maxTTL: 2m
@@ -93,7 +95,7 @@ func TestLoadAndResolveSidecarConfig(t *testing.T) {
 	if got.BundleDir != "/bundle" || !got.AllowUnsigned || got.ReloadInterval != 45*time.Second {
 		t.Fatalf("bundle = %+v", got)
 	}
-	if got.PIPURL != "http://pip:8082" || got.PIPTimeout != 250*time.Millisecond ||
+	if got.PIPURL != "http://pip:8082" || got.PIPAPIVersion != "1.0" || got.PIPTimeout != 250*time.Millisecond ||
 		got.PIPDefaultTTL != 20*time.Second || got.PIPMaxTTL != 2*time.Minute ||
 		got.PIPMaxCache != 1234 || got.PIPBreakerCool != 7*time.Second {
 		t.Fatalf("pip = %+v", got)

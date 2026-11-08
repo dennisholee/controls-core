@@ -147,3 +147,25 @@ func TestCacheIsBoundedAndDoesNotCacheMisses(t *testing.T) {
 		t.Fatal("not-found result must not be cached")
 	}
 }
+
+func TestAPIVersionAndCheck(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]string{"apiVersion": "1.0", "build": "test"})
+	}))
+	defer srv.Close()
+	c := New(srv.URL)
+	got, err := c.APIVersion(context.Background())
+	if err != nil || got != "1.0" {
+		t.Fatalf("version=%q err=%v", got, err)
+	}
+	for _, tc := range []struct {
+		expected, actual string
+		ok               bool
+	}{
+		{"1.0", "1.0", true}, {"1", "1.4", true}, {"1.0", "1.1", false}, {"2.0", "1.9", false},
+	} {
+		if err := CheckAPIVersion(tc.expected, tc.actual); (err == nil) != tc.ok {
+			t.Fatalf("CheckAPIVersion(%q,%q)=%v", tc.expected, tc.actual, err)
+		}
+	}
+}

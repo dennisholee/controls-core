@@ -11,6 +11,7 @@ Normative definition: [`../contracts/pip-api.yaml`](../contracts/pip-api.yaml).
 - `POST /v1/attributes:batch` — resolve attributes for up to 100 resources,
   with field projection.
 - `GET /v1/classification/{resourceType}` — long-lived classification metadata.
+- `GET /version` — `apiVersion` + `build` for the sidecar handshake.
 - `GET /healthz`.
 
 ## Attribute sources

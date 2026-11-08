@@ -22,6 +22,7 @@ base by digest, and publish the result by digest.
 | `CONTROLS_RUNTIME_CONFIG` | optional path to `sidecar.yaml`; replaces the legacy flag set |
 | `CONTROLS_BUNDLE_PUBKEY` | bundle public key path (legacy flag mode also accepts `-bundle-pubkey`) |
 | `PIP_URL` | PIP base URL (required) |
+| `PIP_API_VERSION` | expected PIP contract major.minor (default `1.0`; empty disables) |
 | `CONTROLS_AUDIT_SALT` | audit hash salt |
 | `SERVICE_NAME` | Envoy service cluster (optional) |
 | `PIP_CA` / `PIP_CERT` / `PIP_KEY` | PIP TLS / client certificate files |

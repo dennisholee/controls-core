@@ -6,6 +6,7 @@ bundle:
   allowUnsigned: true
   reloadInterval: 30s
 pip:
+  apiVersion: "1.0"
   url: https://pip:8082
   timeout: 100ms
   tls:

@@ -67,6 +67,7 @@ bundle:
   reloadInterval: 0s
 pip:
   url: "http://127.0.0.1:$PIP_PORT"
+  apiVersion: "1.0"
   timeout: 200ms
   defaultTTL: 30s
   maxTTL: 5m

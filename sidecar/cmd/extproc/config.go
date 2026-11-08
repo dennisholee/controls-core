@@ -44,6 +44,7 @@ type sidecarFile struct {
 	} `yaml:"bundle"`
 	PIP struct {
 		URL             *string   `yaml:"url"`
+		APIVersion      *string   `yaml:"apiVersion"`
 		Timeout         *Duration `yaml:"timeout"`
 		DefaultTTL      *Duration `yaml:"defaultTTL"`
 		MaxTTL          *Duration `yaml:"maxTTL"`
@@ -103,6 +104,7 @@ type settings struct {
 	AllowUnsigned   bool
 	ReloadInterval  time.Duration
 	PIPURL          string
+	PIPAPIVersion   string
 	PIPTimeout      time.Duration
 	PIPDefaultTTL   time.Duration
 	PIPMaxTTL       time.Duration
@@ -203,6 +205,7 @@ func resolveSettings(path string, fs *flag.FlagSet) (settings, error) {
 		AllowUnsigned:   pickBool("allow-unsigned", f.Bundle.AllowUnsigned),
 		ReloadInterval:  pickDuration("reload-interval", f.Bundle.ReloadInterval),
 		PIPURL:          pick("pip", "", f.PIP.URL),
+		PIPAPIVersion:   pick("pip-api-version", "", f.PIP.APIVersion),
 		PIPTimeout:      pickDuration("pip-timeout", f.PIP.Timeout),
 		PIPDefaultTTL:   pickDuration("pip-default-ttl", f.PIP.DefaultTTL),
 		PIPMaxTTL:       pickDuration("max-ttl", f.PIP.MaxTTL),

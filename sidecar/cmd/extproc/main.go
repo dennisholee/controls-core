@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"io"
 	"log/slog"
@@ -28,11 +29,37 @@ import (
 	"example.com/controls/core/sidecar/extproc"
 )
 
+func waitForPIPVersion(pip *pipclient.Client, timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	var last error
+	for {
+		actual, err := pip.APIVersion(ctx)
+		if err == nil {
+			return actual, nil
+		}
+		last = err
+		select {
+		case <-ctx.Done():
+			return "", last
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+}
+
+func envDefault(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+
 func main() {
 	runtimeConfig := flag.String("runtime-config", "", "sidecar YAML configuration file")
 	flag.String("listen", ":50051", "gRPC listen address")
 	flag.String("config", "integration/testdata/config", "controls bundle directory")
 	flag.String("pip", "http://127.0.0.1:8082", "PIP base URL")
+	flag.String("pip-api-version", envDefault("PIP_API_VERSION", "1.0"), "expected PIP API major.minor (empty disables)")
 	flag.Int("max-body-bytes", extproc.DefaultMaxBody, "max buffered request/response body")
 	flag.String("metrics-addr", ":9090", "metrics/health listen address (empty disables)")
 	flag.Float64("audit-sample", 0.01, "fraction of allowed decisions to audit (denials always logged)")
@@ -99,6 +126,19 @@ func main() {
 	}
 	pip := pipclient.New(opts.PIPURL, pipOpts...)
 	registry := metrics.New()
+	if opts.PIPAPIVersion != "" {
+		actual, err := waitForPIPVersion(pip, 10*time.Second)
+		if err != nil {
+			log.Error("cannot read PIP API version", "err", err)
+			os.Exit(1)
+		}
+		if err := pipclient.CheckAPIVersion(opts.PIPAPIVersion, actual); err != nil {
+			log.Error("PIP API contract mismatch", "err", err, "expected", opts.PIPAPIVersion, "actual", actual)
+			os.Exit(1)
+		}
+		registry.Set("controls_pip_info", "PIP API version in use.", map[string]string{"apiVersion": actual}, 1)
+		log.Info("PIP API contract verified", "apiVersion", actual)
+	}
 	var auditWriter io.Writer = os.Stdout
 	if opts.AuditOut != "" {
 		f, err := os.OpenFile(opts.AuditOut, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)

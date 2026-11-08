@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -451,4 +452,51 @@ func batchKey(refs []Ref) string {
 	}
 	sort.Strings(keys)
 	return strings.Join(keys, ";")
+}
+
+// APIVersion returns the PIP HTTP contract version from /version.
+func (c *Client) APIVersion(ctx context.Context) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+"/version", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("pip version status %d", resp.StatusCode)
+	}
+	var out struct {
+		APIVersion string `json:"apiVersion"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
+		return "", err
+	}
+	if out.APIVersion == "" {
+		return "", fmt.Errorf("pip version response missing apiVersion")
+	}
+	return out.APIVersion, nil
+}
+
+// CheckAPIVersion accepts matching major/minor versions. An expected value of
+// "1" accepts any 1.x; "1.0" accepts 1.0.x.
+func CheckAPIVersion(expected, actual string) error {
+	if expected == "" {
+		return nil
+	}
+	e := strings.TrimPrefix(strings.TrimSpace(expected), "v")
+	a := strings.TrimPrefix(strings.TrimSpace(actual), "v")
+	if a == "" {
+		return fmt.Errorf("pip reported an empty apiVersion")
+	}
+	ep, ap := strings.Split(e, "."), strings.Split(a, ".")
+	if len(ep) > 0 && len(ap) > 0 && ep[0] != ap[0] {
+		return fmt.Errorf("pip apiVersion %q does not match expected %q", actual, expected)
+	}
+	if len(ep) > 1 && len(ap) > 1 && ep[1] != ap[1] {
+		return fmt.Errorf("pip apiVersion %q does not match expected %q", actual, expected)
+	}
+	return nil
 }
