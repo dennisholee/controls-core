@@ -1,6 +1,6 @@
 # Architecture
 
-Status: reference implementation `v0.40.0`.
+Status: reference implementation `v0.41.0`.
 
 Visual overview: [`docs/architecture-infographic.svg`](docs/architecture-infographic.svg) · deployment: [`docs/deployment-infographic.svg`](docs/deployment-infographic.svg).
 

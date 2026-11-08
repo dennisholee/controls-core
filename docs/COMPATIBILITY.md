@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.41.x | 1.0.x | 1.0.x | 1.0.x | deprecation warnings, OpenAPI 3.1 service docs, OPA 1.x example |
 | 0.40.x | 1.0.x | 1.0.x | 1.0.x | supported bases, typed Envoy HTTP options, Go 1.27 |
 | 0.39.x | 1.0.x | 1.0.x | 1.0.x | adoption gate fixes, DQ action/endpoint scope, array DQ, PIP fixture metadata |
 | 0.38.x | 1.0.x | 1.0.x | 1.0.x | PIP API handshake, runtime config |

@@ -5,17 +5,24 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
-## [0.40.0] — 2026-11-08
+## [0.41.0] — 2026-11-08
 
 ### Added
 
 - Start-up warnings for raw identity fallback and the legacy entrypoint flag
   mode, making deprecated paths visible without changing enforcement.
-- `docs/SUPPORTED-VERSIONS.md`, `docs/DEPRECATION.md` and `make eol-check`:
-  supported-version matrix, deprecation/removal schedule, and a gate that
-  rejects EOL Alpine bases, unpinned images or the deprecated Envoy field.
-- `make examples-config-check`: fails when shared example configs (Envoy,
-  Dockerfiles, non-mTLS PIP configs, Go modules) drift apart.
+
+### Changed
+
+- The canonical service demo uses OpenAPI 3.1.0.
+- The archived OPA demo runs on OPA 1.22.2.
+
+## [0.40.0] — 2026-11-08
+
+### Added
+
+- `docs/SUPPORTED-VERSIONS.md`, `docs/DEPRECATION.md` and `make eol-check`.
+- `make examples-config-check`.
 
 ### Changed
 
