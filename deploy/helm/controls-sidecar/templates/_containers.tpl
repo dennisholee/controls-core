@@ -29,6 +29,11 @@
 - name: controls-extproc
   image: {{ required "extproc.image is required" .Values.extproc.image | quote }}
   imagePullPolicy: {{ .Values.extproc.pullPolicy | default "IfNotPresent" }}
+  {{- if .Values.extproc.runtimeConfig }}
+  args:
+    - -runtime-config
+    - /etc/controls/runtime/sidecar.yaml
+  {{- else }}
   args:
     - -listen
     - ":{{ .Values.extproc.port | default 50051 }}"
@@ -90,6 +95,7 @@
     - -bundle-pubkey
     - /etc/controls/secrets/{{ .Values.secrets.bundlePubKey }}
     {{- end }}
+  {{- end }}
   env:
     - name: CONTROLS_AUDIT_SALT
       valueFrom:
@@ -107,6 +113,11 @@
     - name: metrics
       containerPort: {{ .Values.extproc.metricsPort | default 9090 }}
   volumeMounts:
+    {{- if .Values.extproc.runtimeConfig }}
+    - name: controls-runtime-config
+      mountPath: /etc/controls/runtime
+      readOnly: true
+    {{- end }}
     - name: controls-bundle
       mountPath: /etc/controls/bundle
       readOnly: true

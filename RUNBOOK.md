@@ -16,6 +16,7 @@ Audience: on-call for the controls plane (core engineering).
 | `SidecarNotReady` | pod not ready > 5 min | page | §2.4 |
 | `UnmaskedCanary` | canary detects a sensitive field in clear | page + security | §2.6 |
 | `CertExpiry` | mTLS cert < 14 days | ticket | §2.7 |
+| `PIPContractMismatch` | startup log reports `PIP API contract mismatch`, or `controls_pip_version_mismatch_total > 0` | page | §2.8 |
 
 ## 1a. Metrics mapping
 
@@ -37,11 +38,24 @@ application. The alerts above map to these series:
 | PIP misses | `rate(pip_attributes_total{found="false"}[5m])` |
 | PIP replica lag | `pip_lag_seconds{resource_type}` |
 | PIP overload | `rate(pip_rejected_total{reason="concurrency"}[5m])` |
+| PIP contract mismatch | `controls_pip_version_mismatch_total > 0` (startup metric) |
 
 PIP latency is currently visible only as end-to-end control latency; a
 dedicated PIP histogram is a follow-up if the alert proves too coarse.
 
 ## 2. Procedures
+
+### 2.8 PIP contract mismatch
+
+The sidecar compares `GET /version` `apiVersion` with `pip.apiVersion` at
+startup. A mismatch exits before serving. Check:
+
+```bash
+kubectl logs deploy/<service> -c controls-extproc | grep 'PIP API contract'
+curl -s https://<pip>/version
+```
+
+Align the PIP deployment and sidecar config, then roll the sidecar.
 
 ### 2.1 PIP outage
 

@@ -15,7 +15,13 @@ volumes:
 ```
 
 See [`../../examples/sidecar-service`](../../examples/sidecar-service) for a
-renderable parent.
+renderable parent. With `extproc.runtimeConfig: true`, the parent must include:
+
+```yaml
+{{- if .Values.extproc.runtimeConfig }}
+{{ include "controls-sidecar.configmap" . }}
+{{- end }}
+```
 
 ## Values
 
@@ -29,6 +35,8 @@ renderable parent.
 | `extproc.pipTimeout` / `pipDefaultTTL` / `maxTTL` / `pipMaxCache` / `pipBreakerCooldown` | PIP client tuning |
 | `extproc.identityMaxSkew` / `reloadInterval` | identity clock skew and bundle polling |
 | `extproc.opaURL` / `opaTimeout` | optional external OPA endpoint |
+| `extproc.runtimeConfig` | render a literal `sidecar.yaml` and use `-runtime-config` |
+| `extproc.runtimeConfigMap` | ConfigMap name for the generated runtime config |
 | `extproc.pipCA` / `pipCert` / `pipKey` / `pipServerName` | PIP mTLS files and SNI |
 | `extproc.auditSample` / `auditBuffer` / `auditOut` | audit sampling, queue and optional file |
 | `extproc.allowUnsigned` | development only; production requires a bundle pubkey |

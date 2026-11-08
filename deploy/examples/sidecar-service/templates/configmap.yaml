@@ -1,0 +1,3 @@
+{{- if .Values.extproc.runtimeConfig }}
+{{ include "controls-sidecar.configmap" . }}
+{{- end }}

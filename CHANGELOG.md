@@ -20,6 +20,10 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   skew, reload interval and optional OPA endpoint.
 - `make pip-api-compat` compares `pip-api.yaml` with a base revision and fails
   on breaking changes.
+- Helm `extproc.runtimeConfig` renders a literal `sidecar.yaml` ConfigMap and
+  runs ext_proc with `-runtime-config`.
+- PIP version mismatch is scrapeable (`controls_pip_version_mismatch_total`) and
+  holds the sidecar unready for alerting.
 
 ### Changed
 

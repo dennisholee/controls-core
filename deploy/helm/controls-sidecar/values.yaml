@@ -24,6 +24,11 @@ extproc:
   # Optional external OPA decision endpoint.
   opaURL: ""
   opaTimeout: 100ms
+  # When true, the container reads /etc/controls/runtime/sidecar.yaml instead
+  # of the flag set below. The parent chart must include
+  # controls-sidecar.configmap and the runtime-config volume.
+  runtimeConfig: false
+  runtimeConfigMap: controls-runtime-config
   # Optional PIP mTLS files, mounted from the shared secrets volume.
   pipCA: ""
   pipCert: ""

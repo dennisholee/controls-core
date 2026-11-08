@@ -3,8 +3,9 @@ cluster: accounts
 envoy:
   image: envoyproxy/envoy:v1.40.0
 extproc:
-  image: controls-extproc:0.22.0
+  image: controls-extproc:0.38.3
   pipURL: http://controls-pip.controls.svc:8082
+  runtimeConfig: true
 volumes:
   envoyConfig: accounts-envoy
   bundle: accounts-controls-bundle

@@ -1,5 +1,10 @@
 {{/* Volumes referenced by the injected containers. */}}
 {{- define "controls-sidecar.volumes" -}}
+{{- if .Values.extproc.runtimeConfig }}
+- name: controls-runtime-config
+  configMap:
+    name: {{ .Values.extproc.runtimeConfigMap | default "controls-runtime-config" }}
+{{- end }}
 - name: controls-envoy-config
   configMap:
     name: {{ required "volumes.envoyConfig is required" .Values.volumes.envoyConfig }}

@@ -126,6 +126,10 @@ func main() {
 	}
 	pip := pipclient.New(opts.PIPURL, pipOpts...)
 	registry := metrics.New()
+	var current atomic.Pointer[runtimeState]
+	if opts.MetricsAddr != "" {
+		startMetrics(opts.MetricsAddr, registry, &current, log)
+	}
 	if opts.PIPAPIVersion != "" {
 		actual, err := waitForPIPVersion(pip, 10*time.Second)
 		if err != nil {
@@ -133,8 +137,12 @@ func main() {
 			os.Exit(1)
 		}
 		if err := pipclient.CheckAPIVersion(opts.PIPAPIVersion, actual); err != nil {
-			log.Error("PIP API contract mismatch", "err", err, "expected", opts.PIPAPIVersion, "actual", actual)
-			os.Exit(1)
+			registry.Inc("controls_pip_version_mismatch_total", "PIP API contract mismatches.", map[string]string{
+				"expected": opts.PIPAPIVersion, "actual": actual,
+			}, 1)
+			log.Error("PIP API contract mismatch; holding unready for metrics/alerting",
+				"err", err, "expected", opts.PIPAPIVersion, "actual", actual)
+			select {}
 		}
 		registry.Set("controls_pip_info", "PIP API version in use.", map[string]string{"apiVersion": actual}, 1)
 		log.Info("PIP API contract verified", "apiVersion", actual)
@@ -167,29 +175,8 @@ func main() {
 		log.Error("cannot start controls bundle", "err", err)
 		os.Exit(1)
 	}
-	var current atomic.Pointer[runtimeState]
 	current.Store(rs)
 	log.Info("controls bundle loaded", "version", rs.version, "digest", rs.digest)
-
-	if opts.MetricsAddr != "" {
-		mux := http.NewServeMux()
-		mux.Handle("/metrics", registry.Handler())
-		mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
-		mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
-			if err := current.Load().engine.StartupError(); err != nil {
-				http.Error(w, "policy initialisation failed", http.StatusServiceUnavailable)
-				return
-			}
-			_, _ = w.Write([]byte("ok"))
-		})
-		go func() {
-			srv := &http.Server{Addr: opts.MetricsAddr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
-			log.Info("metrics listening", "addr", opts.MetricsAddr)
-			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				log.Error("metrics listen", "err", err)
-			}
-		}()
-	}
 
 	lis, err := net.Listen("tcp", opts.Listen)
 	if err != nil {
@@ -263,6 +250,27 @@ func main() {
 
 	<-stop
 	server.GracefulStop()
+}
+
+func startMetrics(addr string, registry *metrics.Registry, current *atomic.Pointer[runtimeState], log *slog.Logger) {
+	mux := http.NewServeMux()
+	mux.Handle("/metrics", registry.Handler())
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("ok")) })
+	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
+		rs := current.Load()
+		if rs == nil || rs.engine.StartupError() != nil {
+			http.Error(w, "not ready", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte("ok"))
+	})
+	go func() {
+		srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
+		log.Info("metrics listening", "addr", addr)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("metrics listen", "err", err)
+		}
+	}()
 }
 
 type runtimeState struct {
