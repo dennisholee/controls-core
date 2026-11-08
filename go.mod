@@ -1,6 +1,6 @@
 module example.com/controls/core
 
-go 1.26.0
+go 1.27.0
 
 require (
 	github.com/cedar-policy/cedar-go v1.9.0

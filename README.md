@@ -45,7 +45,7 @@ docs/adr/           architecture decisions
 
 ## Quick start
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 ```bash
 make test          # go test ./... (integration tests spin up a fake PIP)
@@ -126,7 +126,7 @@ contract, examples and limitations.
 
 ## Status
 
-`v0.39.0` — engine, masking with classification fallback, DQ, replica-lag
+`v0.40.0` — engine, masking with classification fallback, DQ, replica-lag
 freshness, ext_proc adapter (exercised against a live Envoy via `make smoke`),
 the pipeline entry points (`bundle`, `bundle-sign`, `conformance`, OpenAPI
 gate), audited/metered enforcement, verified bundle integrity, deployment

@@ -5,6 +5,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+## [0.40.0] — 2026-11-08
+
 ### Added
 
 - `docs/SUPPORTED-VERSIONS.md`, `docs/DEPRECATION.md` and `make eol-check`:
@@ -19,6 +21,7 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   digest-pinned.
 - Envoy configs use `HttpProtocolOptions` instead of the deprecated
   `Cluster.http2_protocol_options`.
+- Go 1.27 is the module and build-image toolchain.
 
 ## [0.39.0] — 2026-11-08
 

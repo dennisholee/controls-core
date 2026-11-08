@@ -19,7 +19,7 @@ make up      # keep it running
 make down
 ```
 
-Requires Docker and Go 1.26+.
+Requires Docker and Go 1.27+.
 
 ```bash
 curl -s http://127.0.0.1:18000/accounts/A123 -H 'x-subject: u-1'

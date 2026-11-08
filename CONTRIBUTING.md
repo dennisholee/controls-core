@@ -2,7 +2,7 @@
 
 ## Setup
 
-- Go 1.26+ (the module declares the toolchain), `make`, Docker for the Envoy
+- Go 1.27+ (the module declares the toolchain), `make`, Docker for the Envoy
   smoke test, Helm 3.16 for chart checks.
 - Keep build caches inside the workspace:
   `GOCACHE=$PWD/.gocache GOPATH=$PWD/.gopath`.

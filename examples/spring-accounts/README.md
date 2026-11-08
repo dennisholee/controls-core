@@ -32,7 +32,7 @@ make up      # keep it running
 make down
 ```
 
-Requires Docker, Go 1.26+ and Maven (offline build uses the local repository).
+Requires Docker, Go 1.27+ and Maven (offline build uses the local repository).
 
 ```bash
 curl -s http://127.0.0.1:18005/accounts/A123 -H 'x-subject: u-1'

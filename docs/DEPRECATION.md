@@ -25,7 +25,7 @@ service examples and the demos.
 | Legacy sidecar flag mode (`-config`, `-pip`, `-pip-*`, `-opa-*`) | Supported legacy path | `sidecar.yaml` / `CONTROLS_RUNTIME_CONFIG` | Next major after all charts and examples use runtime config | Core |
 | OPA 0.70 in `payments-service-demo` | Archived demo only | OPA 1.x, or a maintained OPA example | With the archived demo | Reference service |
 | OpenAPI 3.0.3 contracts | Supported | OpenAPI 3.1 after generator/tooling validation | Evaluate next minor; not a security issue | Core |
-| Go 1.26.x | Supported | Go 1.27.x | When the toolchain image and CI move together | Core |
+| Go 1.27.x | Current | Go 1.28.x | When the toolchain image and CI move together | Core |
 | Spring Boot 3.5.x | Removed from active demos | Spring Boot 4.1.x | Done for the canonical demo; archived payments demo is unsupported | Reference service |
 
 ## Production requirements

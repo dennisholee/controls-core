@@ -33,7 +33,7 @@ registry drifts from the contract.
 
 ## Prerequisites
 
-- Docker, Go 1.26+; `spring-accounts` also needs Maven and Java 21.
+- Docker, Go 1.27+; `spring-accounts` also needs Maven and Java 21.
 - The sidecar runtime image is built from this repository, so no registry access
   is required.
 

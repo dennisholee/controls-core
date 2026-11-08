@@ -10,7 +10,7 @@ Removal schedule: [`docs/DEPRECATION.md`](DEPRECATION.md).
 | Java | 21, 25 | Java 21 is the demo target; 25 is the current LTS-friendly runtime |
 | Spring Boot (service demos) | 4.1.x | Spring Boot 3.5 OSS support ended 2026-06-30 |
 | OpenAPI Generator | 7.27.x | Generation timestamp hidden for reproducible builds |
-| Go | 1.26.x, 1.27.x | `go.mod` currently 1.26.0 |
+| Go | 1.27.x | `go.mod` and images are on 1.27 |
 | Envoy | 1.40.x | Required for `allow_content_length_header`; use `HttpProtocolOptions` |
 | Alpine (runtime images) | 3.23, 3.24 | 3.20 is EOL; images are digest-pinned |
 | PIP API contract | 1.0.x | Sidecar verifies the handshake at startup |
