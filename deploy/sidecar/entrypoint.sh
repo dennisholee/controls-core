@@ -3,6 +3,7 @@ set -euo pipefail
 if [ -n "${CONTROLS_RUNTIME_CONFIG:-}" ]; then
   args=(-runtime-config "$CONTROLS_RUNTIME_CONFIG")
 else
+  echo "warning: legacy flag mode in use; prefer CONTROLS_RUNTIME_CONFIG" >&2
   : "${PIP_URL:?PIP_URL is required when CONTROLS_RUNTIME_CONFIG is not set}"
   args=(
     -listen :50051

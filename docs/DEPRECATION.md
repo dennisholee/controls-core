@@ -28,6 +28,16 @@ service examples and the demos.
 | Go 1.27.x | Current | Go 1.28.x | When the toolchain image and CI move together | Core |
 | Spring Boot 3.5.x | Removed from active demos | Spring Boot 4.1.x | Done for the canonical demo; archived payments demo is unsupported | Reference service |
 
+## Runtime warnings (since 2026-11-08)
+
+- The sidecar logs a warning when it starts without
+  `CONTROLS_IDENTITY_HMAC_KEY` and accepts raw identity headers.
+- The sample entrypoint logs a warning when it falls back to legacy flag mode.
+- `-allow-unsigned` already logs a warning and must not be used in production.
+
+These warnings do not change enforcement; they make the deprecated path visible
+in logs until the removal targets above are met.
+
 ## Production requirements
 
 - `CONTROLS_IDENTITY_HMAC_KEY` is set and raw identity headers are stripped by

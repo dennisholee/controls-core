@@ -186,6 +186,8 @@ func main() {
 	identityKey := []byte(opts.IdentityKey)
 	if len(identityKey) > 0 {
 		log.Info("gateway identity envelope enforced")
+	} else {
+		log.Warn("raw x-subject/x-claim-* identity fallback enabled; development only, set CONTROLS_IDENTITY_HMAC_KEY in production")
 	}
 	server := grpc.NewServer()
 	extprocv3.RegisterExternalProcessorServer(server, extproc.New(extproc.Config{

@@ -9,6 +9,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ### Added
 
+- Start-up warnings for raw identity fallback and the legacy entrypoint flag
+  mode, making deprecated paths visible without changing enforcement.
 - `docs/SUPPORTED-VERSIONS.md`, `docs/DEPRECATION.md` and `make eol-check`:
   supported-version matrix, deprecation/removal schedule, and a gate that
   rejects EOL Alpine bases, unpinned images or the deprecated Envoy field.
