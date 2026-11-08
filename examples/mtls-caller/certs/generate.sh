@@ -15,3 +15,6 @@ openssl req -newkey rsa:2048 -nodes -keyout client.key -out client.csr \
 openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
   -out client.crt -days 2 >/dev/null 2>&1
 rm -f server.csr client.csr ext.cnf
+# Test-only keys are bind-mounted into non-root containers.
+chmod 0644 ca.key server.key client.key
+chmod 0644 ca.crt server.crt client.crt

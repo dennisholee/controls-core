@@ -31,7 +31,7 @@ examples-config-check:
 	./hack/examples-config-check.py
 
 vulncheck:
-	$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+	$(GO) run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 build:
 	$(GO) build -o bin/pip ./pip/cmd/pip

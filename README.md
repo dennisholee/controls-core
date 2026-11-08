@@ -118,7 +118,7 @@ contract, examples and limitations.
 - [docs/REPO-GOVERNANCE.md](docs/REPO-GOVERNANCE.md) — layout, boundaries, docs and CI rules
 - [docs/agents/repo-steward.md](docs/agents/repo-steward.md) — repository steward charter (`make steward`)
 - [docs/IDENTITY.md](docs/IDENTITY.md) — gateway identity envelope and header-trust model
-- [docs/archive/ASSESSMENT-2026-11-07.md](docs/archive/ASSESSMENT-2026-11-07.md) — historical v0.16.1 assessment (superseded)
+- [docs/archive/ASSESSMENT-2026-11-07.md](docs/archive/ASSESSMENT-2026-11-07.md) — historical assessment (superseded)
 - [docs/SUPPORTED-VERSIONS.md](docs/SUPPORTED-VERSIONS.md) — runtime/framework EOL policy
 - [docs/DEPRECATION.md](docs/DEPRECATION.md) — deprecation and removal schedule
 - [docs/PILOT-CHECKLIST.md](docs/PILOT-CHECKLIST.md) — cluster prerequisite/verification checklist
