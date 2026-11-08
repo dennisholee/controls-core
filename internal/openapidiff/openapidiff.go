@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -26,14 +27,21 @@ type Components struct {
 
 // Endpoint is a registry entry.
 type Endpoint struct {
-	ID             string
-	Method         string
-	Path           string
-	ResourceType   string
-	ResourceIDFrom string // path | body
-	ResourceID     string // parameter name or $.-path
-	MaskPolicy     string
-	ResourceSource string
+	ID                  string
+	Method              string
+	Path                string
+	ResourceType        string
+	ResourceIDFrom      string // path | body
+	ResourceID          string // parameter name or $.-path
+	MaskPolicy          string
+	ResourceSource      string
+	Action              string
+	Attributes          []string
+	Freshness           string
+	MaskErrors          *bool
+	SelfDescribing      bool
+	MaxStalenessSeconds int
+	AllowNonJSON        *bool
 }
 
 var operations = map[string]bool{
@@ -49,10 +57,18 @@ type Result struct {
 }
 
 type operation struct {
-	ResourceType   string `json:"x-resource-type"`
-	ResourceID     string `json:"x-resource-id"`
-	MaskPolicy     string `json:"x-mask-policy"`
-	ResourceSource string `json:"x-resource-source"`
+	ResourceType        string   `json:"x-resource-type"`
+	ResourceID          string   `json:"x-resource-id"`
+	MaskPolicy          string   `json:"x-mask-policy"`
+	ResourceSource      string   `json:"x-resource-source"`
+	Action              string   `json:"x-action"`
+	Attributes          []string `json:"x-attributes"`
+	Freshness           string   `json:"x-freshness"`
+	MaskErrors          *bool    `json:"x-mask-errors"`
+	SelfDescribing      *bool    `json:"x-self-describing"`
+	MaxStalenessSeconds int      `json:"x-max-staleness-seconds"`
+	AllowNonJSON        *bool    `json:"x-allow-non-json"`
+	Ignore              bool     `json:"x-controls-ignore"`
 }
 
 // Load reads an OpenAPI JSON or YAML document.
@@ -81,19 +97,6 @@ func Load(path string) (*Document, error) {
 // Check compares documented operations against registry entries.
 func Check(doc Document, endpoints []Endpoint) Result {
 	documented := map[string]bool{}
-	for path, item := range doc.Paths {
-		for method := range item {
-			m := strings.ToLower(method)
-			if !operations[m] {
-				continue
-			}
-			documented[opKey(m, path)] = true
-		}
-	}
-	registered := map[string]bool{}
-	for _, ep := range endpoints {
-		registered[opKey(strings.ToLower(ep.Method), ep.Path)] = true
-	}
 
 	var res Result
 	ops := map[string]operation{}
@@ -107,18 +110,25 @@ func Check(doc Document, endpoints []Endpoint) Result {
 			if len(raw) > 0 {
 				_ = json.Unmarshal(raw, &op)
 			}
-			ops[opKey(m, path)] = op
+			// x-controls-ignore routes are intentionally absent from the
+			// registry and must not be reported as missing coverage.
+			if op.Ignore {
+				continue
+			}
+			key := opKey(m, path)
+			documented[key] = true
+			ops[key] = op
 		}
 	}
 	registeredByKey := registryByKey(endpoints)
 	for key := range documented {
-		if !registered[key] {
+		if _, ok := registeredByKey[key]; !ok {
 			res.MissingRegistry = append(res.MissingRegistry, key)
 			continue
 		}
 		res.Mismatches = append(res.Mismatches, compareAnnotations(key, ops[key], registeredByKey[key])...)
 	}
-	for key, ep := range registryByKey(endpoints) {
+	for key, ep := range registeredByKey {
 		if !documented[key] {
 			res.OrphanRegistry = append(res.OrphanRegistry, key+" ("+ep.ID+")")
 		}
@@ -148,7 +158,73 @@ func compareAnnotations(key string, op operation, ep Endpoint) []string {
 			out = append(out, fmt.Sprintf("%s: x-resource-id %q != registry %s:%q", key, op.ResourceID, ep.ResourceIDFrom, ep.ResourceID))
 		}
 	}
+	method := strings.SplitN(key, " ", 2)[0]
+	if ep.Action != "" || op.Action != "" {
+		want := op.Action
+		if want == "" {
+			want = deriveAction(method)
+		}
+		if want != ep.Action {
+			out = append(out, fmt.Sprintf("%s: x-action %q != registry %q", key, want, ep.Action))
+		}
+	}
+	if ep.Attributes != nil || op.Attributes != nil {
+		if !slices.Equal(op.Attributes, ep.Attributes) {
+			out = append(out, fmt.Sprintf("%s: x-attributes %v != registry %v", key, op.Attributes, ep.Attributes))
+		}
+	}
+	if ep.Freshness != "" || op.Freshness != "" {
+		want := op.Freshness
+		if want == "" {
+			want = "cached"
+		}
+		if want != ep.Freshness {
+			out = append(out, fmt.Sprintf("%s: x-freshness %q != registry %q", key, want, ep.Freshness))
+		}
+	}
+	if ep.MaxStalenessSeconds != 0 || op.MaxStalenessSeconds != 0 {
+		if op.MaxStalenessSeconds != ep.MaxStalenessSeconds {
+			out = append(out, fmt.Sprintf("%s: x-max-staleness-seconds %d != registry %d", key, op.MaxStalenessSeconds, ep.MaxStalenessSeconds))
+		}
+	}
+	if ep.SelfDescribing || op.SelfDescribing != nil {
+		want := op.SelfDescribing != nil && *op.SelfDescribing
+		if want != ep.SelfDescribing {
+			out = append(out, fmt.Sprintf("%s: x-self-describing %t != registry %t", key, want, ep.SelfDescribing))
+		}
+	}
+	if ep.MaskErrors != nil || op.MaskErrors != nil {
+		want := true
+		if op.MaskErrors != nil {
+			want = *op.MaskErrors
+		}
+		got := true
+		if ep.MaskErrors != nil {
+			got = *ep.MaskErrors
+		}
+		if want != got {
+			out = append(out, fmt.Sprintf("%s: x-mask-errors %t != registry %t", key, want, got))
+		}
+	}
+	if ep.AllowNonJSON != nil || op.AllowNonJSON != nil {
+		want := op.AllowNonJSON != nil && *op.AllowNonJSON
+		got := ep.AllowNonJSON != nil && *ep.AllowNonJSON
+		if want != got {
+			out = append(out, fmt.Sprintf("%s: x-allow-non-json %t != registry %t", key, want, got))
+		}
+	}
 	return out
+}
+
+func deriveAction(method string) string {
+	switch method {
+	case "GET", "HEAD":
+		return "read"
+	case "DELETE":
+		return "delete"
+	default:
+		return "write"
+	}
 }
 
 func registryByKey(endpoints []Endpoint) map[string]Endpoint {

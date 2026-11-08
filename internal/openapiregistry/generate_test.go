@@ -17,11 +17,12 @@ func TestGenerate(t *testing.T) {
 			"x-attributes":["ownerId"]
 		}`)},
 		"/payments": {"post": json.RawMessage(`{
-			"operationId":"create-payment",
+			"operationId":"createPayment",
 			"x-resource-type":"payment",
 			"x-resource-id":"$._id",
 			"x-mask-policy":"payment.write",
-			"x-self-describing":true
+			"x-self-describing":true,
+			"x-allow-non-json":true
 		}`)},
 	}}
 	reg, err := Generate(doc, "")
@@ -39,6 +40,24 @@ func TestGenerate(t *testing.T) {
 	}
 	if reg.Endpoints[1].ResourceID.From != "path" || reg.Endpoints[1].Action != "read" {
 		t.Fatalf("account = %+v", reg.Endpoints[1])
+	}
+}
+
+func TestGenerateNormalizesOperationID(t *testing.T) {
+	doc := openapidiff.Document{Paths: map[string]map[string]json.RawMessage{
+		"/x": {"get": json.RawMessage(`{
+			"operationId":"getPartyByID",
+			"x-resource-type":"party",
+			"x-resource-id":"id",
+			"x-mask-policy":"party.read"
+		}`)},
+	}}
+	reg, err := Generate(doc, "party")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := reg.Endpoints[0].ID; got != "get-party-by-id" {
+		t.Fatalf("id = %q", got)
 	}
 }
 

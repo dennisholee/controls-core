@@ -38,6 +38,8 @@ func main() {
 
 	endpoints := make([]openapidiff.Endpoint, 0, len(reg.Endpoints))
 	for _, ep := range reg.Endpoints {
+		maskErrors := ep.MaskErrorsEnabled()
+		allowNonJSON := ep.AllowNonJSON
 		endpoints = append(endpoints, openapidiff.Endpoint{
 			ID: ep.ID, Method: ep.Method, Path: ep.Path,
 			ResourceType:   ep.ResourceType,
@@ -48,8 +50,15 @@ func main() {
 				}
 				return ep.ResourceID.Path
 			}(),
-			MaskPolicy:     ep.MaskPolicy,
-			ResourceSource: ep.ResourceFrom,
+			MaskPolicy:          ep.MaskPolicy,
+			ResourceSource:      ep.ResourceFrom,
+			Action:              ep.Action,
+			Attributes:          ep.Attributes,
+			Freshness:           ep.Freshness,
+			MaskErrors:          &maskErrors,
+			SelfDescribing:      ep.SelfDescribe,
+			MaxStalenessSeconds: ep.MaxStalenessSeconds,
+			AllowNonJSON:        &allowNonJSON,
 		})
 	}
 

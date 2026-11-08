@@ -280,7 +280,7 @@ func (e *Engine) ProcessRequest(ctx context.Context, req Request) (out Result) {
 		Ctx:        ctx,
 	})
 
-	violations := e.dq.Check(ep.ResourceType, body)
+	violations := e.dq.Check(ep.ResourceType, actionOf(ep), ep.ID, body)
 	out = Result{
 		Allowed:      result.Allowed,
 		Status:       200,

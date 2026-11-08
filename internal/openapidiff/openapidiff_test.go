@@ -132,3 +132,66 @@ paths:
 		t.Fatalf("paths = %+v", doc.Paths)
 	}
 }
+
+func TestControlIgnoreSkipsCoverage(t *testing.T) {
+	d := Document{Paths: map[string]map[string]json.RawMessage{
+		"/accounts/{id}": {"get": json.RawMessage(`{}`)},
+		"/parties":       {"get": json.RawMessage(`{"x-controls-ignore":true}`)},
+	}}
+	res := Check(d, []Endpoint{{ID: "get-account", Method: "GET", Path: "/accounts/{id}"}})
+	if len(res.MissingRegistry) != 0 || len(res.OrphanRegistry) != 0 {
+		t.Fatalf("ignored operation created findings: %+v", res)
+	}
+}
+
+func TestControlIgnoreRouteMustNotBeRegistered(t *testing.T) {
+	d := Document{Paths: map[string]map[string]json.RawMessage{
+		"/parties": {"get": json.RawMessage(`{"x-controls-ignore":true}`)},
+	}}
+	res := Check(d, []Endpoint{{ID: "search-parties", Method: "GET", Path: "/parties"}})
+	if len(res.OrphanRegistry) != 1 {
+		t.Fatalf("ignored-but-registered route should be an orphan: %+v", res)
+	}
+}
+
+func TestBindingParity(t *testing.T) {
+	d := Document{Paths: map[string]map[string]json.RawMessage{
+		"/things/{id}": {
+			"put": json.RawMessage(`{
+			  "x-resource-type":"thing",
+			  "x-resource-id":"id",
+			  "x-mask-policy":"thing.write",
+			  "x-action":"write",
+			  "x-attributes":["a"],
+			  "x-freshness":"fresh",
+			  "x-max-staleness-seconds":9,
+			  "x-self-describing":true,
+			  "x-mask-errors":false,
+			  "x-allow-non-json":true
+			}`),
+		},
+	}}
+	maskErrors := true
+	allowNonJSON := false
+	res := Check(d, []Endpoint{{
+		ID: "put-thing", Method: "PUT", Path: "/things/{id}",
+		ResourceType: "thing", ResourceIDFrom: "path", ResourceID: "id",
+		MaskPolicy: "thing.write", ResourceSource: "pip",
+		Action: "read", Attributes: []string{"b"}, Freshness: "cached",
+		MaxStalenessSeconds: 5, SelfDescribing: false,
+		MaskErrors: &maskErrors, AllowNonJSON: &allowNonJSON,
+	}})
+	want := []string{"x-action", "x-attributes", "x-freshness", "x-max-staleness-seconds", "x-self-describing", "x-mask-errors", "x-allow-non-json"}
+	for _, key := range want {
+		found := false
+		for _, mismatch := range res.Mismatches {
+			if strings.Contains(mismatch, key) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("missing mismatch for %s: %v", key, res.Mismatches)
+		}
+	}
+}

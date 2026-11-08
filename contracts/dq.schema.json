@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://controls.example.com/schemas/dq.schema.json",
+  "title": "Controls data-quality rules",
+  "description": "Request data-quality rules evaluated by the sidecar. Rules are scoped by resource type, and optionally by action and endpoint id.",
+  "type": "object",
+  "required": ["version", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "resourceType", "field"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "description": "Stable identifier used in decision logs and metrics."
+        },
+        "resourceType": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Resource type or * for every type."
+        },
+        "action": {
+          "enum": ["read", "write", "delete", "*"],
+          "default": "*",
+          "description": "Action scope. Use write for required/value rules that must not deny reads."
+        },
+        "endpoint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional registry endpoint id. Empty applies to every matching endpoint."
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Dot path, optionally with [*] array wildcards."
+        },
+        "required": {
+          "type": "boolean",
+          "default": false,
+          "description": "Reject (or report) missing, null or empty values, and empty arrays."
+        },
+        "op": {
+          "enum": ["pattern", "maxLength", "type", "eq", "neq", "gt", "gte", "lt", "lte"]
+        },
+        "value": {
+          "type": ["string", "number", "boolean", "null"]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "RE2 regular expression for op=pattern."
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blocking": {
+          "type": "boolean",
+          "default": false,
+          "description": "Only blocking violations reject the request; all violations are metricked."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["op"],
+            "properties": { "op": { "const": "pattern" } }
+          },
+          "then": { "required": ["pattern"] }
+        },
+        {
+          "if": {
+            "required": ["op"],
+            "properties": { "op": { "const": "maxLength" } }
+          },
+          "then": { "required": ["maxLength"] }
+        },
+        {
+          "if": {
+            "required": ["op"],
+            "properties": { "op": { "const": "type" } }
+          },
+          "then": {
+            "required": ["value"],
+            "properties": { "value": { "enum": ["string", "number"] } }
+          }
+        },
+        {
+          "if": {
+            "required": ["op"],
+            "properties": { "op": { "enum": ["eq", "neq", "gt", "gte", "lt", "lte"] } }
+          },
+          "then": { "required": ["value"] }
+        }
+      ]
+    }
+  }
+}

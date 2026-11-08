@@ -5,6 +5,7 @@ package openapiregistry
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -24,6 +25,7 @@ type operation struct {
 	SelfDescribing *bool    `json:"x-self-describing"`
 	MaskErrors     *bool    `json:"x-mask-errors"`
 	MaxStale       int      `json:"x-max-staleness-seconds"`
+	AllowNonJSON   *bool    `json:"x-allow-non-json"`
 	Ignore         bool     `json:"x-controls-ignore"`
 }
 
@@ -37,6 +39,7 @@ var methods = map[string]bool{
 // operations missing required bindings fail.
 func Generate(doc openapidiff.Document, service string) (config.Registry, error) {
 	reg := config.Registry{Version: "1.0", DefaultUnregistered: "deny"}
+	seenIDs := map[string]bool{}
 	for path, item := range doc.Paths {
 		for method, raw := range item {
 			m := strings.ToLower(method)
@@ -62,6 +65,11 @@ func Generate(doc openapidiff.Document, service string) (config.Registry, error)
 			if id == "" {
 				id = strings.ToLower(method) + strings.ReplaceAll(path, "/", "-")
 			}
+			id = kebabCase(id)
+			if seenIDs[id] {
+				return reg, fmt.Errorf("%s %s: duplicate registry id %q after normalization", method, path, id)
+			}
+			seenIDs[id] = true
 			ref := config.Ref{From: "path", Name: op.ResourceID}
 			if strings.HasPrefix(op.ResourceID, "$.") {
 				ref = config.Ref{From: "body", Path: op.ResourceID}
@@ -103,9 +111,31 @@ func Generate(doc openapidiff.Document, service string) (config.Registry, error)
 			if op.SelfDescribing != nil {
 				ep.SelfDescribe = *op.SelfDescribing
 			}
+			if op.AllowNonJSON != nil {
+				ep.AllowNonJSON = *op.AllowNonJSON
+			}
 			reg.Endpoints = append(reg.Endpoints, ep)
 		}
 	}
 	sort.Slice(reg.Endpoints, func(i, j int) bool { return reg.Endpoints[i].ID < reg.Endpoints[j].ID })
 	return reg, nil
+}
+
+var (
+	acronymBoundary = regexp.MustCompile(`([A-Z]+)([A-Z][a-z])`)
+	wordBoundary    = regexp.MustCompile(`([a-z0-9])([A-Z])`)
+	separator       = regexp.MustCompile(`[^A-Za-z0-9]+`)
+)
+
+// kebabCase makes an operationId satisfy the registry schema's
+// ^[a-z0-9][a-z0-9-]*$ rule. Existing kebab-case ids are unchanged.
+func kebabCase(s string) string {
+	s = acronymBoundary.ReplaceAllString(s, "${1}-${2}")
+	s = wordBoundary.ReplaceAllString(s, "${1}-${2}")
+	s = separator.ReplaceAllString(s, "-")
+	s = strings.ToLower(strings.Trim(s, "-"))
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+	return s
 }

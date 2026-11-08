@@ -132,13 +132,19 @@ type DQConfig struct {
 type DQRule struct {
 	ID           string `json:"id"`
 	ResourceType string `json:"resourceType"`
-	Field        string `json:"field"`
-	Required     bool   `json:"required,omitempty"`
-	Op           string `json:"op,omitempty"` // gt|gte|lt|lte|eq|pattern|maxLength|type
-	Value        any    `json:"value,omitempty"`
-	Pattern      string `json:"pattern,omitempty"`
-	MaxLength    int    `json:"maxLength,omitempty"`
-	Blocking     bool   `json:"blocking,omitempty"`
+	// Action scopes a rule to read, write or delete. Empty and "*" apply to
+	// every action. This is how a required-field rule avoids denying GETs.
+	Action string `json:"action,omitempty"`
+	// Endpoint scopes a rule to one registry entry id. Empty applies to every
+	// endpoint matching the resource type and action.
+	Endpoint  string `json:"endpoint,omitempty"`
+	Field     string `json:"field"`
+	Required  bool   `json:"required,omitempty"`
+	Op        string `json:"op,omitempty"` // gt|gte|lt|lte|eq|pattern|maxLength|type
+	Value     any    `json:"value,omitempty"`
+	Pattern   string `json:"pattern,omitempty"`
+	MaxLength int    `json:"maxLength,omitempty"`
+	Blocking  bool   `json:"blocking,omitempty"`
 }
 
 // Bundle is the complete, validated configuration injected into the sidecar.
@@ -331,11 +337,19 @@ func (b *Bundle) Validate() error {
 			if LockedFields[lastSegment(path)] && f.Mode != "full" {
 				return fmt.Errorf("masks: policy %q field %q is locked and must be full", name, path)
 			}
+			if f.Mode == "partial" && f.KeepPrefix == 0 && f.KeepSuffix == 0 && !f.PreserveDomain && f.Keep == "" {
+				return fmt.Errorf("masks: policy %q field %q partial requires keepPrefix, keepSuffix, preserveDomain or keep", name, path)
+			}
 		}
 	}
 	for _, r := range b.DQ.Rules {
 		if r.ID == "" || r.Field == "" {
 			return fmt.Errorf("dq: rule missing id or field")
+		}
+		switch r.Action {
+		case "", "*", "read", "write", "delete":
+		default:
+			return fmt.Errorf("dq: rule %q action must be read, write, delete or *", r.ID)
 		}
 	}
 	return nil

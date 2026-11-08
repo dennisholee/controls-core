@@ -26,6 +26,15 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   holds the sidecar unready for alerting.
 - PIP server responses are validated against `contracts/pip-api.yaml` with
   `kin-openapi` in CI.
+- `x-allow-non-json` on an OpenAPI operation maps to the registry's
+  `allowNonJSON`; non-JSON routes can now be generated without hand-editing the
+  registry.
+- `contracts/dq.schema.json` and `contracts/SPEC-dq.md` publish the DQ rule
+  contract, including action/endpoint scope, array paths and blocking
+  semantics.
+- PIP fixtures accept optional `resourceMeta` for per-resource `lagSeconds`,
+  `lagKnown`, `version` and `ttlSeconds`, so the stale/unknown lag matrix can
+  run against the reference PIP.
 
 ### Changed
 
@@ -34,6 +43,31 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   optional type assertions.
 - Added an explicit `extproc.Processor` port so the Envoy adapter no longer
   depends on the concrete engine.
+
+### Fixed
+
+- `openapi-diff` now skips `x-controls-ignore` operations, matching
+  `openapi-registry`; ignored routes no longer fail the coverage gate and are
+  still default-deny.
+- `openapi-diff` compares action, attributes, freshness,
+  `maxStalenessSeconds`, `maskErrors`, `selfDescribing` and `allowNonJSON`,
+  not only resource type/id/mask/source.
+- DQ rules accept optional `action` (`read`, `write`, `delete`, `*`) and
+  `endpoint` (registry entry id) scopes. Write-scoped `required` rules no
+  longer deny `GET` requests, and two write journeys can share a resource type
+  with different request schemas.
+- DQ rules resolve `[*]` array wildcards; a rule evaluates every element and
+  `required` treats a missing or empty array as a violation.
+- `controls-check` validates endpoint-scoped DQ rules against that endpoint's
+  request schema and checks the rule's resource type/action against it.
+- `controls-check` compiles DQ rules, so unknown operators and invalid
+  patterns fail the gate instead of the sidecar start-up.
+- `controls-check` treats a mask-policy path missing from the response schema
+  as an error, preventing silent unmasked responses.
+- A `partial` mask field with no `keepPrefix`, `keepSuffix`, `preserveDomain`
+  or `keep` is rejected at bundle load, as the mask contract requires.
+- `openapi-registry` normalizes operation ids to kebab-case, so generated ids
+  always satisfy `registry.schema.json`; duplicate normalized ids fail.
 
 ## [0.38.3] — 2026-11-07
 

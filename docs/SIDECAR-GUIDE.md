@@ -85,7 +85,18 @@ operation:
 | `x-self-describing` | optional | cross-check body `_type`/`_id` |
 | `x-mask-errors` | optional | mask JSON error responses |
 | `x-max-staleness-seconds` | optional | replica-lag bound |
+| `x-allow-non-json` | optional | permit a non-JSON response to bypass masking (default false; masked endpoints fail closed) |
 | `x-controls-ignore` | optional | explicitly omit a route from the generated registry (it remains default-deny) |
+
+The generated id is the operationId normalized to kebab-case (`getAccount` →
+`get-account`), which is what `registry.schema.json` requires.
+
+`x-resource-source: both` still resolves the PIP: the record must exist
+(otherwise the request is `404 resource_not_found`), and PIP attributes overlay
+body fields. That is what prevents a client from writing `ownerId` or `region`
+into the body to gain entitlement. For a create journey where no PIP record
+exists yet, use `body` (or a separate provisioning step) rather than silently
+falling back.
 
 Generate the registry fragment:
 
@@ -99,9 +110,17 @@ openapi-registry \
 Gate it:
 
 ```bash
-openapi-registry -check ...   # no drift
-openapi-diff ...              # coverage and annotation parity
+openapi-registry -check \
+  -openapi services/payments/openapi.yaml \
+  -service payments \
+  -out services/payments/controls/registry.json
+
+openapi-diff \
+  -openapi services/payments/openapi.yaml \
+  -registry services/payments/controls/registry.json
 ```
+
+`-check` requires `-out` and compares the generated JSON byte-for-byte.
 
 The fragment is service-owned; do not hand-edit it in `controls-rules`.
 
@@ -173,6 +192,24 @@ The service names policies. Delivery authors them.
 | `rules.json` | delivery | entitlement policy or OPA/Cedar selector |
 | `mask-policies.json` | delivery | field modes, locked fields, reject fields |
 | `dq.json` | delivery | request validation and blocking rules |
+
+DQ rules may set `action` to `read`, `write`, `delete` or `*` (the default),
+and `endpoint` to one registry entry id (the default is every endpoint matching
+the resource type and action). Use `write` for required-field and value rules
+so an empty `GET` body cannot deny the read. Use `endpoint` when two write
+journeys share a resource type but have different request bodies:
+
+```json
+{"id": "party.firstName.required", "resourceType": "party",
+ "action": "write", "endpoint": "update-party",
+ "field": "legalName.firstName", "required": true, "blocking": true}
+```
+
+Paths may use `[*]` array wildcards (`addresses[*].country`); the rule is
+evaluated for every element and `required` treats a missing or empty array as a
+violation. `controls-check` validates an endpoint-scoped rule against that
+endpoint's request schema, and verifies the rule's resource type and action
+match the endpoint.
 
 Local fixtures are for development only. Production bundles come from the
 central `controls-rules` pipeline and are signed.
@@ -259,7 +296,7 @@ Attributes must be flat JSON and match the registry projection.
 | `mvn verify` | app builds and registry drift test passes |
 | `openapi-registry -check` | registry matches annotations |
 | `openapi-diff` | every controlled operation is annotated |
-| `controls-check` | rules/masks/DQ/attributes resolve |
+| `controls-check` | rules/masks/DQ/attributes resolve, including endpoint-scoped DQ |
 | contract tests through compose | allow, deny, masking, DQ, 404, PIP outage |
 | `make smoke` (platform) | real Envoy + ext_proc path |
 | failure tests | PIP outage, OPA error, stale/unknown lag, bad bundle |
@@ -275,6 +312,12 @@ Minimum end-to-end matrix:
 7. PIP down → 503;
 8. PIP version mismatch → not ready;
 9. upstream port not reachable directly.
+
+A reusable drift test lives in
+[`examples/spring-accounts/src/test/java/example/RegistryContractTest.java`](../examples/spring-accounts/src/test/java/example/RegistryContractTest.java).
+
+PIP-outage tests must use `x-freshness: fresh` (or clear the cache); a
+`cached` endpoint may keep serving its last-known-good value during an outage.
 
 Do not test only the engine; exercise the sidecar through Envoy.
 

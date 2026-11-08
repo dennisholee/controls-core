@@ -323,3 +323,52 @@ func TestServerMatchesPublishedContract(t *testing.T) {
 		t.Fatal("contract is missing /version")
 	}
 }
+
+func TestResourceMetaOverrides(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/attributes.json"
+	fixture := `{
+	  "resources": {"account": {
+	    "A1": {"ownerId": "u-1"},
+	    "A2": {"ownerId": "u-2"}
+	  }},
+	  "classifications": {"account": {"ssn": "pii.locked"}},
+	  "resourceMeta": {"account": {
+	    "A1": {"lagSeconds": 6, "lagKnown": true, "version": "v7", "ttlSeconds": 5},
+	    "A2": {"lagSeconds": 6, "lagKnown": false}
+	  }}
+	}`
+	if err := os.WriteFile(path, []byte(fixture), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := LoadMemoryRepo(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	srv := httptest.NewServer(New(repo, log).Handler())
+	t.Cleanup(srv.Close)
+
+	body, _ := json.Marshal(pipclient.BatchRequest{Requests: []pipclient.Ref{
+		{Type: "account", ID: "A1", Fields: []string{"ownerId"}},
+		{Type: "account", ID: "A2", Fields: []string{"ownerId"}},
+	}})
+	resp, err := http.Post(srv.URL+"/v1/attributes:batch", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out pipclient.BatchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Results[0].LagSeconds != 6 || !out.Results[0].LagKnown {
+		t.Fatalf("A1 lag = %+v", out.Results[0])
+	}
+	if out.Results[0].Version != "v7" || out.Results[0].TTLSeconds != 5 {
+		t.Fatalf("A1 meta = %+v", out.Results[0])
+	}
+	if out.Results[1].LagKnown {
+		t.Fatalf("A2 lagKnown should be false: %+v", out.Results[1])
+	}
+}

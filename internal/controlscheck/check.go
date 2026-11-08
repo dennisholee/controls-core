@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"example.com/controls/core/internal/config"
+	"example.com/controls/core/internal/dq"
 	"example.com/controls/core/internal/openapidiff"
 )
 
@@ -21,9 +22,16 @@ type Result struct {
 // Validate checks rules, masks and DQ against the registry and OpenAPI schemas.
 func Validate(b *config.Bundle, doc *openapidiff.Document, pipFixture map[string]any) Result {
 	var res Result
+	// Compile the rules here too: controls-check must fail on unknown
+	// operators, invalid patterns and unsupported paths, not discover them
+	// only when the sidecar starts.
+	if _, err := dq.New(b); err != nil {
+		res.Errors = append(res.Errors, fmt.Sprintf("dq: %v", err))
+	}
 	types := map[string]bool{}
 	actions := map[string]map[string]bool{}
 	endpointsByType := map[string][]config.Endpoint{}
+	endpointsByID := map[string]config.Endpoint{}
 	for _, ep := range b.Registry.Endpoints {
 		types[ep.ResourceType] = true
 		if actions[ep.ResourceType] == nil {
@@ -31,6 +39,7 @@ func Validate(b *config.Bundle, doc *openapidiff.Document, pipFixture map[string
 		}
 		actions[ep.ResourceType][ep.Action] = true
 		endpointsByType[ep.ResourceType] = append(endpointsByType[ep.ResourceType], ep)
+		endpointsByID[ep.ID] = ep
 	}
 
 	for _, r := range b.Rules.Rules {
@@ -51,6 +60,39 @@ func Validate(b *config.Bundle, doc *openapidiff.Document, pipFixture map[string
 	for _, r := range b.DQ.Rules {
 		if r.ResourceType != "*" && r.ResourceType != "" && !types[r.ResourceType] {
 			res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q targets unknown resourceType %q", r.ID, r.ResourceType))
+			continue
+		}
+		if r.Action != "" && r.Action != "*" {
+			if r.ResourceType == "*" || r.ResourceType == "" {
+				if !anyAction(actions, r.Action) {
+					res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q targets unknown action %q", r.ID, r.Action))
+				}
+			} else if !actions[r.ResourceType][r.Action] {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q targets action %q not registered for %q", r.ID, r.Action, r.ResourceType))
+			}
+		}
+		if r.Endpoint != "" {
+			ep, ok := endpointsByID[r.Endpoint]
+			if !ok {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q targets unknown endpoint %q", r.ID, r.Endpoint))
+				continue
+			}
+			if r.ResourceType != "*" && r.ResourceType != "" && r.ResourceType != ep.ResourceType {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q resourceType %q does not match endpoint %q (%q)", r.ID, r.ResourceType, ep.ID, ep.ResourceType))
+				continue
+			}
+			if r.Action != "" && r.Action != "*" && r.Action != ep.Action {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q action %q does not match endpoint %q (%q)", r.ID, r.Action, ep.ID, ep.Action))
+				continue
+			}
+			schema, ok := requestSchema(doc, []config.Endpoint{ep})
+			if !ok {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q targets endpoint %q with no JSON request schema", r.ID, ep.ID))
+				continue
+			}
+			if !pathExists(doc, schema, r.Field) {
+				res.Errors = append(res.Errors, fmt.Sprintf("dq rule %q field %q not in request schema for %q", r.ID, r.Field, ep.ID))
+			}
 			continue
 		}
 		if r.ResourceType == "*" || r.ResourceType == "" {
@@ -83,7 +125,9 @@ func Validate(b *config.Bundle, doc *openapidiff.Document, pipFixture map[string
 		}
 		for field := range policy.Fields {
 			if !pathExists(doc, schema, field) {
-				res.Warnings = append(res.Warnings, fmt.Sprintf("mask policy %q field %q not in response schema for %q", ep.MaskPolicy, field, ep.ID))
+				// A typo here would leave PII unmasked while the gate stayed
+				// green; treat it as a hard error.
+				res.Errors = append(res.Errors, fmt.Sprintf("mask policy %q field %q not in response schema for %q", ep.MaskPolicy, field, ep.ID))
 			}
 		}
 		if len(policy.RejectFields) > 0 {

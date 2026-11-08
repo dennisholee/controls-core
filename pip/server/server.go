@@ -204,13 +204,17 @@ func (s *Server) handleBatch(w http.ResponseWriter, r *http.Request) {
 		if version == "" {
 			version = "unknown"
 		}
+		ttl := res.TTLSeconds
+		if ttl <= 0 {
+			ttl = 30
+		}
 		results = append(results, pipclient.Attribute{
 			Type:       ref.Type,
 			ID:         ref.ID,
 			Found:      res.Found,
 			Attributes: res.Attributes,
 			Version:    version,
-			TTLSeconds: 30,
+			TTLSeconds: ttl,
 			LagSeconds: lag,
 			LagKnown:   lagKnown,
 		})

@@ -10,6 +10,8 @@ prose documents explain the machine-readable files, not the other way around.
 | [`SPEC-registry.md`](SPEC-registry.md) | Normative explanation of registry semantics and authority rule | with registry |
 | [`mask-policy.schema.json`](mask-policy.schema.json) | Mask policy document | yes |
 | [`SPEC-mask-ops.md`](SPEC-mask-ops.md) | Normative mask semantics, locked fields, failure behaviour | with mask |
+| [`dq.schema.json`](dq.schema.json) | Request data-quality rules | yes |
+| [`SPEC-dq.md`](SPEC-dq.md) | Normative DQ scope, operators and blocking semantics | with DQ |
 | [`decision-log.schema.json`](decision-log.schema.json) | Decision log line (hashed identifiers, no payloads) | yes |
 | [`pip-api.yaml`](pip-api.yaml) | PIP HTTP API, including the `/version` handshake | yes |
 | [`test-api.yaml`](test-api.yaml) | Local test API: request simulator and conformance fixture runner | no (developer tooling) |

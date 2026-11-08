@@ -81,6 +81,25 @@ Two repositories implement the data port:
 [`fixtures/attributes.json`](fixtures/attributes.json); `pip/adapters/httpapi`
 is the production adapter over read APIs in front of the replicas.
 
+Fixtures may carry optional per-resource metadata so a local run can exercise
+stale/unknown lag and cache TTL without a custom PIP:
+
+```json
+{
+  "resources": {"party": {"PTY-1": {"ownerId": "u-1"}}},
+  "classifications": {"party": {"ssn": "pii.locked"}},
+  "resourceMeta": {
+    "party": {
+      "PTY-1": {"lagSeconds": 6, "lagKnown": true, "version": "v7", "ttlSeconds": 5}
+    }
+  }
+}
+```
+
+`lagKnown` is a pointer: omit it and the PIP reports lag unknown (fresh and
+deny-on-stale endpoints fail closed). The process-wide `-lag-seconds` flag still
+overrides fixture lag for every resource.
+
 ```go
 type Repository interface {
     Get(ctx, resourceType, id string, fields []string) (server.Resource, error)

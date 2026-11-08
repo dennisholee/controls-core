@@ -30,6 +30,16 @@ type Resource struct {
 	LagSeconds int
 	LagKnown   bool
 	Version    string
+	TTLSeconds int
+}
+
+// resourceMeta is optional per-resource fixture metadata. It lets a local
+// fixture exercise stale/unknown lag and cache TTL without a custom PIP.
+type resourceMeta struct {
+	LagSeconds int    `json:"lagSeconds"`
+	LagKnown   *bool  `json:"lagKnown"`
+	Version    string `json:"version"`
+	TTLSeconds int    `json:"ttlSeconds"`
 }
 
 // MemoryRepo serves fixtures. It exists so the sidecar and the PIP contract can
@@ -37,11 +47,13 @@ type Resource struct {
 type MemoryRepo struct {
 	resources       map[string]map[string]map[string]any
 	classifications map[string]map[string]string
+	meta            map[string]map[string]resourceMeta
 }
 
 // LoadMemoryRepo reads a fixture file of the form:
 //
-//	{"resources":{"account":{"A123":{...}}},"classifications":{"account":{...}}}
+//	{"resources":{"account":{"A123":{...}}},"classifications":{"account":{...}},
+//	 "resourceMeta":{"account":{"A123":{"lagSeconds":6,"lagKnown":true}}}}
 func LoadMemoryRepo(path string) (*MemoryRepo, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -50,11 +62,16 @@ func LoadMemoryRepo(path string) (*MemoryRepo, error) {
 	var raw struct {
 		Resources       map[string]map[string]map[string]any `json:"resources"`
 		Classifications map[string]map[string]string         `json:"classifications"`
+		ResourceMeta    map[string]map[string]resourceMeta   `json:"resourceMeta"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
-	return &MemoryRepo{resources: raw.Resources, classifications: raw.Classifications}, nil
+	return &MemoryRepo{
+		resources:       raw.Resources,
+		classifications: raw.Classifications,
+		meta:            raw.ResourceMeta,
+	}, nil
 }
 
 // Get returns a projected copy of the resource attributes.
@@ -72,14 +89,27 @@ func (r *MemoryRepo) Get(_ context.Context, resourceType, id string, fields []st
 		for k, v := range attrs {
 			out[k] = v
 		}
-		return Resource{Attributes: out, Found: true, Version: "fixture-v1"}, nil
-	}
-	for _, f := range fields {
-		if v, ok := attrs[f]; ok {
-			out[f] = v
+	} else {
+		for _, f := range fields {
+			if v, ok := attrs[f]; ok {
+				out[f] = v
+			}
 		}
 	}
-	return Resource{Attributes: out, Found: true, Version: "fixture-v1"}, nil
+	res := Resource{Attributes: out, Found: true, Version: "fixture-v1"}
+	if byType, ok := r.meta[resourceType]; ok {
+		if m, ok := byType[id]; ok {
+			res.LagSeconds = m.LagSeconds
+			res.TTLSeconds = m.TTLSeconds
+			if m.LagKnown != nil {
+				res.LagKnown = *m.LagKnown
+			}
+			if m.Version != "" {
+				res.Version = m.Version
+			}
+		}
+	}
+	return res, nil
 }
 
 // Classification returns the field classification map.
