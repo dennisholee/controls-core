@@ -7,6 +7,7 @@ Artifacts are versioned independently but released together from
 
 | Sidecar | Contracts | PIP API | Rule schema | Notes |
 |---|---|---|---|---|
+| 0.38.x | 1.0.x | 1.0.x | 1.0.x | PIP API handshake, runtime config |
 | 0.22.x | 1.0.x | 1.0.x | 1.0.x | source-aware readiness |
 | 0.21.x | 1.0.x | 1.0.x | 1.0.x | signed manifest, rate limits |
 | 0.20.x | 1.0.x | 1.0.x | 1.0.x | async audit, contract major |
@@ -39,7 +40,14 @@ Artifacts are versioned independently but released together from
   additive. Unknown response fields are ignored by the client.
 - Deprecations are announced one minor ahead and removed at the next major.
 
-## 3. Upgrade order
+## 3. PIP API handshake
+
+The sidecar calls `GET /version` at startup and compares `pip.apiVersion`
+(major/minor). A mismatch or unreachable PIP fails startup. The PIP server test
+pins `APIVersion` to `contracts/pip-api.yaml`; run `make pip-api-compat` to
+reject breaking OpenAPI changes.
+
+## 4. Upgrade order
 
 1. **Contracts** (publish the package).
 2. **PIP** (deploy; additive changes first).
@@ -49,7 +57,7 @@ Artifacts are versioned independently but released together from
 Rollback order is the reverse. A bundle may only reference a contract version
 supported by the deployed sidecar.
 
-## 4. Compatibility rules
+## 5. Compatibility rules
 
 - Additive fields and enum values: minor.
 - Removing/renaming a field, changing a default, or turning advisory behaviour
@@ -59,7 +67,7 @@ supported by the deployed sidecar.
   exact masked value.
 - Locked fields cannot change without a security-reviewed major release.
 
-## 5. Rule schema declaration
+## 6. Rule schema declaration
 
 Every rendered bundle declares `schemaVersion` and `bundleVersion`. The sidecar
 logs both at startup and includes the digest in every decision log line, so an

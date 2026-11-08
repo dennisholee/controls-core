@@ -18,6 +18,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
   `pip-api.yaml`.
 - Helm sidecar values expose the PIP contract version, client tuning, identity
   skew, reload interval and optional OPA endpoint.
+- `make pip-api-compat` compares `pip-api.yaml` with a base revision and fails
+  on breaking changes.
 
 ### Changed
 
