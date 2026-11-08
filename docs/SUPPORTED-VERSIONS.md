@@ -15,7 +15,7 @@ Removal schedule: [`docs/DEPRECATION.md`](DEPRECATION.md).
 | Alpine (runtime images) | 3.23, 3.24 | 3.20 is EOL; images are digest-pinned |
 | OpenAPI service contract | 3.1.x (3.0 tooling compatible) | Canonical demo uses 3.1.0; internal contracts remain 3.0.3 |
 | PIP API contract | 1.0.x | Sidecar verifies the handshake at startup |
-| Cedar / OPA | optional | OPA policies are outside the signed bundle; benchmark before high RPS |
+| Cedar / OPA | optional | OPA 1.22+; OPA policies are outside the signed bundle; benchmark before high RPS |
 
 ## EOL rules
 
