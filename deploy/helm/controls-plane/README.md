@@ -14,7 +14,7 @@ build's manifest to roll back.
 kubectl create namespace controls --dry-run=client -o yaml | kubectl apply -f -
 helm template controls deploy/helm/controls-plane --namespace controls \
   --set pip.image=registry.example.com/controls-pip \
-  --set pip.tag=0.38.3 > cluster-controls.yaml
+  --set pip.tag=0.39.0 > cluster-controls.yaml
 kubectl apply -n controls -f cluster-controls.yaml
 ```
 

@@ -5,6 +5,8 @@ sidecar, PIP and contracts; see `docs/COMPATIBILITY.md`.
 
 ## [Unreleased]
 
+## [0.39.0] — 2026-11-08
+
 ### Added
 
 - Structured runtime configuration files: `sidecar.yaml` and `pip.yaml`.
